@@ -8,10 +8,12 @@ import com.example.auth.LoginService
 import com.example.auth.RegistrationService
 import com.example.auth.UnpublishedPrivacyPolicy
 import com.example.auth.PasswordHashingWork
+import com.example.auth.SessionAccessService
 import com.example.config.ServerConfig
 import com.example.persistence.HikariDatabaseBootstrap
 import com.example.persistence.JdbcRegistrationRepository
 import com.example.persistence.JdbcLoginRepository
+import com.example.persistence.JdbcSessionRepository
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 
@@ -34,6 +36,7 @@ fun Application.module() {
                 sessionTtl = config.jwtTtl,
             ),
             LoginService(JdbcLoginRepository(database), passwordHashing, tokenIssuer, sessionTtl = config.jwtTtl),
+            SessionAccessService(config.jwtSecret, JdbcSessionRepository(database)),
         )
     } catch (failure: Throwable) {
         database.close()

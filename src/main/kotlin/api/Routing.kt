@@ -4,7 +4,9 @@ import com.example.auth.RegisterRequest
 import com.example.auth.RegistrationService
 import com.example.auth.LoginRequest
 import com.example.auth.LoginService
+import com.example.auth.SessionAccessService
 import com.example.persistence.DatabaseRuntime
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.response.respond
@@ -21,6 +23,7 @@ fun Application.configureRouting(
     database: DatabaseRuntime,
     registrationService: RegistrationService? = null,
     loginService: LoginService? = null,
+    sessionAccess: SessionAccessService? = null,
 ) {
     routing {
         get("/") {
@@ -42,6 +45,15 @@ fun Application.configureRouting(
             post("/api/v1/auth/login") {
                 val request = call.receiveStrictJson(LoginRequest.serializer())
                 call.respond(HttpStatusCode.OK, loginService.login(request))
+            }
+        }
+        if (sessionAccess != null) {
+            get("/api/v1/me") {
+                call.respond(sessionAccess.currentUser(call.request.headers[HttpHeaders.Authorization]))
+            }
+            post("/api/v1/auth/logout") {
+                sessionAccess.logout(call.request.headers[HttpHeaders.Authorization])
+                call.respond(HttpStatusCode.NoContent)
             }
         }
     }
