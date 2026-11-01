@@ -17,6 +17,7 @@ internal val transportJson = Json {
 }
 
 fun Application.configureTransport(errorMapper: ErrorMapper = ErrorMapper()) {
+    val serverLog = environment.log
     install(RequestId)
     install(ContentNegotiation) {
         json(transportJson)
@@ -25,7 +26,16 @@ fun Application.configureTransport(errorMapper: ErrorMapper = ErrorMapper()) {
         exception<Throwable> { call, cause ->
             if (cause is CancellationException) throw cause
             val failure = errorMapper.map(cause)
-            call.respond(failure.status, ErrorResponse(failure.error, call.requestId()))
+            val requestId = call.requestId()
+            if (failure.status.value >= 500) {
+                serverLog.error(
+                    "requestId={} code={} exception={}",
+                    requestId,
+                    failure.error.code,
+                    cause.javaClass.name,
+                )
+            }
+            call.respond(failure.status, ErrorResponse(failure.error, requestId))
         }
         status(HttpStatusCode.NotFound) { call, _ ->
             call.respond(
