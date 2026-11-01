@@ -1,7 +1,7 @@
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
-    alias(ktorLibs.plugins.ktor)
+    alias(libs.plugins.ktor)
 }
 
 group = "com.example"
@@ -12,13 +12,13 @@ application {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(17)
 }
 dependencies {
-    implementation(ktorLibs.server.core)
-    implementation(ktorLibs.server.netty)
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.netty)
     implementation(libs.logback.classic)
 
     testImplementation(kotlin("test"))
-    testImplementation(ktorLibs.server.testHost)
+    testImplementation(libs.ktor.server.testHost)
 }
