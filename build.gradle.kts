@@ -28,7 +28,15 @@ dependencies {
     implementation(libs.hikari)
     implementation(libs.exposed.core)
     implementation(libs.exposed.jdbc)
+    implementation(libs.password4j)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.server.testHost)
+}
+
+tasks.register<JavaExec>("benchmarkPasswordHashing") {
+    group = "verification"
+    description = "Measure sequential Argon2id hash and verify time on this host"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("com.example.auth.Argon2BenchmarkKt")
 }
