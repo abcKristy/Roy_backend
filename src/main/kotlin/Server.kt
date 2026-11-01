@@ -18,6 +18,12 @@ import com.example.persistence.JdbcLoginRepository
 import com.example.persistence.JdbcSessionRepository
 import com.example.points.PointReadRepository
 import com.example.points.PointWriteService
+import com.example.moderation.ModerationService
+import com.example.chats.ChatReadService
+import com.example.chats.ChatSendService
+import com.example.chats.MessageContentPolicy
+import com.example.realtime.RealtimeHub
+import com.example.realtime.installRealtimeTransport
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 
@@ -28,9 +34,15 @@ fun Application.module() {
     try {
         monitor.subscribe(ApplicationStopped) { database.close() }
         configureTransport()
+        installRealtimeTransport()
         val passwordHashing = PasswordHashingWork(Argon2idPasswordHasher())
         val tokenIssuer = JwtTokenIssuer(config.jwtSecret)
         val draftPolicy = if (config.draftPrivacyEnabled) DraftPrivacyPolicy(requireNotNull(config.publicBaseUrl)) else null
+        val sessionRepository = JdbcSessionRepository(database)
+        lateinit var realtimeHub: RealtimeHub
+        val sessionAccess = SessionAccessService(config.jwtSecret, sessionRepository,
+            onSessionRevoked = { identity -> realtimeHub.closeRevokedSession(identity.sessionId) })
+        realtimeHub = RealtimeHub(database, sessionAccess)
         configureRouting(
             database = database,
             registrationService = RegistrationService(
@@ -45,11 +57,15 @@ fun Application.module() {
                 JdbcLoginRepository(database), passwordHashing, tokenIssuer,
                 accessTtl = config.jwtTtl, refreshTtl = config.refreshTtl,
             ),
-            refreshService = RefreshService(JdbcSessionRepository(database), tokenIssuer, accessTtl = config.jwtTtl),
-            sessionAccess = SessionAccessService(config.jwtSecret, JdbcSessionRepository(database)),
+            refreshService = RefreshService(sessionRepository, tokenIssuer, accessTtl = config.jwtTtl),
+            sessionAccess = sessionAccess,
             draftPrivacyPolicy = draftPolicy,
             pointReadRepository = PointReadRepository(database, config.jwtSecret),
             pointWriteService = PointWriteService(database),
+            moderationService = ModerationService(database),
+            chatReadService = ChatReadService(database, config.jwtSecret),
+            chatSendService = ChatSendService(database, MessageContentPolicy()),
+            realtimeHub = realtimeHub,
         )
     } catch (failure: Throwable) {
         database.close()

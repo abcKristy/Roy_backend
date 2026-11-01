@@ -12,8 +12,10 @@ import com.example.points.PointPosition
 import com.example.points.PointTopicInput
 import com.example.points.PointWriteService
 import com.example.points.TopicPresetKeys
+import com.example.realtime.RealtimeHub
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.log
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
@@ -49,7 +51,7 @@ private data class MembershipResponse(
     val lastReadMessageSeq: Long,
 )
 
-internal fun Route.pointWriteRoutes(write: PointWriteService, sessions: SessionAccessService) {
+internal fun Route.pointWriteRoutes(write: PointWriteService, sessions: SessionAccessService, realtime: RealtimeHub? = null) {
     post("/api/v1/points") {
         val actor = actorId(sessions, call.request.headers[HttpHeaders.Authorization])
         val key = idempotencyKey(call.request.headers["Idempotency-Key"])
@@ -79,7 +81,10 @@ internal fun Route.pointWriteRoutes(write: PointWriteService, sessions: SessionA
             }
         }
         when (result) {
-            is CreatePointResult.Created -> call.respondSnapshot(result.responseSnapshot)
+            is CreatePointResult.Created -> {
+                call.publishMembership(realtime, result.value.chatId, actor, "joined")
+                call.respondSnapshot(result.responseSnapshot)
+            }
             is CreatePointResult.Replay -> call.respondSnapshot(result.responseSnapshot)
             is CreatePointResult.QuotaExceeded -> call.respondSnapshot(result.responseSnapshot)
             is CreatePointResult.NearbyConfirmationRequired -> throw ApiException(
@@ -106,7 +111,10 @@ internal fun Route.pointWriteRoutes(write: PointWriteService, sessions: SessionA
         val result = write.addTopic(AddTopicCommand(actor, key, pointId, validateTopic(input.topic)),
             PointWriteSnapshot::addTopic)
         when (result) {
-            is AddTopicResult.Created -> call.respondSnapshot(result.responseSnapshot)
+            is AddTopicResult.Created -> {
+                call.publishMembership(realtime, result.value.chatId, actor, "joined")
+                call.respondSnapshot(result.responseSnapshot)
+            }
             is AddTopicResult.Replay -> call.respondSnapshot(result.responseSnapshot)
             AddTopicResult.KeyReused -> throw keyReused()
             AddTopicResult.PointGone -> throw ApiException(HttpStatusCode.NotFound, "RESOURCE_GONE", "Точка не найдена")
@@ -116,19 +124,37 @@ internal fun Route.pointWriteRoutes(write: PointWriteService, sessions: SessionA
     put("/api/v1/chats/{chatId}/membership") {
         val actor = actorId(sessions, call.request.headers[HttpHeaders.Authorization])
         when (val result = write.join(actor, parseId(call.parameters["chatId"]))) {
-            is JoinPointChatResult.Joined -> call.respond(result.membership.toResponse())
+            is JoinPointChatResult.Joined -> {
+                call.publishMembership(realtime, result.membership.chatId, actor, "joined")
+                call.respond(result.membership.toResponse())
+            }
             is JoinPointChatResult.AlreadyMember -> call.respond(result.membership.toResponse())
             JoinPointChatResult.ChatGone -> throw ApiException(HttpStatusCode.NotFound, "RESOURCE_GONE", "Чат не найден")
         }
     }
     delete("/api/v1/chats/{chatId}/membership") {
         val actor = actorId(sessions, call.request.headers[HttpHeaders.Authorization])
-        when (write.leave(actor, parseId(call.parameters["chatId"]))) {
-            com.example.points.LeavePointChatResult.Left,
+        val chatId = parseId(call.parameters["chatId"])
+        when (write.leave(actor, chatId)) {
+            com.example.points.LeavePointChatResult.Left -> {
+                call.publishMembership(realtime, chatId, actor, "left")
+                call.respond(HttpStatusCode.NoContent)
+            }
             com.example.points.LeavePointChatResult.AlreadyLeft -> call.respond(HttpStatusCode.NoContent)
             com.example.points.LeavePointChatResult.ChatGone -> throw ApiException(
                 HttpStatusCode.NotFound, "RESOURCE_GONE", "Чат не найден")
         }
+    }
+}
+
+private suspend fun io.ktor.server.application.ApplicationCall.publishMembership(
+    realtime: RealtimeHub?, chatId: UUID, userId: UUID, action: String,
+) {
+    if (realtime == null) return
+    try {
+        realtime.publishMembershipChanged(chatId, userId, action)
+    } catch (failure: Exception) {
+        application.log.warn("Post-commit WebSocket delivery failed for chat {}", chatId, failure)
     }
 }
 

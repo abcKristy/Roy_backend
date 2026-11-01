@@ -11,6 +11,11 @@ import com.example.auth.RefreshService
 import com.example.persistence.DatabaseRuntime
 import com.example.points.PointReadRepository
 import com.example.points.PointWriteService
+import com.example.moderation.ModerationService
+import com.example.chats.ChatReadService
+import com.example.chats.ChatSendService
+import com.example.realtime.RealtimeHub
+import com.example.realtime.realtimeRoutes
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.ContentType
@@ -38,13 +43,27 @@ fun Application.configureRouting(
     draftPrivacyPolicy: DraftPrivacyPolicy? = null,
     pointReadRepository: PointReadRepository? = null,
     pointWriteService: PointWriteService? = null,
+    moderationService: ModerationService? = null,
+    chatReadService: ChatReadService? = null,
+    chatSendService: ChatSendService? = null,
+    realtimeHub: RealtimeHub? = null,
 ) {
     routing {
+        if (realtimeHub != null) realtimeRoutes(realtimeHub)
         if (pointReadRepository != null) {
             pointReadRoutes(pointReadRepository, sessionAccess)
         }
         if (pointWriteService != null && sessionAccess != null) {
-            pointWriteRoutes(pointWriteService, sessionAccess)
+            pointWriteRoutes(pointWriteService, sessionAccess, realtimeHub)
+        }
+        if (moderationService != null && sessionAccess != null) {
+            reportRoutes(moderationService, sessionAccess)
+        }
+        if (chatReadService != null && sessionAccess != null) {
+            chatReadRoutes(chatReadService, sessionAccess)
+        }
+        if (chatSendService != null && sessionAccess != null) {
+            chatWriteRoutes(chatSendService, sessionAccess, realtimeHub)
         }
         get("/") {
             call.respondText("Hello, World!")
