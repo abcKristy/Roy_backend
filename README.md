@@ -1,117 +1,78 @@
-# roy-backend
+# Roy Backend
 
-Ktor JVM server foundation for M1.T1. The backend is an independent Gradle and Git
-repository. It currently provides Flyway-managed PostgreSQL/PostGIS schema,
-JSON errors with request IDs, and database-backed `GET /health`. Authentication
-and product routes belong to later tasks.
+## Описание проекта
 
-## Requirements
+Серверная часть проекта Roy. Это отдельный Kotlin/JVM-сервис на Ktor. Основа сервера настраивает подключение к PostgreSQL/PostGIS, применяет миграции Flyway, возвращает JSON-ошибки с идентификатором запроса и предоставляет endpoint проверки готовности `GET /health`.
 
-- JDK 17 for the Gradle JVM and Kotlin toolchain. Gradle Wrapper 9.5.1,
-  Kotlin 2.4.20, and Ktor 3.6.1 are pinned in the project; see
-  [`docs/runtime-matrix.md`](docs/runtime-matrix.md).
-- Docker with Compose for the local `postgis/postgis:18-3.6` service.
-- Free local ports 5432 for PostGIS and 8080 (or `SERVER_PORT`) for Ktor.
+## Стек проекта
 
-From the backend directory, select your installed JDK 17 in PowerShell. Replace
-the placeholder path with the JDK directory on **your** machine:
+- Kotlin 2.4.20 и JDK 17
+- Ktor 3.6.1, Netty
+- PostgreSQL 18 с PostGIS 3.6
+- Flyway 13.11.1 для миграций базы данных
+- HikariCP для пула соединений
+- Gradle Wrapper 9.5.1
+- Docker Compose для локального PostgreSQL/PostGIS
+
+## Цель
+
+Подготовить основу backend для следующих задач проекта: запуск сервера, безопасная конфигурация через переменные окружения, подключение к пространственной базе данных и проверяемое применение схемы.
+
+## Запуск и проверка
+
+Выполняйте команды PowerShell из каталога `project/backend`.
+
+### 1. Подготовить настройки
+
+Создайте локальный `.env` из шаблона:
 
 ```powershell
-$env:JAVA_HOME = '<path-to-installed-JDK-17>'
-$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
-& "$env:JAVA_HOME\bin\java.exe" -version
+Copy-Item .env.example .env
 ```
 
-The `run`, `compileKotlin`, `compileTestKotlin`, `build`, and `test` Gradle tasks
-were confirmed by `.\gradlew.bat tasks --all` on 2026-11-01. Use
-`.\gradlew.bat compileKotlin --no-daemon` to compile the server. The `build` and
-`test` tasks are available but were not run for this implementation.
+Откройте `.env` и заполните `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DATABASE_USER`, `DATABASE_PASSWORD` и `JWT_SECRET`. Для локальной базы укажите одинаковые значения для `POSTGRES_USER` и `DATABASE_USER`, а также для `POSTGRES_PASSWORD` и `DATABASE_PASSWORD`. `POSTGRES_DB` должен совпадать с именем базы в `DATABASE_URL`. Оставьте `SERVER_PORT=8080`, если порт не нужно менять.
 
-## First local start
+### 2. Запустить базу данных
 
-1. Copy the safe template and edit `.env`. Replace **all** credential and JWT
-   placeholders. Keep `POSTGRES_USER` equal to `DATABASE_USER`, and
-   `POSTGRES_PASSWORD` equal to `DATABASE_PASSWORD` for this local setup.
-   `POSTGRES_DB` must match the database name in `DATABASE_URL`.
+```powershell
+docker compose up -d db
+docker compose ps db
+```
 
-   ```powershell
-   Copy-Item .env.example .env
-   # Edit .env locally; never commit or share it.
-   ```
+### 3. Запустить сервер
 
-2. Start only the local database and inspect its container health:
+В том же окне PowerShell загрузите настройки `.env` в окружение текущего процесса и запустите сервер:
 
-   ```powershell
-   docker compose up -d db
-   docker compose ps db
-   ```
+```powershell
+Get-Content .env | Where-Object { $_ -match '^[A-Z_]+=' } | ForEach-Object {
+    $name, $value = $_ -split '=', 2
+    [Environment]::SetEnvironmentVariable($name, $value, 'Process')
+}
+.\gradlew.bat run
+```
 
-   Compose reads `.env` for `POSTGRES_*` interpolation. It does **not** export
-   those values to a JVM launched on the host. The named `postgres_data` volume
-   retains the database across normal stops. `POSTGRES_*` initializes an empty
-   volume only; changing the password in `.env` later does not change an
-   existing database account.
+Оставьте это окно работающим. Успешный запуск сопровождается сообщением о том, что сервер отвечает на `http://127.0.0.1:8080` (или на порту из `SERVER_PORT`).
 
-3. In the **same PowerShell session** where you will run Gradle, export the
-   simple `KEY=value` lines from `.env` into the process environment:
+### 4. Проверить работу
 
-   ```powershell
-   Get-Content .env | Where-Object { $_ -match '^[A-Z_]+=' } | ForEach-Object {
-       $name, $value = $_ -split '=', 2
-       [Environment]::SetEnvironmentVariable($name, $value, 'Process')
-   }
-   .\gradlew.bat run
-   ```
+Откройте второе окно PowerShell и выполните:
 
-   This loader expects one unquoted value per line, as in `.env.example`.
-   `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD`, and `JWT_SECRET` are
-   required; `SERVER_PORT` defaults to 8080. The server fails startup when
-   required configuration, the DB connection, or a Flyway migration fails.
-   Flyway applies `V001`–`V003` before routes are installed. Do not print the
-   environment variables or include `.env` in diagnostic output.
+```powershell
+Invoke-RestMethod http://127.0.0.1:8080/health
+```
 
-4. From another terminal, check readiness at the configured port:
+Ожидаемый результат:
 
-   ```powershell
-   $portLine = Get-Content .env | Where-Object { $_ -match '^SERVER_PORT=' } | Select-Object -Last 1
-   $port = if ($portLine) { ($portLine -split '=', 2)[1] } else { '8080' }
-   Invoke-RestMethod "http://127.0.0.1:$port/health"
-   ```
+```text
+status
+------
+ok
+```
 
-   A ready server returns `{"status":"ok"}` and `X-Request-Id`. This endpoint
-   makes a fresh DB probe on every call. A DB failure after startup returns
-   `503` with the common JSON error envelope; a migration failure stops startup
-   rather than returning a false `ok`.
+### 5. Остановить сервер и базу
 
-## Repeat start and normal stop
+В окне сервера нажмите **Ctrl+C**. Когда база больше не нужна, остановите контейнер:
 
-With the existing volume, run `docker compose up -d db`, load `.env` into the
-PowerShell process again, and run `.\gradlew.bat run`. Flyway checks its schema
-history and does not reapply successful migrations or duplicate preset seed
-rows. Stop Ktor with Ctrl+C in its terminal, then use `docker compose stop db`
-if the database is no longer needed. `docker compose down` also keeps the named
-volume, but **do not use `docker compose down -v` for a normal stop**: `-v`
-deletes the local database volume. A new terminal does not inherit the process
-variables loaded above; load them again when restarting.
-
-## Diagnostics
-
-- **Wrong DB password or missing env:** check that `.env` has no placeholders,
-  the `DATABASE_*` values match the initialized local DB, and the JVM received
-  them via the PowerShell loader. Startup must fail rather than serve health.
-  Do not paste passwords, JDBC credentials, or JWT values into issue reports.
-- **DB unavailable:** check `docker compose ps db` and the local port 5432.
-  If the server was already running, `/health` must return `503`; if it is
-  starting, Flyway or the pool prevents successful startup.
-- **Flyway checksum mismatch:** an applied migration was changed. Do not edit
-  it again or disable validation. Restore the applied file and place any new
-  schema change in a new, higher-numbered migration. Keep the data volume when
-  investigating.
-- **Wrong Java selected:** run `& "$env:JAVA_HOME\bin\java.exe" -version` and
-  verify JDK 17. The system `java` may point to another installation.
-
-The Gradle source compilation and task listing were checked on Windows with
-JDK 17. Docker startup, actual SQL migration, a second start with existing
-data, and live `/health` responses have **not** been run in this environment;
-they require the local PostGIS setup above. No production credentials or
-personal data belong in the local seed or repository.
+```powershell
+docker compose stop db
+```
