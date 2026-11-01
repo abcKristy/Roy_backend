@@ -7,6 +7,7 @@ import com.example.auth.JwtTokenIssuer
 import com.example.auth.LoginService
 import com.example.auth.RegistrationService
 import com.example.auth.UnpublishedPrivacyPolicy
+import com.example.auth.DraftPrivacyPolicy
 import com.example.auth.PasswordHashingWork
 import com.example.auth.SessionAccessService
 import com.example.config.ServerConfig
@@ -26,10 +27,11 @@ fun Application.module() {
         configureTransport()
         val passwordHashing = PasswordHashingWork(Argon2idPasswordHasher())
         val tokenIssuer = JwtTokenIssuer(config.jwtSecret)
+        val draftPolicy = if (config.draftPrivacyEnabled) DraftPrivacyPolicy(requireNotNull(config.publicBaseUrl)) else null
         configureRouting(
             database,
             RegistrationService(
-                policy = UnpublishedPrivacyPolicy,
+                policy = draftPolicy ?: UnpublishedPrivacyPolicy,
                 passwordHashing = passwordHashing,
                 repository = JdbcRegistrationRepository(database),
                 tokenIssuer = tokenIssuer,
@@ -37,6 +39,7 @@ fun Application.module() {
             ),
             LoginService(JdbcLoginRepository(database), passwordHashing, tokenIssuer, sessionTtl = config.jwtTtl),
             SessionAccessService(config.jwtSecret, JdbcSessionRepository(database)),
+            draftPolicy,
         )
     } catch (failure: Throwable) {
         database.close()

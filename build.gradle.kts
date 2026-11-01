@@ -41,3 +41,9 @@ tasks.register<JavaExec>("benchmarkPasswordHashing") {
     classpath = sourceSets["test"].runtimeClasspath
     mainClass.set("com.example.auth.Argon2BenchmarkKt")
 }
+
+tasks.processResources {
+    from("docs/privacy-policy-draft.md") {
+        into("legal")
+    }
+}

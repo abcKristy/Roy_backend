@@ -5,9 +5,11 @@ import com.example.auth.RegistrationService
 import com.example.auth.LoginRequest
 import com.example.auth.LoginService
 import com.example.auth.SessionAccessService
+import com.example.auth.DraftPrivacyPolicy
 import com.example.persistence.DatabaseRuntime
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.ContentType
 import io.ktor.server.application.Application
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -19,11 +21,15 @@ import kotlinx.serialization.Serializable
 @Serializable
 private data class HealthResponse(val status: String)
 
+@Serializable
+private data class PrivacyMetadata(val version: String, val publishedAt: String, val url: String)
+
 fun Application.configureRouting(
     database: DatabaseRuntime,
     registrationService: RegistrationService? = null,
     loginService: LoginService? = null,
     sessionAccess: SessionAccessService? = null,
+    draftPrivacyPolicy: DraftPrivacyPolicy? = null,
 ) {
     routing {
         get("/") {
@@ -34,6 +40,18 @@ fun Application.configureRouting(
                 throw ApiException(HttpStatusCode.ServiceUnavailable, "SERVICE_UNAVAILABLE", "Сервис временно недоступен")
             }
             call.respond(HealthResponse("ok"))
+        }
+        get("/api/v1/legal/privacy") {
+            val policy = draftPrivacyPolicy ?: throw ApiException(
+                HttpStatusCode.ServiceUnavailable, "SERVICE_UNAVAILABLE", "Политика пока не опубликована"
+            )
+            call.respond(PrivacyMetadata(policy.version, policy.publishedAt.toString(), policy.url))
+        }
+        get(DraftPrivacyPolicy.DOCUMENT_PATH) {
+            val policy = draftPrivacyPolicy ?: throw ApiException(
+                HttpStatusCode.ServiceUnavailable, "SERVICE_UNAVAILABLE", "Политика пока не опубликована"
+            )
+            call.respondText(policy.document, ContentType.parse("text/markdown; charset=UTF-8"))
         }
         if (registrationService != null) {
             post("/api/v1/auth/register") {
