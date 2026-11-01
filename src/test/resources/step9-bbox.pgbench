@@ -1,0 +1,14 @@
+-- Diagnostic SQL-only workload for synthetic roy_m1t2_step9load.
+-- Closed-loop pgbench: not the required 5+10 min open-arrival HTTP/API acceptance run.
+\set gx random(0, 31)
+\set gy random(0, 7)
+SELECT p.id
+FROM points AS p
+WHERE p.location && ST_MakeEnvelope(
+        37.55 + :gx * 0.004, 55.70 + :gy * 0.004,
+        37.55 + :gx * 0.004 + 0.02, 55.70 + :gy * 0.004 + 0.02, 4326)
+  AND EXISTS (
+      SELECT 1 FROM point_topics AS pt JOIN chats AS c ON c.point_topic_id=pt.id
+      WHERE pt.point_id=p.id AND c.participant_count BETWEEN 1 AND 50)
+ORDER BY p.created_at DESC,p.id DESC
+LIMIT 51;
