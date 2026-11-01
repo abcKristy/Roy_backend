@@ -14,7 +14,7 @@ fun Application.module() {
     try {
         monitor.subscribe(ApplicationStopped) { database.close() }
         configureTransport()
-        configureRouting()
+        configureRouting(database)
     } catch (failure: Throwable) {
         database.close()
         throw failure
