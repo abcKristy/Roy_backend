@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import java.sql.Connection
 
 class HikariDatabaseBootstrap(private val config: ServerConfig) : DatabaseBootstrap {
     override fun start(): DatabaseRuntime {
@@ -41,6 +42,20 @@ private class PooledDatabaseRuntime(
     private val pool: HikariDataSource,
     private val database: Database,
 ) : DatabaseRuntime {
+    override suspend fun <T> withJdbcTransaction(block: (Connection) -> T): T = withContext(Dispatchers.IO) {
+        pool.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                val result = block(connection)
+                connection.commit()
+                result
+            } catch (failure: Throwable) {
+                connection.rollback()
+                throw failure
+            }
+        }
+    }
+
     override suspend fun isReady(): Boolean = withContext(Dispatchers.IO) {
         try {
             transaction(database) {

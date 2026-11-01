@@ -29,6 +29,7 @@ dependencies {
     implementation(libs.exposed.core)
     implementation(libs.exposed.jdbc)
     implementation(libs.password4j)
+    implementation(libs.java.jwt)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.server.testHost)

@@ -7,6 +7,7 @@ postgresql = "42.7.14"
 hikari = "7.1.0"
 exposed = "1.6.0"
 password4j = "1.8.4"
+java-jwt = "4.6.1"
 
 [libraries]
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
@@ -23,6 +24,7 @@ hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
 password4j = { module = "com.password4j:password4j", version.ref = "password4j" }
+java-jwt = { module = "com.auth0:java-jwt", version.ref = "java-jwt" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
