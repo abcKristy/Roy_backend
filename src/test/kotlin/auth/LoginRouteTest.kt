@@ -8,6 +8,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import java.time.Clock
@@ -53,6 +54,7 @@ class LoginRouteTest {
             setBody("""{"phone":"+79991234567","password":"correct-password"}""")
         }
         assertEquals(HttpStatusCode.OK, success.status)
+        assertEquals("no-store", success.headers[HttpHeaders.CacheControl])
         val body = success.bodyAsText()
         assertTrue(body.contains("\"accessToken\":\"test-token\""))
         assertTrue(body.contains("\"phone\":\"+79991234567\""))

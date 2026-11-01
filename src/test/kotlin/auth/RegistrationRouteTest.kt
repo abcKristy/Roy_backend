@@ -8,6 +8,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import kotlin.test.Test
@@ -68,6 +69,7 @@ class RegistrationRouteTest {
             setBody("""{"phone":"+79991234567","password":"safe-password-123","displayName":"Аня","ageYears":24,"acceptedPrivacyPolicyVersion":"test-v1"}""")
         }
         assertEquals(HttpStatusCode.Created, response.status)
+        assertEquals("no-store", response.headers[HttpHeaders.CacheControl])
         assertEquals(1, writes)
         val body = response.bodyAsText()
         assertTrue(body.contains("\"accessToken\""))

@@ -6,12 +6,15 @@ import com.example.auth.LoginRequest
 import com.example.auth.LoginService
 import com.example.auth.SessionAccessService
 import com.example.auth.DraftPrivacyPolicy
+import com.example.auth.RefreshRequest
+import com.example.auth.RefreshService
 import com.example.persistence.DatabaseRuntime
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.ContentType
 import io.ktor.server.application.Application
 import io.ktor.server.response.respond
+import io.ktor.server.response.header
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
@@ -28,6 +31,7 @@ fun Application.configureRouting(
     database: DatabaseRuntime,
     registrationService: RegistrationService? = null,
     loginService: LoginService? = null,
+    refreshService: RefreshService? = null,
     sessionAccess: SessionAccessService? = null,
     draftPrivacyPolicy: DraftPrivacyPolicy? = null,
 ) {
@@ -55,14 +59,23 @@ fun Application.configureRouting(
         }
         if (registrationService != null) {
             post("/api/v1/auth/register") {
+                call.response.header(HttpHeaders.CacheControl, "no-store")
                 val request = call.receiveStrictJson(RegisterRequest.serializer())
                 call.respond(HttpStatusCode.Created, registrationService.register(request))
             }
         }
         if (loginService != null) {
             post("/api/v1/auth/login") {
+                call.response.header(HttpHeaders.CacheControl, "no-store")
                 val request = call.receiveStrictJson(LoginRequest.serializer())
                 call.respond(HttpStatusCode.OK, loginService.login(request))
+            }
+        }
+        if (refreshService != null) {
+            post("/api/v1/auth/refresh") {
+                call.response.header(HttpHeaders.CacheControl, "no-store")
+                val request = call.receiveStrictJson(RefreshRequest.serializer())
+                call.respond(HttpStatusCode.OK, refreshService.refresh(request))
             }
         }
         if (sessionAccess != null) {

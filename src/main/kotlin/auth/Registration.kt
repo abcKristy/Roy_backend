@@ -36,7 +36,13 @@ data class UserSelf(
 }
 
 @Serializable
-data class Session(val accessToken: String, val expiresAt: String, val user: UserSelf) {
+data class Session(
+    val accessToken: String,
+    val expiresAt: String,
+    val refreshToken: String,
+    val refreshExpiresAt: String,
+    val user: UserSelf,
+) {
     override fun toString(): String = "Session(redacted)"
 }
 
@@ -65,6 +71,7 @@ data class NewRegistration(
     val privacyVersion: String,
     val createdAt: Instant,
     val expiresAt: Instant,
+    val refreshTokenHash: String,
 ) {
     override fun toString(): String = "NewRegistration(redacted)"
 }
@@ -85,10 +92,12 @@ class RegistrationService(
     private val repository: RegistrationRepository,
     private val tokenIssuer: TokenIssuer,
     private val clock: Clock = Clock.systemUTC(),
-    private val sessionTtl: Duration = Duration.ofDays(30),
+    private val accessTtl: Duration = Duration.ofMinutes(15),
+    private val refreshTtl: Duration = Duration.ofDays(30),
 ) {
     init {
-        require(sessionTtl.nano == 0 && sessionTtl.seconds in 60..30L * 24 * 60 * 60)
+        require(accessTtl.nano == 0 && accessTtl.seconds in 60..30L * 24 * 60 * 60)
+        require(refreshTtl.nano == 0 && refreshTtl.seconds in 60..30L * 24 * 60 * 60)
     }
 
     suspend fun register(request: RegisterRequest): Session {
@@ -113,15 +122,17 @@ class RegistrationService(
         }
 
         val now = clock.instant().truncatedTo(ChronoUnit.SECONDS)
-        val expiresAt = now.plus(sessionTtl)
+        val refreshExpiresAt = now.plus(refreshTtl)
         val userId = UUID.randomUUID()
         val sessionId = UUID.randomUUID()
+        val refreshToken = RefreshTokens.create(sessionId)
         val passwordHash = passwordHashing.hash(request.password)
         val registration = NewRegistration(
             userId, sessionId, phone, passwordHash, displayName, request.ageYears,
-            currentVersion, now, expiresAt,
+            currentVersion, now, refreshExpiresAt, RefreshTokens.hash(refreshToken),
         )
-        val token = tokenIssuer.issue(userId, sessionId, 0, now, expiresAt)
+        val accessExpiresAt = minOf(now.plus(accessTtl), refreshExpiresAt)
+        val token = tokenIssuer.issue(userId, sessionId, 0, now, accessExpiresAt)
         try {
             repository.create(registration)
         } catch (_: DuplicatePhoneException) {
@@ -129,7 +140,9 @@ class RegistrationService(
         }
         return Session(
             accessToken = token,
-            expiresAt = expiresAt.toString(),
+            expiresAt = accessExpiresAt.toString(),
+            refreshToken = refreshToken,
+            refreshExpiresAt = refreshExpiresAt.toString(),
             user = UserSelf(
                 id = userId.toString(),
                 displayName = displayName,

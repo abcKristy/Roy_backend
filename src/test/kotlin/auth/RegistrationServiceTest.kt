@@ -1,6 +1,7 @@
 package com.example.auth
 
 import com.auth0.jwt.JWT
+import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.example.api.ApiException
 import io.ktor.http.HttpStatusCode
@@ -59,12 +60,15 @@ class RegistrationServiceTest {
         assertEquals(now.toString(), session.user.createdAt)
         assertEquals(null, session.user.avatarUrl)
         assertEquals(null, session.user.messageMutedUntil)
-        val token = JWT.require(Algorithm.HMAC256(secret)).build().verify(session.accessToken)
+        val token = (JWT.require(Algorithm.HMAC256(secret)) as JWTVerifier.BaseVerification)
+            .build(Clock.fixed(now, ZoneOffset.UTC)).verify(session.accessToken)
         assertEquals(stored.userId.toString(), token.subject)
         assertEquals(stored.sessionId.toString(), token.id)
         assertEquals(0, token.getClaim("authVersion").asInt())
         assertEquals(now.epochSecond, token.issuedAt.toInstant().epochSecond)
-        assertEquals(stored.expiresAt.epochSecond, token.expiresAt.toInstant().epochSecond)
+        assertEquals(now.plusSeconds(15 * 60).epochSecond, token.expiresAt.toInstant().epochSecond)
+        assertEquals(stored.expiresAt.toString(), session.refreshExpiresAt)
+        assertEquals(stored.refreshTokenHash, RefreshTokens.hash(session.refreshToken))
     }
 
     @Test
@@ -97,12 +101,13 @@ class RegistrationServiceTest {
         assertEquals(false, sensitiveRequest.contains(request.password))
         assertEquals(false, sensitiveRequest.contains("79991234567"))
         val user = UserSelf("id", "Аня", phone = "+79991234567", ageYears = 24, createdAt = now.toString())
-        val session = Session("secret-jwt", now.toString(), user)
+        val session = Session("secret-jwt", now.toString(), "secret-refresh", now.toString(), user)
         assertEquals(false, user.toString().contains(user.phone))
         assertEquals(false, session.toString().contains(session.accessToken))
+        assertEquals(false, session.toString().contains(session.refreshToken))
         val registration = NewRegistration(
             java.util.UUID.randomUUID(), java.util.UUID.randomUUID(), user.phone, "secret-hash", user.displayName,
-            user.ageYears, "v1", now, now.plusSeconds(60),
+            user.ageYears, "v1", now, now.plusSeconds(60), "secret-refresh-hash",
         )
         assertEquals(false, registration.toString().contains(user.phone))
         assertEquals(false, registration.toString().contains("secret-hash"))

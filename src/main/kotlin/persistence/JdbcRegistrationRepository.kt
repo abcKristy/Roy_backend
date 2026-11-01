@@ -49,12 +49,14 @@ class JdbcRegistrationRepository(private val database: DatabaseRuntime) : Regist
 
     private fun insertSession(connection: Connection, value: NewRegistration) {
         connection.prepareStatement(
-            "INSERT INTO auth_sessions (id, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)"
+            """INSERT INTO auth_sessions (id, user_id, created_at, expires_at, auth_version, refresh_token_hash)
+               VALUES (?, ?, ?, ?, 0, ?)"""
         ).use { statement ->
             statement.setObject(1, value.sessionId)
             statement.setObject(2, value.userId)
             statement.setObject(3, value.createdAt.atOffset(ZoneOffset.UTC))
             statement.setObject(4, value.expiresAt.atOffset(ZoneOffset.UTC))
+            statement.setString(5, value.refreshTokenHash)
             statement.executeUpdate()
         }
     }

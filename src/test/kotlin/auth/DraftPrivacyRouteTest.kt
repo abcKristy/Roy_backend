@@ -56,7 +56,9 @@ class DraftPrivacyRouteTest {
     fun `document header and full digest must match immutable metadata`() {
         val origin = URI("http://127.0.0.1:8080")
         val original = DraftPrivacyPolicy(origin).document
-        val changedHeader = original.replaceFirst(DraftPrivacyPolicy.VERSION, "draft-2026-11-01.2")
+        val nextVersion = DraftPrivacyPolicy.VERSION.substringBeforeLast('.') + "." +
+            (DraftPrivacyPolicy.VERSION.substringAfterLast('.').toInt() + 1)
+        val changedHeader = original.replaceFirst(DraftPrivacyPolicy.VERSION, nextVersion)
         assertTrue(assertFailsWith<IllegalArgumentException> {
             DraftPrivacyPolicy(origin, changedHeader)
         }.message.orEmpty().contains("header version"))

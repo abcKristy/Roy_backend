@@ -10,6 +10,7 @@ import com.example.auth.UnpublishedPrivacyPolicy
 import com.example.auth.DraftPrivacyPolicy
 import com.example.auth.PasswordHashingWork
 import com.example.auth.SessionAccessService
+import com.example.auth.RefreshService
 import com.example.config.ServerConfig
 import com.example.persistence.HikariDatabaseBootstrap
 import com.example.persistence.JdbcRegistrationRepository
@@ -29,17 +30,22 @@ fun Application.module() {
         val tokenIssuer = JwtTokenIssuer(config.jwtSecret)
         val draftPolicy = if (config.draftPrivacyEnabled) DraftPrivacyPolicy(requireNotNull(config.publicBaseUrl)) else null
         configureRouting(
-            database,
-            RegistrationService(
+            database = database,
+            registrationService = RegistrationService(
                 policy = draftPolicy ?: UnpublishedPrivacyPolicy,
                 passwordHashing = passwordHashing,
                 repository = JdbcRegistrationRepository(database),
                 tokenIssuer = tokenIssuer,
-                sessionTtl = config.jwtTtl,
+                accessTtl = config.jwtTtl,
+                refreshTtl = config.refreshTtl,
             ),
-            LoginService(JdbcLoginRepository(database), passwordHashing, tokenIssuer, sessionTtl = config.jwtTtl),
-            SessionAccessService(config.jwtSecret, JdbcSessionRepository(database)),
-            draftPolicy,
+            loginService = LoginService(
+                JdbcLoginRepository(database), passwordHashing, tokenIssuer,
+                accessTtl = config.jwtTtl, refreshTtl = config.refreshTtl,
+            ),
+            refreshService = RefreshService(JdbcSessionRepository(database), tokenIssuer, accessTtl = config.jwtTtl),
+            sessionAccess = SessionAccessService(config.jwtSecret, JdbcSessionRepository(database)),
+            draftPrivacyPolicy = draftPolicy,
         )
     } catch (failure: Throwable) {
         database.close()

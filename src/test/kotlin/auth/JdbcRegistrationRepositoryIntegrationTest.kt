@@ -66,6 +66,7 @@ class JdbcRegistrationRepositoryIntegrationTest {
             privacyVersion = "test-only-v1",
             createdAt = now,
             expiresAt = now.plusSeconds(30L * 24 * 60 * 60),
+            refreshTokenHash = UUID.randomUUID().toString().replace("-", "").repeat(2),
         )
     }
 

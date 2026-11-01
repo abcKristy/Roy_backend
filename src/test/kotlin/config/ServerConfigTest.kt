@@ -16,9 +16,11 @@ class ServerConfigTest {
     )
 
     @Test
-    fun `session ttl defaults to thirty days and can be shortened`() {
-        assertEquals(Duration.ofDays(30), ServerConfig.fromEnvironment(required).jwtTtl)
+    fun `access and refresh ttl have independent defaults and overrides`() {
+        assertEquals(Duration.ofMinutes(15), ServerConfig.fromEnvironment(required).jwtTtl)
+        assertEquals(Duration.ofDays(30), ServerConfig.fromEnvironment(required).refreshTtl)
         assertEquals(Duration.ofHours(1), ServerConfig.fromEnvironment(required + ("JWT_TTL_SECONDS" to "3600")).jwtTtl)
+        assertEquals(Duration.ofDays(7), ServerConfig.fromEnvironment(required + ("REFRESH_TTL_SECONDS" to "604800")).refreshTtl)
     }
 
     @Test
@@ -26,6 +28,9 @@ class ServerConfigTest {
         for (value in listOf("", "abc", "59", "2592001", "-1")) {
             assertFailsWith<IllegalArgumentException> {
                 ServerConfig.fromEnvironment(required + ("JWT_TTL_SECONDS" to value))
+            }
+            assertFailsWith<IllegalArgumentException> {
+                ServerConfig.fromEnvironment(required + ("REFRESH_TTL_SECONDS" to value))
             }
         }
     }

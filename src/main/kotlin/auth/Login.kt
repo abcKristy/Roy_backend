@@ -31,6 +31,7 @@ data class NewLoginSession(
     val replacementPasswordHash: String?,
     val createdAt: Instant,
     val expiresAt: Instant,
+    val refreshTokenHash: String,
 ) {
     override fun toString(): String = "NewLoginSession(redacted)"
 }
@@ -47,10 +48,12 @@ class LoginService(
     private val passwordHashing: PasswordHashingWork,
     private val tokenIssuer: TokenIssuer,
     private val clock: Clock = Clock.systemUTC(),
-    private val sessionTtl: Duration = Duration.ofDays(30),
+    private val accessTtl: Duration = Duration.ofMinutes(15),
+    private val refreshTtl: Duration = Duration.ofDays(30),
 ) {
     init {
-        require(sessionTtl.nano == 0 && sessionTtl.seconds in 60..30L * 24 * 60 * 60)
+        require(accessTtl.nano == 0 && accessTtl.seconds in 60..30L * 24 * 60 * 60)
+        require(refreshTtl.nano == 0 && refreshTtl.seconds in 60..30L * 24 * 60 * 60)
     }
 
     suspend fun login(request: LoginRequest): Session {
@@ -68,16 +71,20 @@ class LoginService(
             null
         }
         val now = clock.instant().truncatedTo(ChronoUnit.SECONDS)
-        val expiresAt = now.plus(sessionTtl)
+        val refreshExpiresAt = now.plus(refreshTtl)
         val sessionId = UUID.randomUUID()
+        val refreshToken = RefreshTokens.create(sessionId)
         val newSession = NewLoginSession(
             credential.userId, sessionId, credential.passwordHash, credential.authVersion,
-            replacement, now, expiresAt,
+            replacement, now, refreshExpiresAt, RefreshTokens.hash(refreshToken),
         )
         val user = repository.createSession(newSession) ?: invalidCredentials()
+        val accessExpiresAt = minOf(now.plus(accessTtl), refreshExpiresAt)
         return Session(
-            accessToken = tokenIssuer.issue(credential.userId, sessionId, credential.authVersion, now, expiresAt),
-            expiresAt = expiresAt.toString(),
+            accessToken = tokenIssuer.issue(credential.userId, sessionId, credential.authVersion, now, accessExpiresAt),
+            expiresAt = accessExpiresAt.toString(),
+            refreshToken = refreshToken,
+            refreshExpiresAt = refreshExpiresAt.toString(),
             user = user,
         )
     }

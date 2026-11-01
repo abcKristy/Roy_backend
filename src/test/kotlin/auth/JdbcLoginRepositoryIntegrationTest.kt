@@ -32,7 +32,7 @@ class JdbcLoginRepositoryIntegrationTest {
             JdbcRegistrationRepository(runtime).create(
                 NewRegistration(
                     userId, UUID.randomUUID(), "+79990000011", "old-hash", "Аня", 24,
-                    "test-only-v1", now, now.plusSeconds(30L * 24 * 60 * 60),
+                    "test-only-v1", now, now.plusSeconds(30L * 24 * 60 * 60), "a".repeat(64),
                 )
             )
             val repository = JdbcLoginRepository(runtime)
@@ -40,7 +40,7 @@ class JdbcLoginRepositoryIntegrationTest {
             assertEquals("old-hash", credential.passwordHash)
             val sessionId = UUID.randomUUID()
             val accepted = repository.createSession(
-                NewLoginSession(userId, sessionId, "old-hash", 0, "new-hash", now, now.plusSeconds(3600))
+                NewLoginSession(userId, sessionId, "old-hash", 0, "new-hash", now, now.plusSeconds(3600), "b".repeat(64))
             )
             assertNotNull(accepted)
             assertEquals("+79990000011", accepted.phone)
@@ -49,7 +49,7 @@ class JdbcLoginRepositoryIntegrationTest {
 
             val staleSessionId = UUID.randomUUID()
             assertNull(repository.createSession(
-                NewLoginSession(userId, staleSessionId, "old-hash", 0, null, now, now.plusSeconds(3600))
+                NewLoginSession(userId, staleSessionId, "old-hash", 0, null, now, now.plusSeconds(3600), "c".repeat(64))
             ))
             assertEquals(0, countSession(url, user, password, staleSessionId))
         } finally {

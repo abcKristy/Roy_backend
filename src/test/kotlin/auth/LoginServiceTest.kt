@@ -53,7 +53,10 @@ class LoginServiceTest {
         val result = service.login(LoginRequest(" +79991234567 ", "correct-password"))
 
         assertEquals("test-token", result.accessToken)
-        assertEquals("2026-12-01T12:00:00Z", result.expiresAt)
+        assertEquals("2026-11-01T12:15:00Z", result.expiresAt)
+        assertEquals("2026-12-01T12:00:00Z", result.refreshExpiresAt)
+        assertEquals(64, repository.sessions.single().refreshTokenHash.length)
+        assertEquals(repository.sessions.single().refreshTokenHash, RefreshTokens.hash(result.refreshToken))
         assertEquals(profile, result.user)
         assertEquals(7, issuedVersion)
         val saved = repository.sessions.single()
@@ -106,7 +109,7 @@ class LoginServiceTest {
         val result = service.login(LoginRequest("+79991234567", "correct-password"))
 
         assertEquals("2026-11-01T13:00:00Z", result.expiresAt)
-        assertEquals(now.plusSeconds(3600), repository.sessions.single().expiresAt)
+        assertEquals(now.plusSeconds(30L * 24 * 60 * 60), repository.sessions.single().expiresAt)
     }
 
     private fun service(

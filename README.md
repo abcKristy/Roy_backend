@@ -20,10 +20,11 @@
 
 Границы серверного и мобильного auth-срезов M1.T2 описаны в [docs/auth-slice-boundaries.md](docs/auth-slice-boundaries.md).
 Действия перед переносом на удалённый сервер накапливаются в [docs/remote-server-readiness.md](docs/remote-server-readiness.md).
+Регистрация и вход выдают короткий access JWT и обновляемый refresh token. Порядок обновления пары токенов описан в [docs/session-access.md](docs/session-access.md). Параметры `JWT_TTL_SECONDS` и `REFRESH_TTL_SECONDS` задают срок токена доступа и предельный срок сессии.
 
 ### Черновая политика для локальной разработки
 
-Текст [черновой политики](docs/privacy-policy-draft.md) доступен через публичные `GET /api/v1/legal/privacy` и `GET /api/v1/legal/privacy/document` только при явном включении локального режима. В `.env` установите `APP_ENV=local`, `AUTH_DRAFT_POLICY_ENABLED=true`, `SERVER_HOST=127.0.0.1` и `PUBLIC_BASE_URL=http://127.0.0.1:8080`. `GET /api/v1/legal/privacy` вернёт версию `draft-2026-11-01.1`, фиксированное время локальной публикации и абсолютный URL документа. Регистрация принимает только эту версию, полученную клиентом из metadata. При изменении текста черновика обновите версию, дату публикации и SHA-256 в `DraftPrivacyPolicy` одновременно.
+Текст [черновой политики](docs/privacy-policy-draft.md) доступен через публичные `GET /api/v1/legal/privacy` и `GET /api/v1/legal/privacy/document` только при явном включении локального режима. В `.env` установите `APP_ENV=local`, `AUTH_DRAFT_POLICY_ENABLED=true`, `SERVER_HOST=127.0.0.1` и `PUBLIC_BASE_URL=http://127.0.0.1:8080`. `GET /api/v1/legal/privacy` вернёт версию `draft-2026-11-01.2`, фиксированное время локальной публикации и абсолютный URL документа. Регистрация принимает только эту версию, полученную клиентом из metadata. При изменении текста черновика обновите версию, дату публикации и SHA-256 в `DraftPrivacyPolicy` одновременно.
 
 Без флага черновик не публикуется и регистрация возвращает `503`. Включение черновика требует явного `APP_ENV=local` и loopback-адресов в `SERVER_HOST` и `PUBLIC_BASE_URL`; `APP_ENV=production` вместе с draft-флагом останавливает сервер при запуске. Черновой режим предназначен только для тестовых аккаунтов: в политике пока нет данных оператора и подтверждённых условий обработки; локальную БД с тестовыми согласиями не переносить в production.
 

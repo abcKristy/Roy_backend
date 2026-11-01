@@ -28,10 +28,10 @@ class DraftPrivacyPolicy(
     }
 
     companion object {
-        const val VERSION = "draft-2026-11-01.1"
+        const val VERSION = "draft-2026-11-01.2"
         const val DOCUMENT_PATH = "/api/v1/legal/privacy/document"
-        val PUBLISHED_AT: Instant = Instant.parse("2026-11-01T15:36:07Z")
-        private const val DOCUMENT_SHA256 = "0051537547e8c2ff60b45e406aace17f9a017f85bbc6355682e9bb3183df0529"
+        val PUBLISHED_AT: Instant = Instant.parse("2026-11-01T19:02:11Z")
+        private const val DOCUMENT_SHA256 = "c7882235db9aeebc149e0ae784d90cd3f8ea9966894bdd8f6274436e2f327843"
         private val HEADER = Regex("""^\*\*Версия: (draft-\d{4}-\d{2}-\d{2}\.\d+)\. Статус: [^*]+\*\*(?: .*)?$""")
     }
 }

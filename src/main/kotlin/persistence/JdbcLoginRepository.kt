@@ -40,12 +40,15 @@ class JdbcLoginRepository(private val database: DatabaseRuntime) : LoginReposito
             }
         }
         connection.prepareStatement(
-            "INSERT INTO auth_sessions (id, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)"
+            """INSERT INTO auth_sessions (id, user_id, created_at, expires_at, auth_version, refresh_token_hash)
+               VALUES (?, ?, ?, ?, ?, ?)"""
         ).use { statement ->
             statement.setObject(1, session.sessionId)
             statement.setObject(2, session.userId)
             statement.setObject(3, session.createdAt.atOffset(ZoneOffset.UTC))
             statement.setObject(4, session.expiresAt.atOffset(ZoneOffset.UTC))
+            statement.setInt(5, session.expectedAuthVersion)
+            statement.setString(6, session.refreshTokenHash)
             statement.executeUpdate()
         }
         user.toUserSelf()

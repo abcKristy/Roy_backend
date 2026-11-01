@@ -11,7 +11,8 @@ class ServerConfig(
     val databaseUser: String,
     val databasePassword: String,
     val jwtSecret: String,
-    val jwtTtl: Duration = Duration.ofDays(30),
+    val jwtTtl: Duration = Duration.ofMinutes(15),
+    val refreshTtl: Duration = Duration.ofDays(30),
     val appEnvironment: AppEnvironment = AppEnvironment.LOCAL,
     val draftPrivacyEnabled: Boolean = false,
     val publicBaseUrl: URI? = null,
@@ -20,6 +21,9 @@ class ServerConfig(
     init {
         require(jwtTtl.nano == 0 && jwtTtl.seconds in 60..30L * 24 * 60 * 60) {
             "JWT_TTL_SECONDS must be between 60 and 2592000"
+        }
+        require(refreshTtl.nano == 0 && refreshTtl.seconds in 60..30L * 24 * 60 * 60) {
+            "REFRESH_TTL_SECONDS must be between 60 and 2592000"
         }
         require(!draftPrivacyEnabled || appEnvironment == AppEnvironment.LOCAL) {
             "Draft privacy policy cannot be enabled in production"
@@ -53,6 +57,9 @@ class ServerConfig(
             }
             val ttlSeconds = environment["JWT_TTL_SECONDS"]?.let { raw ->
                 raw.toLongOrNull() ?: throw IllegalArgumentException("JWT_TTL_SECONDS must be an integer")
+            } ?: 15L * 60
+            val refreshTtlSeconds = environment["REFRESH_TTL_SECONDS"]?.let { raw ->
+                raw.toLongOrNull() ?: throw IllegalArgumentException("REFRESH_TTL_SECONDS must be an integer")
             } ?: 30L * 24 * 60 * 60
             val appEnvironment = when (environment["APP_ENV"] ?: "local") {
                 "local" -> AppEnvironment.LOCAL
@@ -79,6 +86,7 @@ class ServerConfig(
                 databasePassword = required("DATABASE_PASSWORD"),
                 jwtSecret = required("JWT_SECRET"),
                 jwtTtl = Duration.ofSeconds(ttlSeconds),
+                refreshTtl = Duration.ofSeconds(refreshTtlSeconds),
                 appEnvironment = appEnvironment,
                 draftPrivacyEnabled = draftPrivacyEnabled,
                 publicBaseUrl = publicBaseUrl,
