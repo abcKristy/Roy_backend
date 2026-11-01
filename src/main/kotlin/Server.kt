@@ -16,6 +16,8 @@ import com.example.persistence.HikariDatabaseBootstrap
 import com.example.persistence.JdbcRegistrationRepository
 import com.example.persistence.JdbcLoginRepository
 import com.example.persistence.JdbcSessionRepository
+import com.example.points.PointReadRepository
+import com.example.points.PointWriteService
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 
@@ -46,6 +48,8 @@ fun Application.module() {
             refreshService = RefreshService(JdbcSessionRepository(database), tokenIssuer, accessTtl = config.jwtTtl),
             sessionAccess = SessionAccessService(config.jwtSecret, JdbcSessionRepository(database)),
             draftPrivacyPolicy = draftPolicy,
+            pointReadRepository = PointReadRepository(database, config.jwtSecret),
+            pointWriteService = PointWriteService(database),
         )
     } catch (failure: Throwable) {
         database.close()

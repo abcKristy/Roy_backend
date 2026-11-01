@@ -9,6 +9,8 @@ import com.example.auth.DraftPrivacyPolicy
 import com.example.auth.RefreshRequest
 import com.example.auth.RefreshService
 import com.example.persistence.DatabaseRuntime
+import com.example.points.PointReadRepository
+import com.example.points.PointWriteService
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.ContentType
@@ -34,8 +36,16 @@ fun Application.configureRouting(
     refreshService: RefreshService? = null,
     sessionAccess: SessionAccessService? = null,
     draftPrivacyPolicy: DraftPrivacyPolicy? = null,
+    pointReadRepository: PointReadRepository? = null,
+    pointWriteService: PointWriteService? = null,
 ) {
     routing {
+        if (pointReadRepository != null) {
+            pointReadRoutes(pointReadRepository, sessionAccess)
+        }
+        if (pointWriteService != null && sessionAccess != null) {
+            pointWriteRoutes(pointWriteService, sessionAccess)
+        }
         get("/") {
             call.respondText("Hello, World!")
         }
