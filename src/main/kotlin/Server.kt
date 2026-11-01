@@ -2,10 +2,12 @@ package com.example
 
 import com.example.api.configureRouting
 import com.example.config.ServerConfig
+import com.example.persistence.FlywayMigrationRunner
 import io.ktor.server.application.Application
 
-/** Ktor composition root. Database startup and transport plugins are wired in later steps. */
+/** Ktor composition root. Migrations must succeed before routes are installed. */
 fun Application.module() {
-    ServerConfig.fromEnvironment()
+    val config = ServerConfig.fromEnvironment()
+    FlywayMigrationRunner(config).migrate()
     configureRouting()
 }

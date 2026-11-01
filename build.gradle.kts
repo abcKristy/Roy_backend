@@ -18,6 +18,9 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.logback.classic)
+    implementation(libs.flyway.core)
+    implementation(libs.flyway.postgresql)
+    implementation(libs.postgresql.jdbc)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.server.testHost)
