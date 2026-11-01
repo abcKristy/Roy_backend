@@ -2,12 +2,19 @@ package com.example
 
 import com.example.api.configureRouting
 import com.example.config.ServerConfig
-import com.example.persistence.FlywayMigrationRunner
+import com.example.persistence.HikariDatabaseBootstrap
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopped
 
 /** Ktor composition root. Migrations must succeed before routes are installed. */
 fun Application.module() {
     val config = ServerConfig.fromEnvironment()
-    FlywayMigrationRunner(config).migrate()
-    configureRouting()
+    val database = HikariDatabaseBootstrap(config).start()
+    try {
+        monitor.subscribe(ApplicationStopped) { database.close() }
+        configureRouting()
+    } catch (failure: Throwable) {
+        database.close()
+        throw failure
+    }
 }

@@ -21,6 +21,9 @@ dependencies {
     implementation(libs.flyway.core)
     implementation(libs.flyway.postgresql)
     implementation(libs.postgresql.jdbc)
+    implementation(libs.hikari)
+    implementation(libs.exposed.core)
+    implementation(libs.exposed.jdbc)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.server.testHost)
