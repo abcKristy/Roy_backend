@@ -14,6 +14,8 @@ import com.example.points.PointWriteService
 import com.example.moderation.ModerationService
 import com.example.chats.ChatReadService
 import com.example.chats.ChatSendService
+import com.example.meetings.ProposalService
+import com.example.meetings.BookingService
 import com.example.realtime.RealtimeHub
 import com.example.realtime.realtimeRoutes
 import io.ktor.http.HttpHeaders
@@ -46,6 +48,8 @@ fun Application.configureRouting(
     moderationService: ModerationService? = null,
     chatReadService: ChatReadService? = null,
     chatSendService: ChatSendService? = null,
+    proposalService: ProposalService? = null,
+    bookingService: BookingService? = null,
     realtimeHub: RealtimeHub? = null,
 ) {
     routing {
@@ -64,6 +68,9 @@ fun Application.configureRouting(
         }
         if (chatSendService != null && sessionAccess != null) {
             chatWriteRoutes(chatSendService, sessionAccess, realtimeHub)
+        }
+        if (proposalService != null && bookingService != null && sessionAccess != null) {
+            meetingRoutes(proposalService, bookingService, sessionAccess, realtimeHub)
         }
         get("/") {
             call.respondText("Hello, World!")

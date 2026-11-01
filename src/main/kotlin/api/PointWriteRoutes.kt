@@ -13,6 +13,9 @@ import com.example.points.PointTopicInput
 import com.example.points.PointWriteService
 import com.example.points.TopicPresetKeys
 import com.example.realtime.RealtimeHub
+import com.example.realtime.RealtimeEvent
+import com.example.realtime.RealtimeEventType
+import com.example.realtime.RealtimeScopeKind
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.log
@@ -28,6 +31,11 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.coroutines.withTimeoutOrNull
+import com.example.points.LeavePointChatResult
+import java.time.Instant
 import java.util.UUID
 
 @Serializable
@@ -135,15 +143,61 @@ internal fun Route.pointWriteRoutes(write: PointWriteService, sessions: SessionA
     delete("/api/v1/chats/{chatId}/membership") {
         val actor = actorId(sessions, call.request.headers[HttpHeaders.Authorization])
         val chatId = parseId(call.parameters["chatId"])
-        when (write.leave(actor, chatId)) {
-            com.example.points.LeavePointChatResult.Left -> {
+        when (val result = write.leave(actor, chatId)) {
+            is LeavePointChatResult.Left -> {
                 call.publishMembership(realtime, chatId, actor, "left")
+                call.publishLeaveEffects(realtime, result, chatId)
                 call.respond(HttpStatusCode.NoContent)
             }
-            com.example.points.LeavePointChatResult.AlreadyLeft -> call.respond(HttpStatusCode.NoContent)
-            com.example.points.LeavePointChatResult.ChatGone -> throw ApiException(
+            LeavePointChatResult.AlreadyLeft -> call.respond(HttpStatusCode.NoContent)
+            LeavePointChatResult.ChatGone -> throw ApiException(
                 HttpStatusCode.NotFound, "RESOURCE_GONE", "Чат не найден")
         }
+    }
+}
+
+private suspend fun io.ktor.server.application.ApplicationCall.publishLeaveEffects(
+    realtime: RealtimeHub?, result: LeavePointChatResult.Left, chatId: UUID,
+) {
+    if (realtime == null) return
+    try {
+        withTimeoutOrNull(1_500) {
+            if (result.pointDeleted) {
+                result.deletedRecipients.forEach { recipientId ->
+                    realtime.publishCommitted(RealtimeEvent(UUID.randomUUID(), RealtimeEventType.POINT_DELETED,
+                        RealtimeScopeKind.USER, recipientId, Instant.now(), buildJsonObject {
+                            put("pointId", result.pointId.toString()); put("reason", "no_members")
+                        }))
+                }
+            } else {
+                result.systemMessages.forEach { emission ->
+                    val message = emission.asMessageView()
+                    realtime.publishCommitted(RealtimeEvent(UUID.randomUUID(), RealtimeEventType.CHAT_MESSAGE_CREATED,
+                        RealtimeScopeKind.CHAT, chatId, message.createdAt, messageJson(message)))
+                }
+                result.changedProposals.forEach { proposal ->
+                    realtime.publishCommitted(RealtimeEvent(UUID.randomUUID(), RealtimeEventType.PROPOSAL_UPDATED,
+                        RealtimeScopeKind.CHAT, chatId, proposal.updatedAt, buildJsonObject {
+                            put("proposalId", proposal.id.toString())
+                            put("revision", proposal.revision)
+                            put("status", proposal.status)
+                            put("goingCount", proposal.goingCount)
+                            put("bookingId", proposal.booking?.id?.let { JsonPrimitive(it.toString()) } ?: JsonNull)
+                        }))
+                }
+                result.bookingChanges.forEach { booking ->
+                    realtime.publishCommitted(RealtimeEvent(UUID.randomUUID(), RealtimeEventType.BOOKING_CHANGED,
+                        RealtimeScopeKind.CHAT, chatId, Instant.now(), buildJsonObject {
+                            put("proposalId", booking.proposalId.toString())
+                            put("bookingId", booking.bookingId.toString())
+                            put("status", booking.status)
+                            put("cancelReason", booking.cancelReason)
+                        }))
+                }
+            }
+        }
+    } catch (failure: Exception) {
+        application.log.warn("Post-commit leave events failed for chat {}", chatId, failure)
     }
 }
 

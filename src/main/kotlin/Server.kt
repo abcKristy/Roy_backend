@@ -22,6 +22,8 @@ import com.example.moderation.ModerationService
 import com.example.chats.ChatReadService
 import com.example.chats.ChatSendService
 import com.example.chats.MessageContentPolicy
+import com.example.meetings.ProposalService
+import com.example.meetings.BookingService
 import com.example.realtime.RealtimeHub
 import com.example.realtime.installRealtimeTransport
 import io.ktor.server.application.Application
@@ -65,6 +67,8 @@ fun Application.module() {
             moderationService = ModerationService(database),
             chatReadService = ChatReadService(database, config.jwtSecret),
             chatSendService = ChatSendService(database, MessageContentPolicy()),
+            proposalService = ProposalService(database, config.jwtSecret),
+            bookingService = BookingService(database),
             realtimeHub = realtimeHub,
         )
     } catch (failure: Throwable) {

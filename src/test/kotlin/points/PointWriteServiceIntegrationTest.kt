@@ -152,7 +152,11 @@ class PointWriteServiceIntegrationTest {
                 connection.commit()
             }
 
-            assertIs<LeavePointChatResult.Left>(service.leave(secondUser, first.value.chatId))
+            val secondLeave = assertIs<LeavePointChatResult.Left>(service.leave(secondUser, first.value.chatId))
+            assertEquals(proposal, secondLeave.changedProposals.single().id)
+            assertEquals("cancelled", secondLeave.changedProposals.single().booking?.status)
+            assertEquals(booking, secondLeave.bookingChanges.single().bookingId)
+            assertEquals("meeting_booking_cancelled", secondLeave.systemMessages.first().draft.kind.databaseValue)
             DriverManager.getConnection(url, user, password).use { connection ->
                 assertEquals(1, count(connection, "SELECT participant_count FROM chats WHERE id = ?", first.value.chatId))
                 assertEquals(4, count(connection, "SELECT last_message_seq FROM chats WHERE id = ?", first.value.chatId))
@@ -163,7 +167,9 @@ class PointWriteServiceIntegrationTest {
                     booking))
             }
             assertIs<LeavePointChatResult.Left>(service.leave(firstUser, first.value.chatId))
-            assertIs<LeavePointChatResult.Left>(service.leave(firstUser, added.value.chatId))
+            val lastLeave = assertIs<LeavePointChatResult.Left>(service.leave(firstUser, added.value.chatId))
+            assertTrue(lastLeave.pointDeleted)
+            assertEquals(setOf(firstUser, secondUser), lastLeave.deletedRecipients.toSet())
             DriverManager.getConnection(url, user, password).use { connection ->
                 assertEquals(0, count(connection, "SELECT count(*) FROM points WHERE id = ?", first.value.pointId))
                 assertEquals(1, count(connection, "SELECT count(*) FROM point_creation_events WHERE creator_user_id = ?", firstUser))

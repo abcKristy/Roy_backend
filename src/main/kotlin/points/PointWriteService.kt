@@ -16,6 +16,8 @@ import com.example.persistence.SystemMessageKind
 import com.example.persistence.SystemMessageReason
 import com.example.persistence.acquireTransactionAdvisoryLock
 import com.example.persistence.withRetryingJdbcTransaction
+import com.example.meetings.MeetingEmission
+import com.example.meetings.MeetingProjection
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -34,6 +36,7 @@ class PointWriteService(
     private val systemMessages: JdbcSystemMessageWriter = JdbcSystemMessageWriter(),
     private val recipients: JdbcNotificationRecipients = JdbcNotificationRecipients(),
     private val notifications: JdbcNotificationWriter = JdbcNotificationWriter(),
+    private val meetingProjection: MeetingProjection = MeetingProjection(),
 ) {
     /** The body callback must only read this Connection and build a deterministic HTTP response body. */
     suspend fun create(
@@ -196,6 +199,7 @@ class PointWriteService(
             } }
         }
         val cancelledBookings = mutableListOf<Pair<UUID, UUID>>() // booking ID, proposal ID
+        val changedProposalIds = mutableListOf<UUID>()
         for (proposalId in proposalIds) {
             val removedVote = connection.prepareStatement(
                 "DELETE FROM votes WHERE proposal_id = ? AND user_id = ?"
@@ -205,6 +209,7 @@ class PointWriteService(
                 statement.executeUpdate() == 1
             }
             if (!removedVote) continue
+            changedProposalIds += proposalId
             connection.prepareStatement(
                 "UPDATE meeting_proposals SET revision = revision + 1,updated_at = clock_timestamp() WHERE id = ?"
             ).use { statement -> statement.setObject(1, proposalId); check(statement.executeUpdate() == 1) }
@@ -232,17 +237,20 @@ class PointWriteService(
             statement.setObject(3, userId)
             check(statement.executeUpdate() == 1)
         }
+        val emissions = mutableListOf<MeetingEmission>()
         for ((bookingId, proposalId) in cancelledBookings) {
             cancelReminderJobs(connection, bookingId)
-            systemMessages.append(connection, UUID.randomUUID(), SystemMessageDraft(
+            val draft = SystemMessageDraft(
                 SystemMessageKind.MEETING_BOOKING_CANCELLED, userId, pointId, chatId,
                 proposalId = proposalId, bookingId = bookingId,
                 reason = SystemMessageReason.INSUFFICIENT_VOTES,
-            ))
+            )
+            emissions += MeetingEmission(systemMessages.append(connection, UUID.randomUUID(), draft), draft)
         }
-        systemMessages.append(connection, UUID.randomUUID(),
-            SystemMessageDraft(SystemMessageKind.MEMBER_LEFT, userId, pointId, chatId))
+        val leftDraft = SystemMessageDraft(SystemMessageKind.MEMBER_LEFT, userId, pointId, chatId)
+        emissions += MeetingEmission(systemMessages.append(connection, UUID.randomUUID(), leftDraft), leftDraft)
         touchPoint(connection, pointId)
+        val changedProposals = changedProposalIds.mapNotNull { meetingProjection.read(connection, it, userId) }
         val remaining = connection.prepareStatement(
             """SELECT count(*) FROM chat_memberships AS m
                JOIN chats AS c ON c.id = m.chat_id
@@ -252,6 +260,17 @@ class PointWriteService(
             statement.setObject(1, pointId)
             statement.executeQuery().use { rows -> check(rows.next()); rows.getInt(1) }
         }
+        val deletedRecipients = if (remaining == 0) connection.prepareStatement(
+            """SELECT DISTINCT m.user_id FROM chat_memberships AS m
+               JOIN chats AS c ON c.id=m.chat_id
+               JOIN point_topics AS t ON t.id=c.point_topic_id
+               WHERE t.point_id=?"""
+        ).use { statement ->
+            statement.setObject(1, pointId)
+            statement.executeQuery().use { rows -> buildList {
+                while (rows.next()) add(rows.getObject(1, UUID::class.java))
+            } }
+        } else emptyList()
         if (remaining == 0) {
             connection.prepareStatement("DELETE FROM points WHERE id = ?").use { statement ->
                 statement.setObject(1, pointId)
@@ -273,7 +292,8 @@ class PointWriteService(
                 ))
             }
         }
-        LeavePointChatResult.Left
+        LeavePointChatResult.Left(pointId, remaining == 0, deletedRecipients, changedProposals,
+            cancelledBookings.map { PointBookingChange(it.second, it.first, "cancelled", "insufficient_votes") }, emissions)
     }
 
     private fun normalized(topic: PointTopicInput): PointTopicInput {

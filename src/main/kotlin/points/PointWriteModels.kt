@@ -1,5 +1,8 @@
 package com.example.points
 
+import com.example.meetings.MeetingEmission
+import com.example.meetings.ProposalView
+
 import kotlinx.serialization.json.JsonObject
 import java.time.Instant
 import java.util.UUID
@@ -48,7 +51,17 @@ sealed interface JoinPointChatResult {
 }
 
 sealed interface LeavePointChatResult {
-    data object Left : LeavePointChatResult
+    data class Left(
+        val pointId: UUID,
+        val pointDeleted: Boolean,
+        val deletedRecipients: List<UUID>,
+        val changedProposals: List<ProposalView>,
+        val bookingChanges: List<PointBookingChange>,
+        val systemMessages: List<MeetingEmission>,
+    ) : LeavePointChatResult
     data object AlreadyLeft : LeavePointChatResult
     data object ChatGone : LeavePointChatResult
 }
+
+data class PointBookingChange(val proposalId: UUID, val bookingId: UUID,
+                              val status: String, val cancelReason: String?)
