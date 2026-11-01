@@ -127,7 +127,7 @@ class JdbcNotificationWriter {
 
     private fun readSettings(connection: Connection, recipient: UUID): Settings = connection.prepareStatement(
         """SELECT reminders_push_enabled,personal_push_enabled,extra_push_enabled,extra_in_app_enabled
-           FROM notification_settings WHERE user_id = ?"""
+           FROM notification_settings WHERE user_id = ? FOR SHARE"""
     ).use { statement ->
         statement.setObject(1, recipient)
         statement.executeQuery().use { rows ->

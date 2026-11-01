@@ -23,6 +23,7 @@ class ServerConfig(
     val databaseConnectionTimeoutMs: Long = 5_000,
     val databaseStatementTimeoutMs: Long = 5_000,
     val databaseLockTimeoutMs: Long = 1_000,
+    val pushTokenEncryptionKeyBase64: String? = null,
 ) {
     init {
         require((migrationUser == null) == (migrationPassword == null)) { "Migration credentials must be provided together" }
@@ -114,6 +115,7 @@ class ServerConfig(
                 databaseConnectionTimeoutMs = longSetting("DATABASE_CONNECTION_TIMEOUT_MS", 5_000),
                 databaseStatementTimeoutMs = longSetting("DATABASE_STATEMENT_TIMEOUT_MS", 5_000),
                 databaseLockTimeoutMs = longSetting("DATABASE_LOCK_TIMEOUT_MS", 1_000),
+                pushTokenEncryptionKeyBase64 = environment["PUSH_TOKEN_ENCRYPTION_KEY_BASE64"]?.takeIf { it.isNotBlank() },
             )
         }
     }

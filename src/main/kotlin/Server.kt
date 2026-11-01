@@ -24,7 +24,23 @@ import com.example.chats.ChatSendService
 import com.example.chats.MessageContentPolicy
 import com.example.meetings.ProposalService
 import com.example.meetings.BookingService
+import com.example.notifications.NotificationService
+import com.example.devices.DeviceService
+import com.example.devices.DeviceTokenCipher
 import com.example.realtime.RealtimeHub
+import com.example.realtime.RealtimeEvent
+import com.example.realtime.RealtimeEventType
+import com.example.realtime.RealtimeScopeKind
+import com.example.jobs.JobRuntime
+import com.example.jobs.ReminderScheduler
+import com.example.jobs.ProposalExpiryScheduler
+import com.example.jobs.NotificationBroadcaster
+import com.example.jobs.RetentionCleanup
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import java.util.UUID
 import com.example.realtime.installRealtimeTransport
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
@@ -34,7 +50,6 @@ fun Application.module() {
     val config = ServerConfig.fromEnvironment()
     val database = HikariDatabaseBootstrap(config).start()
     try {
-        monitor.subscribe(ApplicationStopped) { database.close() }
         configureTransport()
         installRealtimeTransport()
         val passwordHashing = PasswordHashingWork(Argon2idPasswordHasher())
@@ -45,6 +60,53 @@ fun Application.module() {
         val sessionAccess = SessionAccessService(config.jwtSecret, sessionRepository,
             onSessionRevoked = { identity -> realtimeHub.closeRevokedSession(identity.sessionId) })
         realtimeHub = RealtimeHub(database, sessionAccess)
+        val jobs = JobRuntime(
+            reminders = ReminderScheduler(database),
+            expiry = ProposalExpiryScheduler(database),
+            broadcaster = NotificationBroadcaster(database, publish = { recipientId, eventId, payload, createdAt ->
+                realtimeHub.publishCommitted(RealtimeEvent(
+                    eventId, RealtimeEventType.NOTIFICATION_CREATED, RealtimeScopeKind.USER,
+                    recipientId, createdAt, payload,
+                ))
+            }),
+            cleanup = RetentionCleanup(database),
+            onExpired = { expired ->
+                expired.forEach { item ->
+                    val messagePayload = buildJsonObject {
+                        put("id", item.message.id.toString())
+                        put("chatId", item.chatId.toString())
+                        put("messageSeq", item.message.messageSeq)
+                        put("type", "system")
+                        put("author", JsonNull)
+                        put("text", JsonNull)
+                        put("system", buildJsonObject {
+                            put("kind", "meeting_closed")
+                            put("actorUserId", JsonNull)
+                            put("pointId", item.draft.pointId.toString())
+                            put("chatId", item.chatId.toString())
+                            put("proposalId", item.proposalId.toString())
+                            put("bookingId", JsonNull)
+                            put("startsAt", JsonNull)
+                            put("endsAt", JsonNull)
+                            put("reason", JsonNull)
+                        })
+                        put("createdAt", item.message.createdAt.toString())
+                    }
+                    realtimeHub.publishCommitted(RealtimeEvent(UUID.randomUUID(),
+                        RealtimeEventType.CHAT_MESSAGE_CREATED, RealtimeScopeKind.CHAT,
+                        item.chatId, item.message.createdAt, messagePayload))
+                    realtimeHub.publishCommitted(RealtimeEvent(UUID.randomUUID(),
+                        RealtimeEventType.PROPOSAL_UPDATED, RealtimeScopeKind.CHAT,
+                        item.chatId, item.updatedAt, buildJsonObject {
+                            put("proposalId", item.proposalId.toString())
+                            put("revision", item.revision)
+                            put("status", "closed")
+                            put("goingCount", item.goingCount)
+                            put("bookingId", JsonNull)
+                        }))
+                }
+            },
+        )
         configureRouting(
             database = database,
             registrationService = RegistrationService(
@@ -69,8 +131,17 @@ fun Application.module() {
             chatSendService = ChatSendService(database, MessageContentPolicy()),
             proposalService = ProposalService(database, config.jwtSecret),
             bookingService = BookingService(database),
+            notificationService = NotificationService(database, config.jwtSecret),
+            deviceService = config.pushTokenEncryptionKeyBase64?.let { key ->
+                DeviceService(database, DeviceTokenCipher.fromBase64(key))
+            },
             realtimeHub = realtimeHub,
         )
+        jobs.start()
+        monitor.subscribe(ApplicationStopped) {
+            jobs.close()
+            database.close()
+        }
     } catch (failure: Throwable) {
         database.close()
         throw failure

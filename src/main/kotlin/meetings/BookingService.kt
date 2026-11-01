@@ -359,7 +359,7 @@ class BookingService(
     private fun cancelReminderJobs(connection: Connection, bookingId: UUID) {
         connection.prepareStatement(
             """UPDATE push_delivery_jobs AS job SET status='CANCELLED',claim_token=NULL,lease_until=NULL,
-               sent_at=NULL WHERE job.status IN ('PENDING','PROCESSING')
+               sent_at=NULL,completed_at=clock_timestamp() WHERE job.status IN ('PENDING','PROCESSING')
                AND EXISTS (SELECT 1 FROM notification_events AS event
                            WHERE event.id=job.notification_event_id AND event.booking_id=?
                              AND event.event_type='reminder_1h')"""
