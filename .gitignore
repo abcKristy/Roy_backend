@@ -6,8 +6,10 @@ out/
 *.iml
 
 .env
-.env.*
-!.env.example
 .local/
 local.properties
 *.log
+*.dump
+*.backup
+*.sql.gz
+.pgpass

@@ -1,7 +1,8 @@
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
-    alias(ktorLibs.plugins.ktor)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ktor)
 }
 
 group = "com.example"
@@ -12,13 +13,22 @@ application {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(17)
 }
 dependencies {
-    implementation(ktorLibs.server.core)
-    implementation(ktorLibs.server.netty)
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.netty)
+    implementation(libs.ktor.server.content.negotiation)
+    implementation(libs.ktor.serialization.json)
+    implementation(libs.ktor.server.status.pages)
     implementation(libs.logback.classic)
+    implementation(libs.flyway.core)
+    implementation(libs.flyway.postgresql)
+    implementation(libs.postgresql.jdbc)
+    implementation(libs.hikari)
+    implementation(libs.exposed.core)
+    implementation(libs.exposed.jdbc)
 
     testImplementation(kotlin("test"))
-    testImplementation(ktorLibs.server.testHost)
+    testImplementation(libs.ktor.server.testHost)
 }
