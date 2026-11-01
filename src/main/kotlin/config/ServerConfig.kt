@@ -17,8 +17,19 @@ class ServerConfig(
     val draftPrivacyEnabled: Boolean = false,
     val publicBaseUrl: URI? = null,
     val serverHost: String = "127.0.0.1",
+    val migrationUser: String? = null,
+    val migrationPassword: String? = null,
+    val databaseMaxPoolSize: Int = 5,
+    val databaseConnectionTimeoutMs: Long = 5_000,
+    val databaseStatementTimeoutMs: Long = 5_000,
+    val databaseLockTimeoutMs: Long = 1_000,
 ) {
     init {
+        require((migrationUser == null) == (migrationPassword == null)) { "Migration credentials must be provided together" }
+        require(databaseMaxPoolSize in 1..100) { "DATABASE_MAX_POOL_SIZE must be between 1 and 100" }
+        require(databaseConnectionTimeoutMs in 500..60_000) { "DATABASE_CONNECTION_TIMEOUT_MS must be between 500 and 60000" }
+        require(databaseStatementTimeoutMs in 100..60_000) { "DATABASE_STATEMENT_TIMEOUT_MS must be between 100 and 60000" }
+        require(databaseLockTimeoutMs in 1 until databaseStatementTimeoutMs) { "DATABASE_LOCK_TIMEOUT_MS must be below statement timeout" }
         require(jwtTtl.nano == 0 && jwtTtl.seconds in 60..30L * 24 * 60 * 60) {
             "JWT_TTL_SECONDS must be between 60 and 2592000"
         }
@@ -61,7 +72,7 @@ class ServerConfig(
             val refreshTtlSeconds = environment["REFRESH_TTL_SECONDS"]?.let { raw ->
                 raw.toLongOrNull() ?: throw IllegalArgumentException("REFRESH_TTL_SECONDS must be an integer")
             } ?: 30L * 24 * 60 * 60
-            val appEnvironment = when (environment["APP_ENV"] ?: "local") {
+            val appEnvironment = when (environment["APP_ENV"] ?: "production") {
                 "local" -> AppEnvironment.LOCAL
                 "production" -> AppEnvironment.PRODUCTION
                 else -> throw IllegalArgumentException("APP_ENV must be local or production")
@@ -80,6 +91,12 @@ class ServerConfig(
                 }
             }
 
+            fun intSetting(name: String, default: Int): Int = environment[name]?.let {
+                it.toIntOrNull() ?: throw IllegalArgumentException("$name must be an integer")
+            } ?: default
+            fun longSetting(name: String, default: Long): Long = environment[name]?.let {
+                it.toLongOrNull() ?: throw IllegalArgumentException("$name must be an integer")
+            } ?: default
             return ServerConfig(
                 databaseUrl = databaseUrl,
                 databaseUser = required("DATABASE_USER"),
@@ -91,6 +108,12 @@ class ServerConfig(
                 draftPrivacyEnabled = draftPrivacyEnabled,
                 publicBaseUrl = publicBaseUrl,
                 serverHost = environment["SERVER_HOST"]?.takeIf { it.isNotBlank() } ?: "127.0.0.1",
+                migrationUser = environment["MIGRATION_DATABASE_USER"]?.takeIf { it.isNotBlank() },
+                migrationPassword = environment["MIGRATION_DATABASE_PASSWORD"]?.takeIf { it.isNotBlank() },
+                databaseMaxPoolSize = intSetting("DATABASE_MAX_POOL_SIZE", 5),
+                databaseConnectionTimeoutMs = longSetting("DATABASE_CONNECTION_TIMEOUT_MS", 5_000),
+                databaseStatementTimeoutMs = longSetting("DATABASE_STATEMENT_TIMEOUT_MS", 5_000),
+                databaseLockTimeoutMs = longSetting("DATABASE_LOCK_TIMEOUT_MS", 1_000),
             )
         }
     }

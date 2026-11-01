@@ -15,4 +15,17 @@ interface DatabaseRuntime : AutoCloseable {
     /** JDBC work runs off the event loop and rolls back as a unit on failure. */
     suspend fun <T> withJdbcTransaction(block: (Connection) -> T): T =
         throw UnsupportedOperationException("JDBC transactions are unavailable")
+
+    /** Consistent multi-query read without write locks. Keep the transaction short. */
+    suspend fun <T> withReadOnlyJdbcTransaction(block: (Connection) -> T): T =
+        throw UnsupportedOperationException("Read-only JDBC transactions are unavailable")
+
+    fun poolSnapshot(): DatabasePoolSnapshot? = null
 }
+
+data class DatabasePoolSnapshot(
+    val active: Int,
+    val idle: Int,
+    val waiting: Int,
+    val total: Int,
+)

@@ -42,6 +42,13 @@ tasks.register<JavaExec>("benchmarkPasswordHashing") {
     mainClass.set("com.example.auth.Argon2BenchmarkKt")
 }
 
+tasks.register<JavaExec>("runMigrations") {
+    group = "database"
+    description = "Apply Flyway migrations using dedicated migration credentials"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.example.persistence.MigrationMainKt")
+}
+
 tasks.processResources {
     from("docs/privacy-policy-draft.md") {
         into("legal")

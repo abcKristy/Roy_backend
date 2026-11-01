@@ -56,7 +56,7 @@ class JdbcSessionRepository(private val database: DatabaseRuntime) : SessionRepo
             statement.executeQuery().use { rows -> if (rows.next()) rows.getObject(1, UUID::class.java) else null }
         } ?: return@withJdbcTransaction RefreshRotationResult.Invalid
         // User-first lock order matches account updates and serializes auth_version changes.
-        val userExists = connection.prepareStatement("SELECT id FROM users WHERE id = ? FOR UPDATE").use { statement ->
+        val userExists = connection.prepareStatement("SELECT id FROM users WHERE id = ? FOR NO KEY UPDATE").use { statement ->
             statement.setObject(1, userId)
             statement.executeQuery().use { it.next() }
         }
