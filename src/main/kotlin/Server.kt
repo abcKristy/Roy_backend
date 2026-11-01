@@ -9,6 +9,8 @@ import com.example.auth.RegistrationService
 import com.example.auth.UnpublishedPrivacyPolicy
 import com.example.auth.DraftPrivacyPolicy
 import com.example.auth.PasswordHashingWork
+import com.example.auth.ProfileService
+import com.example.accounts.AccountDeletionService
 import com.example.auth.SessionAccessService
 import com.example.auth.RefreshService
 import com.example.config.ServerConfig
@@ -135,6 +137,8 @@ fun Application.module() {
             deviceService = config.pushTokenEncryptionKeyBase64?.let { key ->
                 DeviceService(database, DeviceTokenCipher.fromBase64(key))
             },
+            profileService = ProfileService(database, passwordHashing),
+            accountDeletionService = AccountDeletionService(database, passwordHashing),
             realtimeHub = realtimeHub,
         )
         jobs.start()
