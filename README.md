@@ -1,5 +1,32 @@
 # roy-backend
 
+## Local JVM configuration for M1.T1
+
+Use JDK 17 for Gradle and the server. Copy `.env.example` to `.env`, replace all
+placeholder credentials and the JWT secret, and keep `.env` outside Git. The
+server requires `DATABASE_URL` (a `jdbc:postgresql://` URL), `DATABASE_USER`,
+`DATABASE_PASSWORD`, and `JWT_SECRET`. `SERVER_PORT` is optional and defaults to
+8080. Missing required values stop startup; their values are never included in
+the error message.
+
+Docker Compose reads `.env` for container interpolation but does **not** export
+those values to a JVM launched on the host. In PowerShell, load the file into
+the current process before `gradlew.bat run`:
+
+```powershell
+Get-Content .env | Where-Object { $_ -match '^[A-Z_]+=' } | ForEach-Object {
+    $name, $value = $_ -split '=', 2
+    [Environment]::SetEnvironmentVariable($name, $value, 'Process')
+}
+.\gradlew.bat run
+```
+
+The loader accepts simple `KEY=value` lines as in `.env.example`; keep values
+on one line, without surrounding quotes. Start a new shell or remove the
+process variables to clear them. The database startup, migrations, and health
+endpoint are added in subsequent M1.T1 steps; current startup does not prove
+database readiness.
+
 This project was created using the [Ktor Project Generator](https://start.ktor.io).
 
 Here are some useful links to get you started:

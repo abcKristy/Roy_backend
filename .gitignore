@@ -11,3 +11,7 @@ out/
 .local/
 local.properties
 *.log
+*.dump
+*.backup
+*.sql.gz
+.pgpass
