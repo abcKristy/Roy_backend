@@ -1,0 +1,9 @@
+# M1.T2 login implementation
+
+`POST /api/v1/auth/login` accepts `{phone,password}` without a Bearer token. A matching active user and a verified Argon2id hash receive a new session with the full `Session` and `UserSelf` response shape. Unknown phone, invalid phone and wrong password all return `401 INVALID_CREDENTIALS` with the same public message. The unknown-phone path performs a dummy Argon2id verification through the same bounded `PasswordHashingWork` used for real verification and registration.
+
+The login repository reads a credential snapshot, then locks the user row before writing the new `auth_sessions` record. It rejects the login if the account was deleted or its password hash/auth version changed during verification. On successful verification, a weaker stored hash is replaced only when `needsRehash` permits it; the replacement and session insert commit in one transaction. The access JWT contains the current `authVersion`, user `sub`, session `jti`, `iat` and `exp`. The server uses one `JWT_TTL_SECONDS` setting for registration and login, defaulting to 30 days and accepting 60 seconds through 30 days. Raw passwords, hashes, tokens and phone numbers are redacted from DTO string output.
+
+Focused service and route tests cover generic errors, dummy verification, session response, rehash and a credential race. The JDBC integration test runs only with `TEST_DATABASE_URL` pointing to a disposable `roy_m1t2_*` database. It checks session insertion, rehash and rejection of a stale credential. The test skips when this variable is absent. The local repository test used an isolated database; it did not modify `roy`.
+
+Real user login cannot be exercised end to end until registration is enabled with an approved published privacy policy. Session validation, `/me`, and logout belong to the following step.

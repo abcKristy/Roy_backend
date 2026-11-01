@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -84,7 +85,12 @@ class RegistrationService(
     private val repository: RegistrationRepository,
     private val tokenIssuer: TokenIssuer,
     private val clock: Clock = Clock.systemUTC(),
+    private val sessionTtl: Duration = Duration.ofDays(30),
 ) {
+    init {
+        require(sessionTtl.nano == 0 && sessionTtl.seconds in 60..30L * 24 * 60 * 60)
+    }
+
     suspend fun register(request: RegisterRequest): Session {
         val currentVersion = policy.version
             ?: throw ApiException(HttpStatusCode.ServiceUnavailable, "SERVICE_UNAVAILABLE", "Регистрация временно недоступна")
@@ -107,7 +113,7 @@ class RegistrationService(
         }
 
         val now = clock.instant().truncatedTo(ChronoUnit.SECONDS)
-        val expiresAt = now.plus(30, ChronoUnit.DAYS)
+        val expiresAt = now.plus(sessionTtl)
         val userId = UUID.randomUUID()
         val sessionId = UUID.randomUUID()
         val passwordHash = passwordHashing.hash(request.password)
