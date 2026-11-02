@@ -57,7 +57,7 @@ class JdbcLoginRepository(private val database: DatabaseRuntime) : LoginReposito
     private fun readLockedUser(connection: Connection, id: UUID): StoredUser? = connection.prepareStatement(
         """SELECT id, phone_e164, password_hash, auth_version, display_name, age_years,
                   avatar_object_key, message_muted_until, created_at
-           FROM users WHERE id = ? AND deleted_at IS NULL FOR UPDATE"""
+           FROM users WHERE id = ? AND deleted_at IS NULL FOR NO KEY UPDATE"""
     ).use { statement ->
         statement.setObject(1, id)
         statement.executeQuery().use { rows -> if (rows.next()) rows.toStoredUser() else null }

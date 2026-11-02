@@ -6,6 +6,8 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTVerificationException
 import com.example.api.ApiException
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CancellationException
+import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -22,7 +24,9 @@ class SessionAccessService(
     secret: String,
     private val repository: SessionRepository,
     private val clock: Clock = Clock.systemUTC(),
+    private val onSessionRevoked: suspend (SessionIdentity) -> Unit = {},
 ) {
+    private val log = LoggerFactory.getLogger(SessionAccessService::class.java)
     private val verifier = (JWT.require(Algorithm.HMAC256(secret.also {
         require(it.toByteArray(Charsets.UTF_8).size >= 32) { "JWT_SECRET must contain at least 32 UTF-8 bytes" }
     })) as JWTVerifier.BaseVerification).build(clock)
@@ -32,9 +36,23 @@ class SessionAccessService(
         return repository.findActive(identity, clock.instant()) ?: expired()
     }
 
+    /** For long-lived transports: returns a verified identity only while its session is active. */
+    suspend fun currentIdentity(authorization: String?): SessionIdentity {
+        val identity = authenticate(authorization)
+        repository.findActive(identity, clock.instant()) ?: expired()
+        return identity
+    }
+
     suspend fun logout(authorization: String?) {
         val identity = authenticate(authorization)
         if (!repository.revoke(identity, clock.instant())) expired()
+        try {
+            onSessionRevoked(identity)
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (failure: Exception) {
+            log.warn("Post-commit session notification failed for {}", identity.sessionId, failure)
+        }
     }
 
     private fun authenticate(authorization: String?): SessionIdentity {

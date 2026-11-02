@@ -9,6 +9,19 @@ import com.example.auth.DraftPrivacyPolicy
 import com.example.auth.RefreshRequest
 import com.example.auth.RefreshService
 import com.example.persistence.DatabaseRuntime
+import com.example.points.PointReadRepository
+import com.example.points.PointWriteService
+import com.example.moderation.ModerationService
+import com.example.chats.ChatReadService
+import com.example.chats.ChatSendService
+import com.example.meetings.ProposalService
+import com.example.meetings.BookingService
+import com.example.notifications.NotificationService
+import com.example.devices.DeviceService
+import com.example.auth.ProfileService
+import com.example.accounts.AccountDeletionService
+import com.example.realtime.RealtimeHub
+import com.example.realtime.realtimeRoutes
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.ContentType
@@ -34,8 +47,51 @@ fun Application.configureRouting(
     refreshService: RefreshService? = null,
     sessionAccess: SessionAccessService? = null,
     draftPrivacyPolicy: DraftPrivacyPolicy? = null,
+    pointReadRepository: PointReadRepository? = null,
+    pointWriteService: PointWriteService? = null,
+    moderationService: ModerationService? = null,
+    chatReadService: ChatReadService? = null,
+    chatSendService: ChatSendService? = null,
+    proposalService: ProposalService? = null,
+    bookingService: BookingService? = null,
+    notificationService: NotificationService? = null,
+    deviceService: DeviceService? = null,
+    profileService: ProfileService? = null,
+    accountDeletionService: AccountDeletionService? = null,
+    realtimeHub: RealtimeHub? = null,
 ) {
     routing {
+        if (realtimeHub != null) realtimeRoutes(realtimeHub)
+        if (pointReadRepository != null) {
+            pointReadRoutes(pointReadRepository, sessionAccess)
+        }
+        if (pointWriteService != null && sessionAccess != null) {
+            pointWriteRoutes(pointWriteService, sessionAccess, realtimeHub)
+        }
+        if (moderationService != null && sessionAccess != null) {
+            reportRoutes(moderationService, sessionAccess)
+        }
+        if (chatReadService != null && sessionAccess != null) {
+            chatReadRoutes(chatReadService, sessionAccess)
+        }
+        if (chatSendService != null && sessionAccess != null) {
+            chatWriteRoutes(chatSendService, sessionAccess, realtimeHub)
+        }
+        if (proposalService != null && bookingService != null && sessionAccess != null) {
+            meetingRoutes(proposalService, bookingService, sessionAccess, realtimeHub)
+        }
+        if (notificationService != null && sessionAccess != null) {
+            notificationRoutes(notificationService, sessionAccess)
+        }
+        if (deviceService != null && sessionAccess != null) {
+            deviceRoutes(deviceService, sessionAccess)
+        }
+        if (profileService != null && sessionAccess != null) {
+            profileRoutes(profileService, sessionAccess, realtimeHub)
+        }
+        if (accountDeletionService != null && sessionAccess != null) {
+            accountDeletionRoutes(accountDeletionService, sessionAccess, realtimeHub)
+        }
         get("/") {
             call.respondText("Hello, World!")
         }

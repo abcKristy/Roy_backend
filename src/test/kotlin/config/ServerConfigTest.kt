@@ -1,6 +1,7 @@
 package com.example.config
 
 import java.time.Duration
+import com.example.config.AppEnvironment
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -14,6 +15,36 @@ class ServerConfigTest {
         "DATABASE_PASSWORD" to "test",
         "JWT_SECRET" to "test-only-secret-at-least-thirty-two-bytes-long",
     )
+
+    @Test
+    fun `database settings validate bounds and migration credential pairs`() {
+        val configured = ServerConfig.fromEnvironment(required + mapOf(
+            "MIGRATION_DATABASE_USER" to "migrator",
+            "MIGRATION_DATABASE_PASSWORD" to "secret",
+            "DATABASE_MAX_POOL_SIZE" to "8",
+            "DATABASE_CONNECTION_TIMEOUT_MS" to "800",
+            "DATABASE_STATEMENT_TIMEOUT_MS" to "1200",
+            "DATABASE_LOCK_TIMEOUT_MS" to "300",
+        ))
+        assertEquals("migrator", configured.migrationUser)
+        assertEquals(8, configured.databaseMaxPoolSize)
+        assertEquals(800, configured.databaseConnectionTimeoutMs)
+        assertEquals(1200, configured.databaseStatementTimeoutMs)
+        assertEquals(300, configured.databaseLockTimeoutMs)
+        assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(required + ("MIGRATION_DATABASE_USER" to "migrator"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(required + ("DATABASE_LOCK_TIMEOUT_MS" to "5000"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(required + ("DATABASE_MAX_POOL_SIZE" to "0"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(required + ("DATABASE_CONNECTION_TIMEOUT_MS" to "499"))
+        }
+        assertEquals(AppEnvironment.PRODUCTION, ServerConfig.fromEnvironment(required).appEnvironment)
+    }
 
     @Test
     fun `access and refresh ttl have independent defaults and overrides`() {
