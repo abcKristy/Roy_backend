@@ -60,5 +60,17 @@ class PointReadRouteTest {
         val unknownTopic = client.get("/api/v1/points?west=37&south=55&east=38&north=56&topicKey=unknown")
         assertEquals(HttpStatusCode.BadRequest, unknownTopic.status)
         assertTrue(unknownTopic.bodyAsText().contains("INVALID_FIELD"))
+
+        val duplicateBbox = client.get("/api/v1/points?west=37&west=200&south=55&east=38&north=56")
+        assertEquals(HttpStatusCode.BadRequest, duplicateBbox.status)
+        assertTrue(duplicateBbox.bodyAsText().contains("INVALID_BBOX"))
+
+        val duplicateLimit = client.get("/api/v1/points?west=37&south=55&east=38&north=56&limit=1&limit=200")
+        assertEquals(HttpStatusCode.BadRequest, duplicateLimit.status)
+        assertTrue(duplicateLimit.bodyAsText().contains("INVALID_FIELD"))
+
+        val duplicateCursor = client.get("/api/v1/points?west=37&south=55&east=38&north=56&cursor=a&cursor=b")
+        assertEquals(HttpStatusCode.BadRequest, duplicateCursor.status)
+        assertTrue(duplicateCursor.bodyAsText().contains("INVALID_CURSOR"))
     }
 }

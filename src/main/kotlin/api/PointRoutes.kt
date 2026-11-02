@@ -61,9 +61,13 @@ internal fun Route.pointReadRoutes(read: PointReadRepository, sessions: SessionA
     }
     get("/api/v1/points") {
         val params = call.request.queryParameters
-        fun number(name: String): Double = params[name]?.toDoubleOrNull()
+        fun number(name: String): Double = params.getAll(name)?.singleOrNull()?.toDoubleOrNull()
             ?: throw invalidBbox()
-        fun integer(name: String, default: Int): Int = params[name]?.toIntOrNull() ?: if (params[name] == null) default
+        fun filterValue(name: String): String? = params.getAll(name)?.let { values ->
+            values.singleOrNull() ?: throw ApiException(HttpStatusCode.BadRequest, "INVALID_FIELD", "Некорректный фильтр")
+        }
+        fun integer(name: String, default: Int): Int = filterValue(name)?.toIntOrNull()
+            ?: if (params.getAll(name) == null) default
             else throw ApiException(HttpStatusCode.BadRequest, "INVALID_FIELD", "Некорректный фильтр")
         val west = number("west")
         val south = number("south")
@@ -77,14 +81,18 @@ internal fun Route.pointReadRoutes(read: PointReadRepository, sessions: SessionA
         val filter = try {
             PointMapFilter(
                 west = west, south = south, east = east, north = north,
-                topicKey = params["topicKey"], customTopicLabel = params["customTopicLabel"],
+                topicKey = filterValue("topicKey"), customTopicLabel = filterValue("customTopicLabel"),
                 peopleMin = integer("peopleMin", 0), peopleMax = integer("peopleMax", 50),
                 limit = integer("limit", 30),
             )
         } catch (_: IllegalArgumentException) {
             throw ApiException(HttpStatusCode.BadRequest, "INVALID_FIELD", "Некорректный фильтр")
         }
-        val page = try { read.page(filter, params["cursor"]) } catch (_: IllegalArgumentException) {
+        val cursors = params.getAll("cursor")
+        if (cursors != null && cursors.size != 1) {
+            throw ApiException(HttpStatusCode.BadRequest, "INVALID_CURSOR", "Некорректный курсор")
+        }
+        val page = try { read.page(filter, cursors?.single()) } catch (_: IllegalArgumentException) {
             throw ApiException(HttpStatusCode.BadRequest, "INVALID_CURSOR", "Некорректный курсор")
         }
         call.respond(page.toResponse())
