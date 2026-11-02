@@ -22,6 +22,8 @@ class DatabaseBootstrapIntegrationTest {
 
         HikariDatabaseBootstrap(ServerConfig(url, user, password, "test-only-secret", appEnvironment = AppEnvironment.LOCAL))
             .start().use { assertTrue(it.isReady()) }
+        HikariDatabaseBootstrap(ServerConfig(url, user, password, "test-only-secret", appEnvironment = AppEnvironment.LOCAL))
+            .start().use { assertTrue(it.isReady()) }
 
         val runtime = HikariDatabaseBootstrap(
             ServerConfig(
@@ -63,7 +65,7 @@ class DatabaseBootstrapIntegrationTest {
             connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT count(*) FROM flyway_schema_history WHERE success").use { rows ->
                     assertTrue(rows.next())
-                    assertEquals(4, rows.getInt(1))
+                    assertEquals(13, rows.getInt(1))
                 }
             }
         }
