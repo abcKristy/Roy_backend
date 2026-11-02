@@ -2,6 +2,8 @@
 
 Source: backend `main` at commit `bd8d2d4` (`Routing.kt`, `Registration.kt`, `Login.kt`, `Refresh.kt`, `SessionAccess.kt`, `ErrorMapper.kt`, `Transport.kt`). All examples are synthetic. Token markers are intentionally invalid, the phone uses the reserved 555 example range, and the password is an example string. Do not use these fixtures as credentials.
 
+Handoff version: `72454d6` (merged into backend `main` by `ef0d9a2`). The delivered file is `docs/session-access.md`; its request, response and error examples were checked against the listed routes and DTOs. Read-only review found one missing-field error mismatch, which was corrected before `72454d6`; a second review found no remaining findings. `git diff --check` passed. No live API, database or mobile-client run was performed for this documentation handoff, so client runtime behavior is not claimed as verified.
+
 All paths have the `/api/v1` prefix. JSON requests use `Content-Type: application/json`. Register, login and refresh responses have `Cache-Control: no-store`. Timestamps are UTC ISO-8601 strings. Null fields are encoded explicitly.
 
 ## Register
