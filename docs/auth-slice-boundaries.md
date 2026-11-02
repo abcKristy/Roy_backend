@@ -13,3 +13,24 @@
 Клиентский auth-срез размещается в будущем независимом `project/mobile` после создания shell в M1.T3. Его common-контракты включают `AuthRepository`, `SessionRepository` и порт `SecureSessionStore`; платформенные реализации хранят оба токена через Android secure storage и iOS Keychain. При истечении access JWT клиент обновляет оба токена через refresh endpoint и сохраняет новую пару атомарно. Два экрана регистрации и входа используют MVI и передают shell одноразовые действия `AuthSucceeded` и `SessionExpired`. Shell выполняет навигацию и закрывает доступ к персональному состоянию после неуспешного обновления подтверждённо истёкшей сессии. Сетевой сбой не удаляет сессию; публичные запросы не несут старый Bearer.
 
 Серверные маршруты сами по себе не закрывают M1.T2. Готовность задачи требует интеграции обоих экранов и защищённого хранилища на Android и iOS после появления shell M1.T3.
+
+## M1.T5.B01: публичность Point и членство Chat
+
+Матрица относится к фактическим маршрутам `/api/v1` в `PointRoutes.kt`, `PointWriteRoutes.kt`, `ChatRoutes.kt`, `ChatWriteRoutes.kt`, `MeetingRoutes.kt` и `RealtimeRoutes.kt`. Проверка прав выполняется сервером по текущей сессии и состоянию БД; экран входа и локальный PendingIntent не дают прав. Публичное чтение Point не требует Bearer и не должно отправлять устаревший токен клиента.
+
+| Операция | JWT | Дополнительное право | Отказ по правам или ресурсу |
+|---|---|---|---|
+| `GET /topics/presets`, `GET /points`, `GET /points/{pointId}` | Нет | Нет: публичные Point/Topic поля | Удалённая точка: `404 RESOURCE_GONE` |
+| `GET /points/creation-context`, `GET /me/point-quota` | Да | Действующая сессия | `401 AUTH_REQUIRED` / `SESSION_EXPIRED` |
+| `POST /points` | Да | Действующая сессия; квота и nearby проверяются сервером | `401`; бизнес-отказы `409` |
+| `POST /points/{pointId}/topics` | Да | Действующая сессия и существующая точка; автор вступает в созданный чат | `401`; исчезнувшая точка: `404 RESOURCE_GONE` |
+| `PUT /chats/{chatId}/membership` | Да | Действующая сессия; вступление не требует прежнего членства | `401`; исчезнувший чат: `404 RESOURCE_GONE` |
+| `DELETE /chats/{chatId}/membership` | Да | Действующая сессия; повторный выход идемпотентен | `401`; исчезнувший чат: `404 RESOURCE_GONE` |
+| `GET /me/chats`, `GET /chats/{chatId}`, `GET /chats/{chatId}/messages`, `GET /chats/{chatId}/messages/search`, `PUT /chats/{chatId}/read-cursor`, `POST /chats/{chatId}/messages` | Да | Для адресованного чата требуется активное членство, кроме списка собственных чатов | `401`; без членства: `403 NOT_MEMBER` |
+| `GET /chats/{chatId}/proposals`, `GET /proposals/{proposalId}`, `GET /proposals/{proposalId}/votes` | Да | Активное членство в соответствующем чате | `401`; отсутствие доступа или результата чтения: `403 NOT_MEMBER` |
+| `POST /chats/{chatId}/proposals`, `PUT /proposals/{proposalId}/vote`, `POST /proposals/{proposalId}/booking`, `POST /proposals/{proposalId}/close` | Да | Активное членство в соответствующем чате; дополнительные условия голосования/брони проверяет сервер | `401`; без членства: `403 NOT_MEMBER`; исчезнувший чат/предложение: `404 RESOURCE_GONE` |
+| WebSocket `/ws`, подписка на chat ID | Да | Сессия при upgrade и повторная проверка; подписка на чат только при членстве | `401` до upgrade; неподходящие chat ID возвращаются в `rejectedChatIds` |
+
+Общий `401 AUTH_REQUIRED` означает отсутствие заголовка `Authorization`; `401 SESSION_EXPIRED` — недействительную, истёкшую или отозванную сессию. Эти ошибки не заменяют проверку членства: действующий JWT без членства не открывает историю или отправку сообщения. `403 NOT_MEMBER` относится к закрытому содержимому чата, `404 RESOURCE_GONE` — к исчезнувшим публичным Point и к указанным выше отсутствующим ресурсам. Публичный login может вернуть отдельный `401 INVALID_CREDENTIALS`; сетевой сбой не доказывает истечение сессии.
+
+После auth клиент перечитывает Point/Chat и права по ID перед защищённым действием. Авторизация не запускает отложенный `POST` автоматически; мутации остаются online-only без очереди или replay.

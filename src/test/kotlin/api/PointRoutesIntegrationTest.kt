@@ -22,6 +22,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.sql.DriverManager
@@ -29,7 +30,6 @@ import java.time.Instant
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class PointRoutesIntegrationTest {
     @Test
@@ -88,8 +88,15 @@ class PointRoutesIntegrationTest {
 
             val map = client.get("/api/v1/points?west=37&south=55&east=38&north=56")
             assertEquals(HttpStatusCode.OK, map.status)
-            assertTrue(map.bodyAsText().contains(pointId))
-            assertEquals(HttpStatusCode.OK, client.get("/api/v1/points/$pointId").status)
+            val publicPoint = Json.parseToJsonElement(map.bodyAsText()).jsonObject["items"]!!.jsonArray
+                .single { it.jsonObject["id"]!!.jsonPrimitive.content == pointId }.jsonObject
+            assertEquals(setOf("id", "position", "address", "addressSource", "peopleCount", "topics", "createdAt", "updatedAt"),
+                publicPoint.keys)
+            assertEquals(setOf("id", "presetKey", "label", "participantCount", "chatId"),
+                publicPoint["topics"]!!.jsonArray.single().jsonObject.keys)
+            val detail = client.get("/api/v1/points/$pointId")
+            assertEquals(HttpStatusCode.OK, detail.status)
+            assertEquals(publicPoint, Json.parseToJsonElement(detail.bodyAsText()).jsonObject)
 
             val leave = client.delete("/api/v1/chats/$chatId/membership") {
                 header(HttpHeaders.Authorization, token)
