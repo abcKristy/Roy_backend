@@ -1,0 +1,13 @@
+# M1.T6.B02 — startup and health cases
+
+These cases belong to the [M1 server acceptance passport](m1-server-acceptance-passport.md). Record the backend commit, migration checksums, disposable database name, environment (`local` or `production`), HTTP response and sanitized log evidence for each run. A listening TCP port or a response from `/` does not establish database readiness. The expected results below are specifications, not execution results.
+
+Use an isolated PostgreSQL/PostGIS database and disposable credentials. `APP_ENV=local` applies bundled Flyway migrations before opening the application; `APP_ENV=production` validates an already migrated schema and never applies DDL. Do not point these cases at `roy` or a production database. The database must have V001–V013 for this backend revision.
+
+1. **S01 — first local startup.** Start with an empty disposable database and migration credentials. Expect V001–V013 applied exactly once, all Flyway history rows successful, then `GET /health` → `200 {"status":"ok"}`. Capture the final schema version and checksums. A port check alone is insufficient.
+2. **S02 — repeat local startup.** Stop and restart the same build against the S01 database. Expect no new migration rows or checksum changes, and `/health` → `200` only after the database probe succeeds.
+3. **S03 — wrong runtime credentials.** Start against a migrated disposable database with an intentionally invalid runtime password. Expect startup failure before the HTTP listener accepts traffic; no successful `/health`. Record an error category and process exit without recording the password or JDBC URL credentials.
+4. **S04 — schema behind or inconsistent.** In production mode, use a disposable database with pending or failed Flyway history. Expect startup to fail before accepting HTTP traffic. Do not let the API process repair the schema. Record only migration state and sanitized failure class.
+5. **S05 — database stops after startup.** With S01 running, stop only its disposable database. The next `/health` probe must return `503 SERVICE_UNAVAILABLE` with an API `requestId`; after recovery it must return `200` on a fresh probe. The public error and ordinary application logs must not contain a password, access/refresh token, phone or SQL text. The route-level test covers the 200/503 mapping, while the real outage remains a separate DB run.
+
+`DatabaseBootstrapIntegrationTest` exercises local migration and production validation when `TEST_DATABASE_URL` points to a guarded disposable database, but does not itself cover all S01–S05 outcomes. `HealthRouteTest` checks that the HTTP status follows each fresh readiness result. Record unrun cases as **NOT RUN**, not PASS; keep database, server and mobile results separate.
