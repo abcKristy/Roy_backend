@@ -44,6 +44,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
 import com.example.realtime.installRealtimeTransport
+import com.example.geocoding.DaDataReverseGeocoder
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 
@@ -128,6 +129,7 @@ fun Application.module() {
             draftPrivacyPolicy = draftPolicy,
             pointReadRepository = PointReadRepository(database, config.jwtSecret),
             pointWriteService = PointWriteService(database),
+            reverseGeocoder = DaDataReverseGeocoder(config.dadataApiKey),
             moderationService = ModerationService(database),
             chatReadService = ChatReadService(database, config.jwtSecret),
             chatSendService = ChatSendService(database, MessageContentPolicy()),
