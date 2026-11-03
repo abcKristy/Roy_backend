@@ -60,3 +60,7 @@ MigrationHistoryValidationIntegrationTest passed 1/0/0/0 on a newly recreated da
 ## T012 — Rechecked criteria
 
 PasswordHashBoundsTest 1, PasswordHasherTest 4, PasswordHashingWorkTest 1 and LoginServiceTest 5 passed without skips. The local JDK17.0.10/Windows11 sequential hash+verify benchmark medians were 66ms at19456KiB/t2/p1,124ms at46080KiB/t1/p1 and380ms at65536KiB/t3/p1. Five measured samples follow one warmup. BLOCKED for target acceptance: no identified target host/resources or approved latency/concurrency SLO. Local results do not establish target capacity or monthly cost and do not change production costs.
+
+## T052 — Rechecked criteria
+
+PointLifecycleRealtimeIntegrationTest passed 2/0/0/0. The real HTTP/PostGIS/WebSocket paths cover committed membership/Point deletion events, rejection of an exited subscription, absence of subsequent chat events for a former member, former-recipient Point deletion and an induced SQL-trigger rollback with HTTP500, unchanged database graph and no success event in the asserted observation window. Service commit precedes publication. Durable delivery beyond this best-effort contract is not claimed.
