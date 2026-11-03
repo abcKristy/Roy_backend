@@ -100,8 +100,8 @@ internal fun Route.pointReadRoutes(read: PointReadRepository, sessions: SessionA
     if (sessions != null) {
         get("/api/v1/points/creation-context") {
             val actor = UUID.fromString(sessions.currentUser(call.request.headers[HttpHeaders.Authorization]).id)
-            val lat = call.request.queryParameters["lat"]?.toDoubleOrNull() ?: throw invalidBbox()
-            val lon = call.request.queryParameters["lon"]?.toDoubleOrNull() ?: throw invalidBbox()
+            val lat = call.request.queryParameters.getAll("lat")?.singleOrNull()?.toDoubleOrNull() ?: throw invalidBbox()
+            val lon = call.request.queryParameters.getAll("lon")?.singleOrNull()?.toDoubleOrNull() ?: throw invalidBbox()
             val context = try { read.creationContext(actor, lat, lon) } catch (_: IllegalArgumentException) {
                 throw invalidBbox()
             }
