@@ -243,3 +243,15 @@ Actually updated external accounting paths:
 - `spec/plans/roadmap/M3/M3-chat-moderation.md`: corresponding partial M3.T3 server summary.
 
 The same owned disposable PostgreSQL18.6/PostGIS3.6.4 database runs V001–V015; both cases validate real persisted sessions through JdbcSessionRepository. All six accounting files remain outside backend Git and their physical contents do not belong to target/origin history. This ledger records the exact updates/topology limitation; user plans were not moved or duplicated. Mobile, BG-1, overall parent/M3 and external integration acceptance remain open.
+
+## T070 — M3.T3.B03
+
+Group6 branch `feat/chat-read-pagination`, accepted clean target/origin base `4ff36e21ed40f83356a6c58fec75cdcf76936cf3`. Production cursor implementation retained unchanged. Same owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015; persisted sessions validated by actual JdbcSessionRepository.
+
+Evidence `com.example.api.ReadCursorIntegrationTest`: actual PUT read-cursor rejects negative, above-last, Long.MAX_VALUE, null, boolean, fractional, missing and unknown-field input with422 INVALID_FIELD; malformed JSON returns400 INVALID_JSON. Canonical semantic JDBC snapshots of memberships/chat/messages/point remain unchanged for these errors. Missing, outsider, persisted-left and revoked-session requests refuse access and preserve the scoped snapshots. Zero and late valid values return canonical max cursor; repeat and late responses preserve Membership fields and joinedAt, with exact safe DTO keys asserted.
+
+Two actual HTTP advances (6/9) start after both coroutine readiness barriers and a shared release, bounded by15s. The6 response is between6 and9 according to legal serialization; the9 response and final canonical cursor are9. Subsequent late4 cannot lower it; maximum10 is accepted, and late0 returns10. This run establishes the observed concurrent advance ordering, not every possible interleaving. The test does not execute a concurrent own-send/read race; own-send cursor evidence belongs to T069.
+
+Lead executed 04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.ReadCursorIntegrationTest --offline --no-daemon --max-workers=1`, exit 0, BUILD SUCCESSFUL in 47s.
+
+Inspected `build/test-results/integrationTest/TEST-com.example.api.ReadCursorIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-03T23:53:19.747Z, suite seconds=2.585. Local T070 server PASS for these assertions; final independent review and external accounting pending. Mobile, BG-1 and overall M3 remain open.
