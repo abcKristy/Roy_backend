@@ -148,3 +148,17 @@ Actual accounting updates outside backend Git:
 - `spec/plans/roadmap/M3/M3-chat-moderation.md`: matching M3.T2 partial server summary with protocol link.
 
 Schema at accepted group3: V001–V015, PostgreSQL18.6/PostGIS3.6.4. All seven accounting files remain outside backend Git: their physical contents are not part of target/origin history. The versioned ledger records the exact updated paths, final commits and limitation without moving or duplicating plans. Mobile, external integrations, BG-1 and overall M3 remain open.
+
+## T065 — M3.T2.B04
+
+Group 4 branch `feat/chat-realtime-sessions`, accepted clean target/origin base `f4e24f4d7531e022c431659f16fa5cfcf0f1e7c9`. Production hub/routes retained unchanged. Environment: the same owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015.
+
+Evidence `com.example.realtime.WebSocketSubscriptionIntegrationTest` uses actual JdbcSessionRepository and refresh-capable auth_sessions rows. Missing, expired and persisted-revoked JWT handshakes are verified as HTTP401 with native JDK17 WebSocketHandshakeException against an ephemeral Netty server bound to 127.0.0.1, using the production transport/routes and the same hub/database access. Each temporary server stops in finally. Positive headless sockets use Ktor testhost: duplicate mixed-chat subscription preserves requestId and accepts only the active membership; a neighboring existing chat and a nonexistent chat are rejected through the same response shape.
+
+Synthetic scope probes through production RealtimeHub, followed by correlated user-scope sentinels, verify receipt of the allowed chat and exclusion of foreign, unsubscribed and post-leave chat probes. Actual HTTP DELETE leaves membership; subscriptions are rejected afterward. Two sockets for the same actor use distinct persisted session IDs. Actual SessionAccessService.logout revokes only the first database session, invokes production hub revocation, and closes that socket4401; the other receives a subsequent user probe and its database session remains active. These probes establish subscription/session isolation, not complete Message publication; the latter remains T066. They do not prove every queued-delivery race/interleaving.
+
+Earlier fixture attempts were not product defects or successful acceptance: ordinary non-upgrade GET returned400 (first required run FAIL42s); a shell-written stray quote caused compile failure30s before the test body; manually setting Upgrade headers on the regular client caused UnsafeHeaderException (FAIL38s); Ktor testhost masked rejected upgrades as IllegalStateException before the client status pipeline (FAIL41s). Installed Ktor/JDK APIs were inspected, and the final native loopback handshake helper observes the actual response status without unsafe request headers or new dependencies.
+
+Lead executed on04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.realtime.WebSocketSubscriptionIntegrationTest --offline --no-daemon --max-workers=1`, final exit0, BUILD SUCCESSFUL in42s.
+
+Final XML inspected: `build/test-results/integrationTest/TEST-com.example.realtime.WebSocketSubscriptionIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-03T23:10:11.823Z`, suite seconds 3.556. Local T065 server PASS for these assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; mobile, BG-1 and overall M3 remain open.
