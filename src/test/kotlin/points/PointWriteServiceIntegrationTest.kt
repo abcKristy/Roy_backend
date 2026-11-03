@@ -12,10 +12,53 @@ import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class PointWriteServiceIntegrationTest {
+    @Test
+    fun `create rolls back the complete graph when response projection fails`() = runBlocking {
+        val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
+        require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step4write$").matches(url))
+        val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
+        val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
+        val actor = UUID.randomUUID()
+        DriverManager.getConnection(url, user, password).use { connection ->
+            connection.autoCommit = false
+            seedUser(connection, actor)
+            connection.commit()
+        }
+        val runtime = HikariDatabaseBootstrap(ServerConfig(url, user, password, "test-secret",
+            appEnvironment = AppEnvironment.PRODUCTION)).start()
+        runtime.use {
+            val command = CreatePointCommand(actor, UUID.randomUUID(),
+                PointPosition(ThreadLocalRandom.current().nextDouble(55.0, 56.0),
+                    ThreadLocalRandom.current().nextDouble(37.0, 38.0)),
+                PointTopicInput("football"), "Atomic create probe", PointAddressSource.MANUAL, false)
+            val service = PointWriteService(it)
+            assertFailsWith<IllegalStateException> {
+                service.create(command, { _, _ -> error("response projection failed") }, ::quotaBody)
+            }
+            DriverManager.getConnection(url, user, password).use { connection ->
+                assertEquals(0, count(connection, "SELECT count(*) FROM points WHERE created_by_user_id = ?", actor))
+                assertEquals(0, count(connection, "SELECT count(*) FROM chat_memberships WHERE user_id = ?", actor))
+                assertEquals(0, count(connection, "SELECT count(*) FROM point_creation_events WHERE creator_user_id = ?", actor))
+                assertEquals(0, count(connection, "SELECT count(*) FROM operation_idempotency WHERE actor_user_id = ?", actor))
+            }
+
+            val created = assertIs<CreatePointResult.Created>(service.create(command, ::createdPointBody, ::quotaBody))
+            DriverManager.getConnection(url, user, password).use { connection ->
+                assertEquals(1, count(connection, "SELECT count(*) FROM points WHERE id = ?", created.value.pointId))
+                assertEquals(1, count(connection, "SELECT count(*) FROM point_topics WHERE id = ?", created.value.topicId))
+                assertEquals(1, count(connection, "SELECT count(*) FROM chats WHERE id = ? AND participant_count = 1", created.value.chatId))
+                assertEquals(1, count(connection, "SELECT count(*) FROM chat_memberships WHERE user_id = ? AND left_at IS NULL", actor))
+                assertEquals(1, count(connection, "SELECT count(*) FROM point_creation_events WHERE creator_user_id = ?", actor))
+                assertEquals(1, count(connection, "SELECT count(*) FROM operation_idempotency WHERE actor_user_id = ?", actor))
+            }
+        }
+    }
+
     @Test
     fun `quota denials persist replay and do not extend block`() = runBlocking {
         val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
