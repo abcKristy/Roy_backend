@@ -44,3 +44,7 @@ PointQuotaBlockRouteIntegrationTest: 1 HTTP/PostGIS test passed without skips. I
 ## T042 — Rechecked criteria
 
 AddTopicAutojoinIntegrationTest: 3 tests passed; TopicUnicodeUniquenessIntegrationTest: 1 passed, zero skips. The new real service/SQL test covers Unicode surrounding whitespace, Cyrillic case, preserved display label, duplicate refusal and exactly one Topic/Chat. SQL lookup and UNIQUE share lower(btrim(...)); JVM key is explicitly advisory. Universal equality across arbitrary database locales is not a normative criterion.
+
+## T049 — Rechecked criteria
+
+PointChatLeaveRoutesIntegrationTest: 1 HTTP/PostGIS test passed without skips. Muted user leave succeeds, votes and future booking are adjusted, membership left_at and counts change, system messages are asserted and repeated leave is 204 with unchanged snapshot. User/Point/Chat locks serialize the stored operation.
