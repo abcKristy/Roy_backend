@@ -48,3 +48,7 @@ AddTopicAutojoinIntegrationTest: 3 tests passed; TopicUnicodeUniquenessIntegrati
 ## T049 — Rechecked criteria
 
 PointChatLeaveRoutesIntegrationTest: 1 HTTP/PostGIS test passed without skips. Muted user leave succeeds, votes and future booking are adjusted, membership left_at and counts change, system messages are asserted and repeated leave is 204 with unchanged snapshot. User/Point/Chat locks serialize the stored operation.
+
+## T050 — Rechecked criteria
+
+PointEmptyDeletionIntegrationTest: 1 PostGIS test passed without skips. Non-last leave retains the Point; last leave removes topics/chats/memberships, while creation ledger survives with null Point reference. V003 cascades and V002 ledger SET NULL match the service deletion under Point lock.
