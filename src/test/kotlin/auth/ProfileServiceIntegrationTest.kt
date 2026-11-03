@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 class ProfileServiceIntegrationTest {
     @Test
     fun `name update and password change revoke all sessions atomically`() = runBlocking {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_[a-z0-9]+$").matches(url))
         val runtime = HikariDatabaseBootstrap(ServerConfig(url,
             System.getenv("DATABASE_USER") ?: error("DATABASE_USER required"),

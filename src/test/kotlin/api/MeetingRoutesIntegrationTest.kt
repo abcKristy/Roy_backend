@@ -36,7 +36,7 @@ import kotlin.test.assertTrue
 class MeetingRoutesIntegrationTest {
     @Test
     fun `proposal voting booking and close are reachable only to members`() = testApplication {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@testApplication
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(url.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step6routes$")))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD required")

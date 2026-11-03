@@ -233,7 +233,7 @@ class M2CreateGeocoderAcceptanceIntegrationTest {
                                       val source: String, val address: String)
 
     private fun guardedDatabase(): Database {
-        val url = System.getenv("TEST_DATABASE_URL") ?: error("TEST_DATABASE_URL is required for M2 acceptance")
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m2t6_create$").matches(url))
         return Database(url, System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required"),
             System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required"))

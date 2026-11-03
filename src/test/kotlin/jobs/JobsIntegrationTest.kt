@@ -15,7 +15,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class JobsIntegrationTest {
-    private val url = System.getenv("TEST_DATABASE_URL")
+    private val url get() = com.example.testing.testDatabaseUrl()
     private val user = System.getenv("DATABASE_USER")
     private val password = System.getenv("DATABASE_PASSWORD")
 
@@ -163,7 +163,7 @@ class JobsIntegrationTest {
     }
 
     private fun checkedUrl(): String? {
-        val value = url ?: return null
+        val value = url
         require(value.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step7jobs$")))
         HikariDatabaseBootstrap(ServerConfig(value,
             user ?: error("DATABASE_USER required"), password ?: error("DATABASE_PASSWORD required"),

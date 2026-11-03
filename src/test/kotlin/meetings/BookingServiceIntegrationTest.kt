@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
 class BookingServiceIntegrationTest {
     @Test
     fun `booking requires votes and explicit overlap confirmation then close cancels only its booking`() = runBlocking {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(url.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step6booking$")))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD required")

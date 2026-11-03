@@ -14,7 +14,7 @@ import kotlin.test.assertNull
 class PointDetailProjectionIntegrationTest {
     @Test
     fun `detail keeps distinct point people and per-topic chat counts`() = runBlocking {
-        val url = System.getenv("TEST_VIEWPORT_DATABASE_URL") ?: return@runBlocking
+        val url = com.example.testing.testDatabaseUrl("TEST_VIEWPORT_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t4_viewport$").matches(url))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

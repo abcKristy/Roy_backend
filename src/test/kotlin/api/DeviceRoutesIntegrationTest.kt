@@ -32,7 +32,7 @@ import kotlin.test.assertTrue
 class DeviceRoutesIntegrationTest {
     @Test
     fun `device route validates pair and revokes installation`() = testApplication {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@testApplication
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(url.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step7devices$")))
         val dbUser = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val dbPassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

@@ -129,7 +129,7 @@ class JdbcRefreshRepositoryIntegrationTest {
     private fun hash(sessionId: UUID, value: String): String = RefreshTokens.hash("$sessionId.$value")
 
     private fun openDisposableDatabase(): com.example.persistence.DatabaseRuntime? {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return null
+        val url = com.example.testing.testDatabaseUrl()
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_[a-z0-9]+$").matches(url))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

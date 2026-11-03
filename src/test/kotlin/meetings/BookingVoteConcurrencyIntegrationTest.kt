@@ -22,7 +22,7 @@ import kotlin.test.assertTrue
 class BookingVoteConcurrencyIntegrationTest {
     @Test
     fun `book racing with unvote leaves no active booking with one vote`() = runBlocking {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step8delete$").matches(url))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD required")

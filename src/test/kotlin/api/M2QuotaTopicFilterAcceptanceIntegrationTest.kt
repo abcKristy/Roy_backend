@@ -235,7 +235,7 @@ class M2QuotaTopicFilterAcceptanceIntegrationTest {
     private data class Database(val url: String, val user: String, val password: String)
 
     private fun guardedDatabase(): Database {
-        val url = System.getenv("TEST_DATABASE_URL") ?: error("TEST_DATABASE_URL is required for T055 acceptance")
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m2t6_quota_topic_filter$").matches(url))
         return Database(url, System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required"),
             System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required"))

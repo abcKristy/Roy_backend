@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
 class DatabaseBootstrapIntegrationTest {
     @Test
     fun `local migration and production validation work with a short connection timeout`() = runBlocking {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_[a-z0-9]+$").matches(url)) {
             "TEST_DATABASE_URL must point to a disposable roy_m1t2_ database"
         }

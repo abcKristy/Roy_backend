@@ -33,7 +33,7 @@ import kotlin.test.assertTrue
 class M2LostTcpCreateResponseIntegrationTest {
     @Test
     fun `client drops TCP response after commit and same key returns saved create body`() = runBlocking {
-        val url = System.getenv("TEST_DATABASE_URL") ?: error("TEST_DATABASE_URL is required for M2 TCP acceptance")
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m2t6_tcp_replay$").matches(url))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

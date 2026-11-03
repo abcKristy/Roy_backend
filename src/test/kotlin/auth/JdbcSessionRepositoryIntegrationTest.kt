@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
 class JdbcSessionRepositoryIntegrationTest {
     @Test
     fun `revocation affects only one jti and version or deletion blocks access`() = runBlocking {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_[a-z0-9]+$").matches(url))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 class PointQuotaSqlIntegrationTest {
     @Test
     fun `rolling windows include their lower boundary and exclude now and future`() {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m2t2_ledger$").matches(url))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

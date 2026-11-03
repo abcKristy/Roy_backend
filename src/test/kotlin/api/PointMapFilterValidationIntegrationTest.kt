@@ -18,7 +18,7 @@ import kotlin.test.assertEquals
 class PointMapFilterValidationIntegrationTest {
     @Test
     fun `invalid filters return 400 while valid empty filter returns an empty page`() = testApplication {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@testApplication
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m2t4_filter$").matches(url))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

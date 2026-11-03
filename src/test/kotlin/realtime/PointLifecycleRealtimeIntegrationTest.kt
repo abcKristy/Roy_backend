@@ -38,7 +38,7 @@ import kotlin.test.assertTrue
 class PointLifecycleRealtimeIntegrationTest {
     @Test
     fun `committed leaves revoke old chat and delete notifies former members`() = testApplication {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@testApplication
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m2t5_events$").matches(url))
         val dbUser = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val dbPassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
@@ -172,7 +172,7 @@ class PointLifecycleRealtimeIntegrationTest {
 
     @Test
     fun `rolled back join publishes no membership success`() = testApplication {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@testApplication
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m2t5_events$").matches(url))
         val dbUser = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val dbPassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

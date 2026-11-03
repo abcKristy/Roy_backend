@@ -56,3 +56,18 @@ tasks.processResources {
         into("legal")
     }
 }
+
+// A required integration run must never succeed by skipping its database scenarios.
+tasks.register<Test>("integrationTest") {
+    group = "verification"
+    description = "Run explicitly provisioned disposable database scenarios (missing database fails)"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    filter { includeTestsMatching("*IntegrationTest") }
+    systemProperty("integration.required", "true")
+    afterTest(KotlinClosure2<TestDescriptor, TestResult, Unit>({ _, result ->
+        if (result.resultType == TestResult.ResultType.SKIPPED) {
+            throw GradleException("Required integration scenario was skipped")
+        }
+    }))
+}

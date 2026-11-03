@@ -18,7 +18,7 @@ import kotlin.test.assertIs
 class AccountDeletionPrivateCleanupIntegrationTest {
     @Test
     fun `deletion removes empty point and private rows while preserving report tombstone`() = runBlocking {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step8delete$").matches(url))
         val dbUser = System.getenv("DATABASE_USER") ?: error("DATABASE_USER required")
         val dbPassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD required")

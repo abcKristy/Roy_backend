@@ -32,7 +32,7 @@ import kotlinx.serialization.json.put
 class NotificationServiceIntegrationTest {
     @Test
     fun `disabling extra waits for in flight event and cancels its pending delivery`() = runBlocking {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(url.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step7notifications$")))
         val dbUser = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val dbPassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
@@ -112,7 +112,7 @@ class NotificationServiceIntegrationTest {
 
     @Test
     fun `settings location and visible center obey account preferences`() = runBlocking {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(url.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step7notifications$")))
         val dbUser = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val dbPassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

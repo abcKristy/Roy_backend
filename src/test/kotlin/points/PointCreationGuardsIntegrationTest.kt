@@ -101,7 +101,7 @@ class PointCreationGuardsIntegrationTest {
     private data class Fixture(val url: String, val user: String, val password: String)
 
     private fun fixture(): Fixture? {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return null
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m2t2_guards$").matches(url))
         return Fixture(url, System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required"),
             System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required"))

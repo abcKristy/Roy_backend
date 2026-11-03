@@ -37,7 +37,7 @@ import kotlin.test.assertTrue
 class M2AtomicCreateFailureIntegrationTest {
     @Test
     fun `each graph insert failure rolls back HTTP create and same key retry commits once`() = testApplication {
-        val url = System.getenv("TEST_DATABASE_URL") ?: error("TEST_DATABASE_URL is required for M2 atomic acceptance")
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m2t6_atomic_failures$").matches(url))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

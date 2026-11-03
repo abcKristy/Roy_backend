@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
 class TopicPresetsRouteIntegrationTest {
     @Test
     fun `public catalog returns all eleven lowercase database presets including other`() = testApplication {
-        val url = System.getenv("TEST_VIEWPORT_DATABASE_URL") ?: return@testApplication
+        val url = com.example.testing.testDatabaseUrl("TEST_VIEWPORT_DATABASE_URL")
         require(url.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t4_viewport$")))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")

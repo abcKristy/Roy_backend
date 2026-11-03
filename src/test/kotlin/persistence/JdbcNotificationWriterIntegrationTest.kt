@@ -14,7 +14,7 @@ import kotlin.test.assertFailsWith
 class JdbcNotificationWriterIntegrationTest {
     @Test
     fun `chat and nearby recipients are selected in the same transaction`() {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(url.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step3notify$")))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
@@ -80,7 +80,7 @@ class JdbcNotificationWriterIntegrationTest {
 
     @Test
     fun `event dedupe channel snapshot and device jobs share one transaction`() {
-        val url = System.getenv("TEST_DATABASE_URL") ?: return
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(url.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step3notify$"))) {
             "TEST_DATABASE_URL must point to the disposable notification test database"
         }

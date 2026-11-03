@@ -1,0 +1,9 @@
+# Database test execution
+
+Database scenarios use `com.example.testing.testDatabaseUrl` before opening a JDBC connection. With no database variable, the regular `test` task reports a JUnit assumption skip, never a successful executed database scenario. The `integrationTest` task requires the database and fails on missing configuration or a skipped scenario.
+
+Before any run, provision a new disposable PostgreSQL/PostGIS instance with a loopback published port, verify container ownership, apply migrations and the fixture required by the selected test, and explicitly set `TEST_DATABASE_DISPOSABLE=true`. Set `TEST_DATABASE_URL` (or `TEST_VIEWPORT_DATABASE_URL`) and the test-only `DATABASE_USER`/`DATABASE_PASSWORD` locally. Never use a shared, user or production database. A database alias and the confirmation flag are gates, not proof of isolation; the operator must verify the new instance before setting the flag. Remote URLs and URLs containing credentials or query parameters are rejected without echoing their values.
+
+Run one fixture-compatible class at a time with `./gradlew.bat integrationTest --tests <fully.qualified.Class> --rerun-tasks`. Different classes require different guarded aliases and fixtures; running the entire database suite against one arbitrary fixture is unsupported. Do not reuse the production `.env`. Inspect JUnit executed/skipped/failure counts; a regular build containing skipped database tests is not database acceptance.
+
+Safe checks without a database: `./gradlew.bat test --tests com.example.testing.TestDatabaseTest --rerun-tasks`; the helper tests use in-memory environment maps and never connect. A focused regular integration class without DB configuration must be skipped; the same focused class under `integrationTest` must fail before JDBC access.

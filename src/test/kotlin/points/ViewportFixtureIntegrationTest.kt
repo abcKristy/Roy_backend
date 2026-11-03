@@ -15,7 +15,7 @@ import kotlin.test.assertNull
 class ViewportFixtureIntegrationTest {
     @Test
     fun `bbox pages cover both fixture points once and cursor belongs to filter`() = runBlocking {
-        val url = System.getenv("TEST_VIEWPORT_DATABASE_URL") ?: return@runBlocking
+        val url = com.example.testing.testDatabaseUrl("TEST_VIEWPORT_DATABASE_URL")
         require(url.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t4_viewport$")))
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
