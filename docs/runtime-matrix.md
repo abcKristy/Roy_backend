@@ -31,3 +31,10 @@ Verification: on Windows, with `JAVA_HOME` set to the installed JDK 17,
 SUCCESSFUL`, 2026-11-01). The Wrapper distribution and dependencies needed
 network access on this machine for the first run. This confirms compilation
 of the current server sources, not runtime behavior or database integration.
+
+In Android Studio/IntelliJ, open Settings → Build, Execution, Deployment →
+Build Tools → Gradle and select an installed JDK 17 as the Gradle JVM.
+Use the project's Gradle Wrapper. This IDE selection is independent of the
+`jvmToolchain(17)` bytecode/toolchain setting; do not save a personal JDK path
+in repository properties. Confirm the launcher/daemon JVM with `gradlew.bat
+--version`, then verify the packaged application with `gradlew.bat installDist`.
