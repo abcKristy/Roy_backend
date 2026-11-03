@@ -90,7 +90,14 @@ class JdbcSessionRepository(private val database: DatabaseRuntime) : SessionRepo
             current.currentHash == null
         ) return@withJdbcTransaction RefreshRotationResult.Invalid
 
-        if (presentedHash == current.previousHash) {
+        val previouslyUsed = connection.prepareStatement(
+            "SELECT 1 FROM auth_session_used_refresh_tokens WHERE session_id = ? AND token_hash = ?"
+        ).use { statement ->
+            statement.setObject(1, sessionId)
+            statement.setString(2, presentedHash)
+            statement.executeQuery().use { it.next() }
+        }
+        if (previouslyUsed || presentedHash == current.previousHash) {
             connection.prepareStatement("UPDATE auth_sessions SET revoked_at = ? WHERE id = ?").use { statement ->
                 statement.setObject(1, now.atOffset(ZoneOffset.UTC))
                 statement.setObject(2, sessionId)
@@ -100,6 +107,15 @@ class JdbcSessionRepository(private val database: DatabaseRuntime) : SessionRepo
         }
         if (presentedHash != current.currentHash) return@withJdbcTransaction RefreshRotationResult.Invalid
 
+        // The session lock serializes both history and rotation; rollback restores both.
+        connection.prepareStatement(
+            """INSERT INTO auth_session_used_refresh_tokens (session_id, token_hash)
+               VALUES (?, ?) ON CONFLICT DO NOTHING"""
+        ).use { statement ->
+            statement.setObject(1, sessionId)
+            statement.setString(2, presentedHash)
+            statement.executeUpdate()
+        }
         connection.prepareStatement(
             """UPDATE auth_sessions SET previous_refresh_token_hash = refresh_token_hash,
                       refresh_token_hash = ? WHERE id = ?"""

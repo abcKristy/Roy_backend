@@ -9,10 +9,12 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import java.time.Instant
+import java.time.Clock
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -28,6 +30,9 @@ class JdbcRefreshRepositoryIntegrationTest {
         val sessionId = UUID.randomUUID()
         val hashA = hash(sessionId, "a")
         val hashB = hash(sessionId, "b")
+        val hashC = hash(sessionId, "c")
+        val otherSessionId = UUID.randomUUID()
+        val otherHash = hash(otherSessionId, "other")
         try {
             JdbcRegistrationRepository(runtime).create(NewRegistration(
                 userId, sessionId, uniquePhone(), "test-hash", "Аня", 24,
@@ -35,16 +40,61 @@ class JdbcRefreshRepositoryIntegrationTest {
             ))
             val repository = JdbcSessionRepository(runtime)
             val identity = SessionIdentity(userId, sessionId, 0)
-            assertEquals(RefreshRotationResult.Invalid, repository.rotate(sessionId, hash(sessionId, "c"), hashB, now))
+            runtime.withJdbcTransaction { connection ->
+                connection.prepareStatement(
+                    """INSERT INTO auth_sessions
+                       (id,user_id,created_at,expires_at,auth_version,refresh_token_hash)
+                       VALUES (?,?,?,?,0,?)"""
+                ).use { statement ->
+                    statement.setObject(1, otherSessionId)
+                    statement.setObject(2, userId)
+                    statement.setObject(3, now.atOffset(ZoneOffset.UTC))
+                    statement.setObject(4, expiry.atOffset(ZoneOffset.UTC))
+                    statement.setString(5, otherHash)
+                    statement.executeUpdate()
+                }
+            }
+            val otherIdentity = SessionIdentity(userId, otherSessionId, 0)
+            val signingSecret = "test-only-secret-at-least-thirty-two-bytes-long"
+            val access = SessionAccessService(signingSecret, repository, Clock.fixed(now, ZoneOffset.UTC))
+            val accessToken = JwtTokenIssuer(signingSecret).issue(userId, sessionId, 0, now, expiry)
+            val otherAccessToken = JwtTokenIssuer(signingSecret).issue(userId, otherSessionId, 0, now, expiry)
+            assertEquals(userId.toString(), access.currentUser("Bearer $accessToken").id)
+            assertEquals(RefreshRotationResult.Invalid, repository.rotate(sessionId, hash(sessionId, "unknown"), hashB, now))
             assertNotNull(repository.findActive(identity, now))
 
             val rotated = assertIs<RefreshRotationResult.Rotated>(repository.rotate(sessionId, hashA, hashB, now))
             assertEquals(expiry, rotated.sessionExpiresAt)
             assertEquals(0, rotated.authVersion)
             assertEquals(userId, rotated.userId)
+            val rotatedAgain = assertIs<RefreshRotationResult.Rotated>(
+                repository.rotate(sessionId, hashB, hashC, now.plusSeconds(1))
+            )
+            assertEquals(expiry, rotatedAgain.sessionExpiresAt)
+            assertNotNull(repository.findActive(identity, now.plusSeconds(1)))
+            runtime.withJdbcTransaction { connection ->
+                connection.prepareStatement(
+                    "SELECT count(*) FROM auth_session_used_refresh_tokens WHERE session_id = ?"
+                ).use { statement ->
+                    statement.setObject(1, sessionId)
+                    statement.executeQuery().use { rows ->
+                        check(rows.next())
+                        assertEquals(2, rows.getInt(1))
+                    }
+                }
+            }
             assertEquals(RefreshRotationResult.Replayed, repository.rotate(sessionId, hashA, hash(sessionId, "d"), now))
             assertNull(repository.findActive(identity, now))
-            assertEquals(RefreshRotationResult.Invalid, repository.rotate(sessionId, hashB, hash(sessionId, "e"), now))
+            assertEquals("SESSION_EXPIRED", assertFailsWith<com.example.api.ApiException> {
+                access.currentUser("Bearer $accessToken")
+            }.code)
+            assertEquals(RefreshRotationResult.Invalid, repository.rotate(sessionId, hashC, hash(sessionId, "e"), now))
+            assertNotNull(repository.findActive(otherIdentity, now))
+            assertEquals(userId.toString(), access.currentUser("Bearer $otherAccessToken").id)
+            val otherRotated = assertIs<RefreshRotationResult.Rotated>(
+                repository.rotate(otherSessionId, otherHash, hash(otherSessionId, "next"), now)
+            )
+            assertEquals(expiry, otherRotated.sessionExpiresAt)
         } finally {
             runtime.close()
         }
