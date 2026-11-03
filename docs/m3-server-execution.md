@@ -192,3 +192,20 @@ The evidence distinguishes the executed abrupt transport loss from authenticated
 Lead executed on04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.realtime.WebSocketLifecycleIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in1m18s.
 
 Final XML inspected: `build/test-results/integrationTest/TEST-com.example.realtime.WebSocketLifecycleIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-03T23:21:34.559Z`, suite seconds 35.166. Local T067 server PASS for the stated assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; mobile, BG-1 and overall M3 remain open.
+## Group 4 accepted integration and accounting ledger — 04.11.2026
+
+Working branch `feat/chat-realtime-sessions`, accepted clean target/origin base `f4e24f4d7531e022c431659f16fa5cfcf0f1e7c9`. Task commits: T065 `7a8a8c4`, T066 `f25cfea`, T067 `42f4b45`. Independent task and whole-branch read-only reviews: APPROVE, no findings. Lead confirmed fast-forward integration and non-force target push; local `feat/back-part-3` and `origin/feat/back-part-3` both resolved to `42f4b45a661efb765382340b1cbf0d5c0f457f21`, clean at the group gate. Main before/after stayed `2c1de31de2a5481e90e3c84e93a8abdb38f16169`; M3 was not merged or pushed to main.
+
+Accepted evidence uses persisted JdbcSessionRepository sessions, real production REST/WS routes and isolated PostgreSQL18.6/PostGIS3.6.4, V001–V015. The captured native server heartbeat was 30009ms and JWT expiry close 30017ms. These measured outcomes and bounded observations establish the executed cases described above; they do not prove all queued-delivery races, all network faults, leak absence, durable replay or complete idle-timeout/nonresponding-peer acceptance.
+
+Actually updated external accounting paths:
+
+- `spec/plans/tasks/M3/T2/B04-socket-scope.md`: T065 local ГОТОВО, checked acceptance, persisted-session/ACL evidence and task commit.
+- `spec/plans/tasks/M3/T2/B05-message-event.md`: T066 local ГОТОВО, checked acceptance, actual committed message/replay/rollback evidence and task commit.
+- `spec/plans/tasks/M3/T2/B06-socket-expiry.md`: T067 local ГОТОВО, checked acceptance, native heartbeat/expiry/session lifecycle evidence and task commit.
+- `spec/plans/tasks/M3/T2/README.md`: B04–B06 checked with date and commits.
+- `spec/plans/roadmap/execution-checklist.md`: T065–T067 checked; M3.T2 backend 6/6 locally complete, C open; fresh total 65/455 checked tasks. Unrelated accounting preserved through optimistic reread before write.
+- `spec/plans/tasks/M3/M3-T2.md`: B01–B06 locally complete, C01–C06 and whole-parent acceptance remain open.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: corresponding M3.T2 backend 6/6, partial parent summary.
+
+All seven files remain outside backend Git and are not physically contained in the target/origin branch. This versioned ledger records the exact updated paths and topology boundary without moving or duplicating user plans. Mobile, overall parent/M3, external integration and BG-1 acceptance remain open.
