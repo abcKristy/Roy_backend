@@ -129,3 +129,22 @@ For the second actor the first committed response body is intentionally discarde
 After changing the original author's persisted profile and mute deadline, advancing the read cursor, and executing actual PointWriteService.leave, repeats return the original201 snapshot without changing snapshots of messages/chat/point/memberships/user/rate/outcome/notifications. An expired JWT is rejected with401 before replay and leaves those snapshots unchanged. Production JWT validation uses a session-registry test double. The route publishes only on Created in code; actual no-repeat WebSocket delivery is not claimed here and remains a T066 runtime scenario.
 
 Lead executed on04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.SendReplayIntegrationTest --offline --no-daemon --max-workers=1`; initial PASS42s, enhanced final PASS40s, exit0. Final XML `build/test-results/integrationTest/TEST-com.example.api.SendReplayIntegrationTest.xml` inspected: tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-03T22:42:18.579Z`, suite seconds 2.619. Local T064 server PASS for these assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; mobile, BG-1 and overall M3 remain open.
+## Group 3 accepted integration, final commit identities and accounting — 04.11.2026
+
+Working branch `feat/chat-send-transactions`, accepted clean target/origin base `934a61e2cb5f05a902c8760565e793da8dffb550`. Definitive published task commits: T062 `44892a5`, T063 `d7408e9`, T064 `78352e7`. Independent task and whole-branch read-only reviews: APPROVE, no remaining confirmed findings. Lead confirmed fast-forward integration and non-force target push; local `feat/back-part-3` and `origin/feat/back-part-3` both resolved to `78352e7dda318b394687e9874e1d3a06f9f44719` with clean working tree at the group gate. Main before/after remained `2c1de31de2a5481e90e3c84e93a8abdb38f16169`.
+
+Local prepublication documentation-only autosquash mapping: old `022156e` → final `44892a5` (T062), old `89f5982` → final `d7408e9` (T063), old `d535a43` → final `78352e7` (T064). Older hashes in preceding execution notes identify historical prepublication snapshots only; this ledger defines the final published task identities. One task remains one task commit; no force-push of published history was used.
+
+Task-review finding `T062-INPUT-NUL` (P2) was fixed and independently approved before publication, with HTTP NUL regression and unchanged failure snapshots. Group-review finding `G3-DOC-NAME-BOUND` (P3) was corrected before publication through the documentation-only corrections and re-review. These are task/group review identifiers, distinct from the later final-block audit IDs and its finding counts; no final audit is claimed here.
+
+Actual accounting updates outside backend Git:
+
+- `spec/plans/tasks/M3/T2/B01-send-input.md`: T062 ГОТОВО locally, checked criteria, input/NUL evidence and final commit.
+- `spec/plans/tasks/M3/T2/B02-send-transaction.md`: T063 ГОТОВО locally, checked criteria, transaction/concurrency/rollback evidence and final commit.
+- `spec/plans/tasks/M3/T2/B03-send-replay.md`: T064 ГОТОВО locally, checked criteria, replay evidence/limits and final commit.
+- `spec/plans/tasks/M3/T2/README.md`: B01–B03 checked with dates and final task commits.
+- `spec/plans/roadmap/execution-checklist.md`: T062–T064 checked, M3.T2 partial B3/6/C open; freshly recounted 62/455 checked tasks, unrelated accounting preserved with an optimistic read comparison.
+- `spec/plans/tasks/M3/M3-T2.md`: backend 3/6 complete locally; B04–B06/C and overall parent acceptance remain open.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: matching M3.T2 partial server summary with protocol link.
+
+Schema at accepted group3: V001–V015, PostgreSQL18.6/PostGIS3.6.4. All seven accounting files remain outside backend Git: their physical contents are not part of target/origin history. The versioned ledger records the exact updated paths, final commits and limitation without moving or duplicating plans. Mobile, external integrations, BG-1 and overall M3 remain open.
