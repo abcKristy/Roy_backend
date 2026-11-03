@@ -218,3 +218,13 @@ Evidence `com.example.api.ChatSummaryIntegrationTest` executes actual GET /api/v
 Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.ChatSummaryIntegrationTest --offline --no-daemon --max-workers=1`, exit 0, BUILD SUCCESSFUL in 47s.
 
 Inspected `build/test-results/integrationTest/TEST-com.example.api.ChatSummaryIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-03T23:35:21.378Z, suite seconds=2.226. Local T068 server PASS for these assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; mobile, BG-1 and overall M3 acceptance remain open.
+
+## T069 — M3.T3.B02
+
+Preceding accepted task commit `8c135548966ff21f2abe4a90791c994334888719` (T068), working branch `feat/chat-summary-unread`. Production unread SQL retained unchanged. Same owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015; real JdbcSessionRepository validates persisted session rows.
+
+Evidence `com.example.api.UnreadCountIntegrationTest` exercises actual HTTP and database state. Four visible TEXT/SYSTEM rows at seq1/4/9/10 with actor cursor1 yield unread3, recipient cursor0 yields4, demonstrating row counts rather than sequence subtraction. Repeated background GET list/detail/history/search preserves the actor count. Another104 visible text rows yield exact numeric107/108 in JSON, with no UI 99+ formatting. Actual own-send POST assigns seq115 and advances its author's cursor to115, yielding author unread0 and recipient109. Recipient read9 yields106; late read4 remains cursor9/count106; late author read1 remains115. Same-key send replay returns the original DTO without changing counts. Final independent JDBC assertions confirm actor115/recipient9 cursors and109 persisted messages. The test does not infer invisible/deleted storage rows beyond the actual missing-sequence fixture.
+
+Lead executed 04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.UnreadCountIntegrationTest --offline --no-daemon --max-workers=1`, exit 0, BUILD SUCCESSFUL in 43s.
+
+Inspected `build/test-results/integrationTest/TEST-com.example.api.UnreadCountIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-03T23:41:31.316Z, suite seconds=2.609. Local T069 server PASS for these assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; no mobile, BG-1 or overall M3 acceptance claimed.
