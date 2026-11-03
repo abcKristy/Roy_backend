@@ -9,6 +9,16 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ServerConfigTest {
+    @Test
+    fun `malformed public url reports only a safe setting name`() {
+        val failure = assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(required + ("PUBLIC_BASE_URL" to "https://private.example/secret value"))
+        }
+        assertEquals("PUBLIC_BASE_URL is invalid", failure.message)
+        assertEquals(null, failure.cause)
+        assertFalse(failure.stackTraceToString().contains("secret value"))
+    }
+
     private val required = mapOf(
         "DATABASE_URL" to "jdbc:postgresql://127.0.0.1:5432/roy",
         "DATABASE_USER" to "test",

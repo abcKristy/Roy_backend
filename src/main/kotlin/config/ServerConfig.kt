@@ -2,6 +2,7 @@ package com.example.config
 
 import java.time.Duration
 import java.net.URI
+import java.net.URISyntaxException
 
 enum class AppEnvironment { LOCAL, PRODUCTION }
 
@@ -88,7 +89,7 @@ class ServerConfig(
                 "APP_ENV=local must be set explicitly for draft privacy policy"
             }
             val publicBaseUrl = environment["PUBLIC_BASE_URL"]?.takeIf { it.isNotBlank() }?.let { raw ->
-                try { URI(raw) } catch (_: IllegalArgumentException) {
+                try { URI(raw) } catch (_: URISyntaxException) {
                     throw IllegalArgumentException("PUBLIC_BASE_URL is invalid")
                 }
             }
