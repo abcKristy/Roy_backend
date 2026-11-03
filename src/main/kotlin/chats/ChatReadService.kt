@@ -48,6 +48,7 @@ class ChatReadService(private val database: DatabaseRuntime, cursorSecret: Strin
     }
 
     suspend fun detail(userId: UUID, chatId: UUID): ChatDetailView? = database.withReadOnlyJdbcTransaction { connection ->
+        if (!isActiveMember(connection, userId, chatId)) return@withReadOnlyJdbcTransaction null
         readSummaries(connection, userId, listOf(chatId))[chatId]
     }
 
