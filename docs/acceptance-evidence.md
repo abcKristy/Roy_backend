@@ -28,3 +28,7 @@ UnpublishedPrivacyDatabaseIntegrationTest: 1 real HTTP/JDBC test passed with zer
 ## T019 — Rechecked criteria
 
 ViewportFixtureIntegrationTest: 1 PostGIS test passed, zero failures/errors/skips, on the exact guarded viewport database. The SQL fixture was applied successfully once to empty migrated V014 schema before independent clones. It asserts both Points, distinct people and chat member counts, pagination, filter-bound cursor and missing Point. No load or EXPLAIN result is claimed.
+
+## T030 — Rechecked criteria
+
+DaDataReverseGeocoderTest: 3 tests passed; GeocodingRouteTest: 1 passed. Config key delivery is ServerConfig.kt:121 to Server.kt:132; the adapter is injected, uses bounded timeouts, sanitizes unavailable results and runs outside the database transaction. Controlled local provider tests cover request and failures. A live provider call is not part of this gateway evidence and was not made.
