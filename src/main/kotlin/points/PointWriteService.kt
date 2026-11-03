@@ -44,13 +44,13 @@ class PointWriteService(
         successBody: (Connection, CreatedPoint) -> JsonObject,
         quotaErrorBody: (Instant) -> JsonObject,
     ): CreatePointResult {
-        validatePoint(command.position, command.address)
-        val topic = normalized(command.topic)
+        val input = command.normalized()
+        val topic = input.topic
         val hash = JdbcIdempotencyOperations.requestHash("create_point", emptyList(), buildJsonObject {
-            put("lat", command.position.latitude)
-            put("lon", command.position.longitude)
-            put("address", command.address.trim())
-            put("addressSource", command.addressSource.name)
+            put("lat", input.position.latitude)
+            put("lon", input.position.longitude)
+            put("address", input.address)
+            put("addressSource", input.addressSource.name)
             put("presetKey", topic.presetKey)
             topic.customLabel?.let { put("customLabel", it) }
         })
@@ -79,15 +79,15 @@ class PointWriteService(
                 }
                 return@withRetryingJdbcTransaction CreatePointResult.QuotaExceeded(until, checkNotNull(response))
             }
-            val nearby = nearby(connection, command.position)
-            if (nearby.isNotEmpty() && !command.confirmNearby) {
+            val nearby = nearby(connection, input.position)
+            if (nearby.isNotEmpty() && !input.confirmNearby) {
                 return@withRetryingJdbcTransaction CreatePointResult.NearbyConfirmationRequired(nearby)
             }
             requirePreset(connection, topic.presetKey)
             val pointId = UUID.randomUUID()
             val topicId = UUID.randomUUID()
             val chatId = UUID.randomUUID()
-            insertPoint(connection, pointId, command, now)
+            insertPoint(connection, pointId, input, now)
             insertTopicAndChat(connection, pointId, topicId, chatId, topic, now)
             insertMembership(connection, chatId, command.actorId, now)
             connection.prepareStatement(
@@ -301,13 +301,6 @@ class PointWriteService(
         val label = topic.customLabel?.trim()
         require(if (topic.presetKey == "other") !label.isNullOrBlank() && label.codePointCount(0, label.length) <= 40 else label == null)
         return PointTopicInput(topic.presetKey, label)
-    }
-
-    private fun validatePoint(position: PointPosition, address: String) {
-        require(position.latitude.isFinite() && position.latitude in -90.0..90.0)
-        require(position.longitude.isFinite() && position.longitude in -180.0..180.0)
-        val normalizedAddress = address.trim()
-        require(normalizedAddress.codePointCount(0, normalizedAddress.length) in 1..300)
     }
 
     private fun replaySnapshot(status: Int, body: JsonObject): JsonObject = buildJsonObject {
