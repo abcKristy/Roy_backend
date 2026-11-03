@@ -228,3 +228,18 @@ Evidence `com.example.api.UnreadCountIntegrationTest` exercises actual HTTP and 
 Lead executed 04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.UnreadCountIntegrationTest --offline --no-daemon --max-workers=1`, exit 0, BUILD SUCCESSFUL in 43s.
 
 Inspected `build/test-results/integrationTest/TEST-com.example.api.UnreadCountIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-03T23:41:31.316Z, suite seconds=2.609. Local T069 server PASS for these assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; no mobile, BG-1 or overall M3 acceptance claimed.
+
+## Group 5 accepted integration and accounting ledger — 04.11.2026
+
+Working branch `feat/chat-summary-unread`, accepted clean target/origin base `0a92097bdddee5563af9960f6670dcedc97b7418`. Task commits: T068 `8c135548966ff21f2abe4a90791c994334888719`, T069 `cdf64416900bc3270502c37647aa31fbe100a095`. Independent task and whole-branch read-only reviews: APPROVE, no findings. Lead confirmed fast-forward integration and non-force target push; local `feat/back-part-3` and `origin/feat/back-part-3` both resolved to `cdf64416900bc3270502c37647aa31fbe100a095`, clean at the group gate. Main before/after remained `2c1de31de2a5481e90e3c84e93a8abdb38f16169`. No M3 code was merged or pushed to main.
+
+Actually updated external accounting paths:
+
+- `spec/plans/tasks/M3/T3/B01-chat-summary.md`: T068 local server ГОТОВО, checked criteria, real projection/session evidence and task commit.
+- `spec/plans/tasks/M3/T3/B02-unread-count.md`: T069 local server ГОТОВО, checked criteria, actual row count/own-send/background/read/replay evidence and task commit.
+- `spec/plans/tasks/M3/T3/README.md`: B01–B02 checked with date and task commits.
+- `spec/plans/roadmap/execution-checklist.md`: T068–T069 checked, M3.T3 partial backend 2/4 and client open; fresh checked total 67/455. Unrelated statuses preserved with optimistic reread before write.
+- `spec/plans/tasks/M3/M3-T3.md`: B01–B02 locally complete, B03–B04/C and overall parent acceptance remain open.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: corresponding partial M3.T3 server summary.
+
+The same owned disposable PostgreSQL18.6/PostGIS3.6.4 database runs V001–V015; both cases validate real persisted sessions through JdbcSessionRepository. All six accounting files remain outside backend Git and their physical contents do not belong to target/origin history. This ledger records the exact updates/topology limitation; user plans were not moved or duplicated. Mobile, BG-1, overall parent/M3 and external integration acceptance remain open.
