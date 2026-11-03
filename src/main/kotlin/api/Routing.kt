@@ -22,6 +22,7 @@ import com.example.auth.ProfileService
 import com.example.accounts.AccountDeletionService
 import com.example.realtime.RealtimeHub
 import com.example.realtime.realtimeRoutes
+import com.example.geocoding.ReverseGeocoder
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.ContentType
@@ -59,6 +60,7 @@ fun Application.configureRouting(
     profileService: ProfileService? = null,
     accountDeletionService: AccountDeletionService? = null,
     realtimeHub: RealtimeHub? = null,
+    reverseGeocoder: ReverseGeocoder? = null,
 ) {
     routing {
         if (realtimeHub != null) realtimeRoutes(realtimeHub)
@@ -67,6 +69,9 @@ fun Application.configureRouting(
         }
         if (pointWriteService != null && sessionAccess != null) {
             pointWriteRoutes(pointWriteService, sessionAccess, realtimeHub)
+        }
+        if (reverseGeocoder != null && sessionAccess != null) {
+            geocodingRoutes(reverseGeocoder, sessionAccess)
         }
         if (moderationService != null && sessionAccess != null) {
             reportRoutes(moderationService, sessionAccess)
