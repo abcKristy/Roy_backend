@@ -2,6 +2,7 @@ package com.example.api
 
 import com.example.points.CreatedPoint
 import com.example.points.CreatedTopic
+import com.example.points.PointQuotaSql
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -177,41 +178,19 @@ object PointWriteSnapshot {
             }
         }
 
-    private fun quotaBody(connection: Connection, userId: UUID): JsonObject = connection.prepareStatement(
-        """WITH clock_now AS (SELECT clock_timestamp() AS ts)
-           SELECT count(*) FILTER (WHERE event.created_at > now.ts - interval '168 hours'),
-                  count(*) FILTER (WHERE event.created_at > now.ts - interval '720 hours'),
-                  min(event.created_at) FILTER (WHERE event.created_at > now.ts - interval '168 hours'),
-                  min(event.created_at) FILTER (WHERE event.created_at > now.ts - interval '720 hours'),
-                  user_row.create_point_blocked_until,now.ts
-           FROM users AS user_row CROSS JOIN clock_now AS now
-           LEFT JOIN point_creation_events AS event ON event.creator_user_id=user_row.id
-           WHERE user_row.id=? AND user_row.deleted_at IS NULL
-           GROUP BY user_row.id,user_row.create_point_blocked_until,now.ts"""
-    ).use { statement ->
-        statement.setObject(1, userId)
-        statement.executeQuery().use { rows ->
-            check(rows.next()) { "Active creator disappeared before snapshot" }
-            val weekUsed = rows.getInt(1)
-            val monthUsed = rows.getInt(2)
-            val weekEarliest = rows.getObject(3, OffsetDateTime::class.java)?.toInstant()
-            val monthEarliest = rows.getObject(4, OffsetDateTime::class.java)?.toInstant()
-            val now = rows.getObject(6, OffsetDateTime::class.java).toInstant()
-            val blocked = rows.getObject(5, OffsetDateTime::class.java)?.toInstant()?.takeIf { it > now }
-            val weekRemaining = (3 - weekUsed).coerceAtLeast(0)
-            val monthRemaining = (10 - monthUsed).coerceAtLeast(0)
-            buildJsonObject {
-                put("weekUsed", weekUsed)
-                put("weekLimit", 3)
-                put("weekRemaining", weekRemaining)
-                put("weekNextAvailableAt", if (weekUsed >= 3) weekEarliest?.plusSeconds(168 * 3600L)?.toString() else null)
-                put("monthUsed", monthUsed)
-                put("monthLimit", 10)
-                put("monthRemaining", monthRemaining)
-                put("monthNextAvailableAt", if (monthUsed >= 10) monthEarliest?.plusSeconds(720 * 3600L)?.toString() else null)
-                put("blockedUntil", blocked?.toString())
-                put("lastAvailableWarning", blocked == null && (weekRemaining == 1 || monthRemaining == 1))
-            }
+    private fun quotaBody(connection: Connection, userId: UUID): JsonObject {
+        val quota = PointQuotaSql.read(connection, userId, PointQuotaSql.databaseNow(connection))
+        return buildJsonObject {
+            put("weekUsed", quota.weekUsed)
+            put("weekLimit", quota.weekLimit)
+            put("weekRemaining", quota.weekRemaining)
+            put("weekNextAvailableAt", quota.weekNextAvailableAt?.toString())
+            put("monthUsed", quota.monthUsed)
+            put("monthLimit", quota.monthLimit)
+            put("monthRemaining", quota.monthRemaining)
+            put("monthNextAvailableAt", quota.monthNextAvailableAt?.toString())
+            put("blockedUntil", quota.blockedUntil?.toString())
+            put("lastAvailableWarning", quota.lastAvailableWarning)
         }
     }
 
