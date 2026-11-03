@@ -32,3 +32,7 @@ ViewportFixtureIntegrationTest: 1 PostGIS test passed, zero failures/errors/skip
 ## T030 — Rechecked criteria
 
 DaDataReverseGeocoderTest: 3 tests passed; GeocodingRouteTest: 1 passed. Config key delivery is ServerConfig.kt:121 to Server.kt:132; the adapter is injected, uses bounded timeouts, sanitizes unavailable results and runs outside the database transaction. Controlled local provider tests cover request and failures. A live provider call is not part of this gateway evidence and was not made.
+
+## T039 — Rechecked criteria
+
+PointCreationGuardsIntegrationTest: 2 concurrent PostGIS tests passed without skips. PointWriteService takes global creation advisory then user lock before re-reading quotas and nearby points. JdbcIdempotencyOperations uses FOR NO KEY UPDATE; the no-confirmation response returns before success/idempotency record. Last quota slot and nearby races are asserted in the real database.
