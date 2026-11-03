@@ -1,0 +1,181 @@
+--- a/spec/plans/tasks/M1/T2/B04-login.md
++++ b/spec/plans/tasks/M1/T2/B04-login.md
+@@ -1,8 +1,8 @@
+ # M1.T2.B04. Проверить пароль при входе
+ 
+-**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО по родителю</span>.
++**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026)</span>.
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** Шаг5 родителя.
++**Свидетельство/граница факта:** Локальная повторная проверка 04.11.2026 на новой изолированной PostGIS БД: LoginRouteTest (1), LoginServiceTest (5), JdbcLoginRepositoryIntegrationTest (1), SessionAccessTest (3), SessionRouteTest (1), JdbcSessionRepositoryIntegrationTest (1), RefreshRouteTest (1), RefreshServiceTest (4), JdbcRefreshRepositoryIntegrationTest (3); failures/errors/skipped = 0. Подробные границы: `project/backend/docs/auth-acceptance-status.md`. Наблюдение отсутствия raw password в сохранении/логировании основано на чтении Login.kt и JdbcLoginRepository.kt; capture логов не выполнялся. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+@@ -31,9 +31,9 @@
+ 
+ ## Приёмка
+ 
+-- [ ] Raw password не сохраняется и не логируется.
+-- [ ] Вход и выход раздела контракта совпадают с владельцем события/операции; для следующего пункта нет скрытой настройки.
+-- [ ] Результат имеет реальный commit/версию, список файлов и наблюдаемое свидетельство; непроведённый прогон обозначен явно.
++- [x] Raw password не сохраняется и не логируется.
++- [x] Вход и выход раздела контракта совпадают с владельцем события/операции; для следующего пункта нет скрытой настройки.
++- [x] Результат имеет реальный commit/версию, список файлов и наблюдаемое свидетельство; непроведённый прогон обозначен явно.
+ 
+ ## Передача
+ 
+--- a/spec/plans/tasks/M1/T2/B05-access-guard.md
++++ b/spec/plans/tasks/M1/T2/B05-access-guard.md
+@@ -1,8 +1,8 @@
+ # M1.T2.B05. Проверить защищённый access JWT
+ 
+-**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО по родителю</span>.
++**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026)</span>.
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** Шаг6 и session-access.md.
++**Свидетельство/граница факта:** Локальная повторная проверка 04.11.2026 на новой изолированной PostGIS БД: LoginRouteTest (1), LoginServiceTest (5), JdbcLoginRepositoryIntegrationTest (1), SessionAccessTest (3), SessionRouteTest (1), JdbcSessionRepositoryIntegrationTest (1), RefreshRouteTest (1), RefreshServiceTest (4), JdbcRefreshRepositoryIntegrationTest (3); failures/errors/skipped = 0. Подробные границы: `project/backend/docs/auth-acceptance-status.md`. Наблюдение отсутствия raw password в сохранении/логировании основано на чтении Login.kt и JdbcLoginRepository.kt; capture логов не выполнялся. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+@@ -31,9 +31,9 @@
+ 
+ ## Приёмка
+ 
+-- [ ] Одной подписи недостаточно, отозванный сеанс отвергается.
+-- [ ] Вход и выход раздела контракта совпадают с владельцем события/операции; для следующего пункта нет скрытой настройки.
+-- [ ] Результат имеет реальный commit/версию, список файлов и наблюдаемое свидетельство; непроведённый прогон обозначен явно.
++- [x] Одной подписи недостаточно, отозванный сеанс отвергается.
++- [x] Вход и выход раздела контракта совпадают с владельцем события/операции; для следующего пункта нет скрытой настройки.
++- [x] Результат имеет реальный commit/версию, список файлов и наблюдаемое свидетельство; непроведённый прогон обозначен явно.
+ 
+ ## Передача
+ 
+--- a/spec/plans/tasks/M1/T2/B06-refresh.md
++++ b/spec/plans/tasks/M1/T2/B06-refresh.md
+@@ -1,8 +1,8 @@
+ # M1.T2.B06. Ротировать refresh token
+ 
+-**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО по родителю</span>.
++**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026)</span>.
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** Шаг6 родителя, реальный refresh уже реализован.
++**Свидетельство/граница факта:** Локальная повторная проверка 04.11.2026 на новой изолированной PostGIS БД: LoginRouteTest (1), LoginServiceTest (5), JdbcLoginRepositoryIntegrationTest (1), SessionAccessTest (3), SessionRouteTest (1), JdbcSessionRepositoryIntegrationTest (1), RefreshRouteTest (1), RefreshServiceTest (4), JdbcRefreshRepositoryIntegrationTest (3); failures/errors/skipped = 0. Подробные границы: `project/backend/docs/auth-acceptance-status.md`. Наблюдение отсутствия raw password в сохранении/логировании основано на чтении Login.kt и JdbcLoginRepository.kt; capture логов не выполнялся. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+@@ -31,9 +31,9 @@
+ 
+ ## Приёмка
+ 
+-- [ ] Старая пара не используется после успешной ротации.
+-- [ ] Вход и выход раздела контракта совпадают с владельцем события/операции; для следующего пункта нет скрытой настройки.
+-- [ ] Результат имеет реальный commit/версию, список файлов и наблюдаемое свидетельство; непроведённый прогон обозначен явно.
++- [x] Старая пара не используется после успешной ротации.
++- [x] Вход и выход раздела контракта совпадают с владельцем события/операции; для следующего пункта нет скрытой настройки.
++- [x] Результат имеет реальный commit/версию, список файлов и наблюдаемое свидетельство; непроведённый прогон обозначен явно.
+ 
+ ## Передача
+ 
+--- a/spec/plans/tasks/M1/T2/B07-logout.md
++++ b/spec/plans/tasks/M1/T2/B07-logout.md
+@@ -1,8 +1,8 @@
+ # M1.T2.B07. Отозвать текущий сеанс
+ 
+-**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО по родителю</span>.
++**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026)</span>.
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** Шаг6 и session-access.md.
++**Свидетельство/граница факта:** Локальная повторная проверка 04.11.2026 на новой изолированной PostGIS БД: LoginRouteTest (1), LoginServiceTest (5), JdbcLoginRepositoryIntegrationTest (1), SessionAccessTest (3), SessionRouteTest (1), JdbcSessionRepositoryIntegrationTest (1), RefreshRouteTest (1), RefreshServiceTest (4), JdbcRefreshRepositoryIntegrationTest (3); failures/errors/skipped = 0. Подробные границы: `project/backend/docs/auth-acceptance-status.md`. Наблюдение отсутствия raw password в сохранении/логировании основано на чтении Login.kt и JdbcLoginRepository.kt; capture логов не выполнялся. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+@@ -31,9 +31,9 @@
+ 
+ ## Приёмка
+ 
+-- [ ] Другой jti остаётся активным.
+-- [ ] Вход и выход раздела контракта совпадают с владельцем события/операции; для следующего пункта нет скрытой настройки.
+-- [ ] Результат имеет реальный commit/версию, список файлов и наблюдаемое свидетельство; непроведённый прогон обозначен явно.
++- [x] Другой jti остаётся активным.
++- [x] Вход и выход раздела контракта совпадают с владельцем события/операции; для следующего пункта нет скрытой настройки.
++- [x] Результат имеет реальный commit/версию, список файлов и наблюдаемое свидетельство; непроведённый прогон обозначен явно.
+ 
+ ## Передача
+ 
+--- a/spec/plans/tasks/M1/T2/README.md
++++ b/spec/plans/tasks/M1/T2/README.md
+@@ -9,10 +9,10 @@
+ 1. [M1.T2.B01. Утвердить публичную политику](B01-privacy.md) — В ПРОЦЕССЕ.
+ 2. [M1.T2.B02. Подтвердить параметры Argon2id](B02-hasher.md) — В ПРОЦЕССЕ.
+ 3. [M1.T2.B03. Создать пользователя и сеанс атомарно](B03-register.md) — ГОТОВО локально по родителю.
+-4. [M1.T2.B04. Проверить пароль при входе](B04-login.md) — <span style="color:green">ГОТОВО по родителю</span>.
+-5. [M1.T2.B05. Проверить защищённый access JWT](B05-access-guard.md) — <span style="color:green">ГОТОВО по родителю</span>.
+-6. [M1.T2.B06. Ротировать refresh token](B06-refresh.md) — <span style="color:green">ГОТОВО по родителю</span>.
+-7. [M1.T2.B07. Отозвать текущий сеанс](B07-logout.md) — <span style="color:green">ГОТОВО по родителю</span>.
++4. [M1.T2.B04. Проверить пароль при входе](B04-login.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026)</span>.
++5. [M1.T2.B05. Проверить защищённый access JWT](B05-access-guard.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026)</span>.
++6. [M1.T2.B06. Ротировать refresh token](B06-refresh.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026)</span>.
++7. [M1.T2.B07. Отозвать текущий сеанс](B07-logout.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026)</span>.
+ 8. [M1.T2.B08. Передать auth контракт клиенту](B08-contract.md) — ГОТОВО (серверный контракт, 02.11.2026).
+ 
+ ## Mobile после BG-1
+--- a/spec/plans/roadmap/execution-checklist.md
++++ b/spec/plans/roadmap/execution-checklist.md
+@@ -99,10 +99,10 @@
+ - [ ] **T011** · `M1.T2.B01` — [Утвердить публичную политику](../tasks/M1/T2/B01-privacy.md)
+ - [ ] **T012** · `M1.T2.B02` — [Подтвердить параметры Argon2id](../tasks/M1/T2/B02-hasher.md)
+ - [x] **T013** · `M1.T2.B03` — [Создать пользователя и сеанс атомарно](../tasks/M1/T2/B03-register.md) — <span style="color:green">ГОТОВО локально по родителю</span>
+-- [x] **T014** · `M1.T2.B04` — [Проверить пароль при входе](../tasks/M1/T2/B04-login.md) — <span style="color:green">ГОТОВО по источнику</span>
+-- [x] **T015** · `M1.T2.B05` — [Проверить защищённый access JWT](../tasks/M1/T2/B05-access-guard.md) — <span style="color:green">ГОТОВО по источнику</span>
+-- [x] **T016** · `M1.T2.B06` — [Ротировать refresh token](../tasks/M1/T2/B06-refresh.md) — <span style="color:green">ГОТОВО по источнику</span>
+-- [x] **T017** · `M1.T2.B07` — [Отозвать текущий сеанс](../tasks/M1/T2/B07-logout.md) — <span style="color:green">ГОТОВО по источнику</span>
++- [x] **T014** · `M1.T2.B04` — [Проверить пароль при входе](../tasks/M1/T2/B04-login.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026); свидетельства в ТЗ и backend/docs/auth-acceptance-status.md</span>
++- [x] **T015** · `M1.T2.B05` — [Проверить защищённый access JWT](../tasks/M1/T2/B05-access-guard.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026); свидетельства в ТЗ и backend/docs/auth-acceptance-status.md</span>
++- [x] **T016** · `M1.T2.B06` — [Ротировать refresh token](../tasks/M1/T2/B06-refresh.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026); свидетельства в ТЗ и backend/docs/auth-acceptance-status.md</span>
++- [x] **T017** · `M1.T2.B07` — [Отозвать текущий сеанс](../tasks/M1/T2/B07-logout.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026); свидетельства в ТЗ и backend/docs/auth-acceptance-status.md</span>
+ - [x] **T018** · `M1.T2.B08` — [Передать auth контракт клиенту](../tasks/M1/T2/B08-contract.md) — <span style="color:green">ГОТОВО (серверный контракт, 02.11.2026; backend commit `72454d6`)</span>
+ - [x] **T019** · `M1.T4.B01` — [Подготовить viewport fixture](../tasks/M1/T4/B01-fixture.md) — <span style="color:green">ГОТОВО (fixture подготовлен, 02.11.2026; backend commit `f73662e`)</span>
+ - [x] **T020** · `M1.T4.B02` — [Настроить пространственную выборку](../tasks/M1/T4/B02-bbox.md) — <span style="color:green">ГОТОВО (DB-пагинация, `0602ef0`)</span>
+--- a/spec/plans/tasks/M1/M1-T2.md
++++ b/spec/plans/tasks/M1/M1-T2.md
+@@ -88,15 +88,17 @@
+ - Действие: Нормализовать phone, валидировать поля/consent; создать user+session+notification_settings атомарно, UNIQUE conflict →DUPLICATE_PHONE.
+ - Выход и условие перехода: Гонка не создаёт двух users; consent version/time сохранены.
+ 
+-### Шаг 5. Login — ГОТОВО (сервер)
++### Шаг 5. Login — ГОТОВО (локальный сервер, 04.11.2026)
+ 
+ - Вход: Phone/password.
+ - Действие: Проверить hash, выпустить jti/session/token из env secret; одинаковый INVALID_CREDENTIALS для неизвестного номера и пароля.
+ - Выход и условие перехода: Session поля согласованы.
+ 
+-### Шаг 6. Защита — ГОТОВО (сервер)
++### Шаг 6. Защита — ГОТОВО (локальный сервер, 04.11.2026)
+ 
+-Дополнительно реализованы refresh endpoint, ротация refresh token, отзыв при повторном использовании и миграция сессий. Клиентское автоматическое обновление относится к шагам 7–10.
++Дополнительно реализованы refresh endpoint, ротация refresh token, отзыв при повторном использовании и миграция сессий.
++
++**Повторная серверная проверка 04.11.2026:** B04–B07 подтверждены указанными в их ТЗ unit/HTTP/JDBC тестами; `project/backend/docs/auth-acceptance-status.md` фиксирует результаты и ограничения. Это не закрывает смешанную M1.T2, privacy, целевой Argon2id, mobile или BG-1. Клиентское автоматическое обновление относится к шагам 7–10.
+ 
+ - Вход: JWT/auth_sessions.
+ - Действие: Проверить подпись/exp/active jti/authVersion, GET /me и logout текущего сеанса.
+@@ -165,7 +167,7 @@
+ - [ ] Consent=version+server UTC time.
+ - [ ] Реальные secure stores обеих платформ.
+ - [ ] Публичные endpoints без Bearer, /me с revocation.
+-- [ ] Logout одного jti не отзывает другие.
++- [x] Logout одного jti не отзывает другие (JdbcSessionRepositoryIntegrationTest, локальная изолированная БД, 04.11.2026).
+ - [ ] По URL не фиктивная policy.
+ 
+ ## 11. Критерии «ГОТОВО»
+--- a/spec/plans/roadmap/M1/M1-foundation-auth-map.md
++++ b/spec/plans/roadmap/M1/M1-foundation-auth-map.md
+@@ -23,6 +23,8 @@
+ ### M1.T2. Реализовать регистрацию, вход и сессию — прежний ориентир 09.12
+ 
+ **Подробное ТЗ:** [план реализации и приёмки](../../tasks/M1/M1-T2.md).
++
++**Текущий частичный результат (04.11.2026):** B04–B07 готовы в локальном серверном объёме; критерии и повторные тесты согласованы в ТЗ и `project/backend/docs/auth-acceptance-status.md`. Публичная privacy, целевой Argon2id, мобильная часть M1.T2 и BG-1 остаются открытыми.
+ 
+ - **Работы:** телефон как уникальный логин без SMS, имя, пароль, возраст ≥12, опубликованная начальная версия политики конфиденциальности и фиксируемое согласие с ней; защищённое хранение хеша, JWT и валидация входа. Уточнённые тексты и поведение брать из M0.
+ - **Результат:** серверные операции регистрации/входа и общий клиентский поток с ошибками полей/сети и сохранением сессии.
