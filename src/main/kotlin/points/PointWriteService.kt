@@ -321,13 +321,17 @@ class PointWriteService(
         """SELECT id,address,ST_Y(location),ST_X(location),ST_Distance(location::geography,
              ST_SetSRID(ST_MakePoint(?,?),4326)::geography) AS meters
            FROM points WHERE ST_DWithin(location::geography,
-             ST_SetSRID(ST_MakePoint(?,?),4326)::geography,100)
+             ST_SetSRID(ST_MakePoint(?,?),4326)::geography,100.01)
+             AND ST_Distance(location::geography,
+               ST_SetSRID(ST_MakePoint(?,?),4326)::geography) <= 100.0
            ORDER BY meters,id LIMIT 20"""
     ).use { statement ->
         statement.setDouble(1, position.longitude)
         statement.setDouble(2, position.latitude)
         statement.setDouble(3, position.longitude)
         statement.setDouble(4, position.latitude)
+        statement.setDouble(5, position.longitude)
+        statement.setDouble(6, position.latitude)
         statement.executeQuery().use { rows -> buildList {
             while (rows.next()) add(NearbyPoint(
                 rows.getObject(1, UUID::class.java),
