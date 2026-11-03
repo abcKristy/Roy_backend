@@ -115,7 +115,7 @@ class PointWriteService(
         command: AddTopicCommand,
         successBody: (Connection, CreatedTopic) -> JsonObject,
     ): AddTopicResult {
-        val topic = normalized(command.topic)
+        val topic = command.topic.normalizeTopic().input
         val hash = JdbcIdempotencyOperations.requestHash("add_topic", listOf(command.pointId), buildJsonObject {
             put("presetKey", topic.presetKey)
             topic.customLabel?.let { put("customLabel", it) }
@@ -293,13 +293,6 @@ class PointWriteService(
         }
         LeavePointChatResult.Left(pointId, remaining == 0, deletedRecipients, changedProposals,
             cancelledBookings.map { PointBookingChange(it.second, it.first, "cancelled", "insufficient_votes") }, emissions)
-    }
-
-    private fun normalized(topic: PointTopicInput): PointTopicInput {
-        require(topic.presetKey.isNotBlank())
-        val label = topic.customLabel?.trim()
-        require(if (topic.presetKey == "other") !label.isNullOrBlank() && label.codePointCount(0, label.length) <= 40 else label == null)
-        return PointTopicInput(topic.presetKey, label)
     }
 
     private fun replaySnapshot(status: Int, body: JsonObject): JsonObject = buildJsonObject {

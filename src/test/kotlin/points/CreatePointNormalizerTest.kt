@@ -27,6 +27,17 @@ class CreatePointNormalizerTest {
     }
 
     @Test
+    fun `topic key folds display case and surrounding spaces without changing display text`() {
+        val first = PointTopicInput("other", "  ШАХМАТЫ  ").normalizeTopic()
+        val second = PointTopicInput("other", "шахматы").normalizeTopic()
+        assertEquals(PointTopicKey("other", "шахматы"), first.key)
+        assertEquals(first.key, second.key)
+        assertEquals("ШАХМАТЫ", first.input.customLabel)
+        assertEquals("шахматы", second.input.customLabel)
+        assertEquals(PointTopicKey("football", ""), PointTopicInput("football").normalizeTopic().key)
+    }
+
+    @Test
     fun `invalid fields fail before transaction or child writes`() = runBlocking {
         var transactions = 0
         val database = object : DatabaseRuntime {
