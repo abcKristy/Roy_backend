@@ -176,3 +176,19 @@ The correlation and 250ms windows establish the actual observed no-repeat/no-rol
 Lead executed on04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.realtime.MessagePublicationIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in44s.
 
 Final XML inspected: `build/test-results/integrationTest/TEST-com.example.realtime.MessagePublicationIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-03T23:15:59.432Z`, suite seconds 4.844. Local T066 server PASS for these assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; mobile, BG-1 and overall M3 remain open.
+
+## T067 — M3.T2.B06
+
+Preceding accepted task commit `f25cfea` (T066), branch `feat/chat-realtime-sessions`. Existing production heartbeat and session lifecycle retained unchanged. The owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat` runs V001–V015; JdbcSessionRepository validates actual refresh-capable database session rows.
+
+Evidence `com.example.realtime.WebSocketLifecycleIntegrationTest` runs the production realtime transport/routes on ephemeral loopback Netty and native JDK17 WebSocket listeners. No accelerated clock or shortened heartbeat is used. Native onPing records System.nanoTime relative to onOpen; the configured first server ping is accepted only in a documented 28000–40000ms scheduling tolerance around 30s. The client Pong send future completes. A native client Ping also obtains an actual server Pong callback, exercising control frames in both directions rather than only checking hello metadata.
+
+Three persisted sessions belong to the same actor. One JWT is signed to expire five seconds after fixture token creation; its close4401 is observed only after that signed expiry, with native close Instant and monotonic elapsed checks bounded to 4000–40000ms (the existing auth watcher checks every30s). A third socket is abruptly aborted, its database session remains usable and the same JWT reconnects with hello; actual SessionAccessService.logout then revokes only that session and closes its reconnected socket4401. The other session remains active in JDBC and receives a correlated user event after the expired/revoked sockets closed. Those closed sockets receive no post-close frame during 250ms observations. The survivor performs an ordinary close1000. Sockets are aborted and the temporary Netty server stopped in finally; production finally unregisters the client and cancels sender/auth-watcher jobs.
+
+Actual captured safe timing output: `Observed native server heartbeat 30009ms; expiry close 30017ms; client Pong sent and server Pong received; expired/revoked close4401; other session live`.
+
+The evidence distinguishes the executed abrupt transport loss from authenticated logout and JWT expiry. It does not establish every network failure/interleaving, heap/job leak absence, durable replay, or a full idle-timeout/nonresponding-peer acceptance test. The heartbeat/configuration and bounded observed session outcomes are the scope of this local case.
+
+Lead executed on04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.realtime.WebSocketLifecycleIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in1m18s.
+
+Final XML inspected: `build/test-results/integrationTest/TEST-com.example.realtime.WebSocketLifecycleIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-03T23:21:34.559Z`, suite seconds 35.166. Local T067 server PASS for the stated assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; mobile, BG-1 and overall M3 remain open.
