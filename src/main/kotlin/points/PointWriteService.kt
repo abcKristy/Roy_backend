@@ -21,6 +21,7 @@ import com.example.meetings.MeetingProjection
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.postgresql.util.PSQLException
 import java.sql.Connection
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -120,33 +121,42 @@ class PointWriteService(
             put("presetKey", topic.presetKey)
             topic.customLabel?.let { put("customLabel", it) }
         })
-        return database.withRetryingJdbcTransaction { connection ->
-            when (val decision = idempotency.lockActorAndCheck(
-                connection, command.actorId, "add_topic", command.idempotencyKey, hash,
-            )) {
-                is JdbcIdempotencyOperations.Decision.Replay ->
-                    return@withRetryingJdbcTransaction AddTopicResult.Replay(checkNotNull(decision.record.responseSnapshot))
-                JdbcIdempotencyOperations.Decision.KeyReused ->
-                    return@withRetryingJdbcTransaction AddTopicResult.KeyReused
-                JdbcIdempotencyOperations.Decision.New -> Unit
+        return try {
+            database.withRetryingJdbcTransaction { connection ->
+                when (val decision = idempotency.lockActorAndCheck(
+                    connection, command.actorId, "add_topic", command.idempotencyKey, hash,
+                )) {
+                    is JdbcIdempotencyOperations.Decision.Replay ->
+                        return@withRetryingJdbcTransaction AddTopicResult.Replay(checkNotNull(decision.record.responseSnapshot))
+                    JdbcIdempotencyOperations.Decision.KeyReused ->
+                        return@withRetryingJdbcTransaction AddTopicResult.KeyReused
+                    JdbcIdempotencyOperations.Decision.New -> Unit
+                }
+                if (!lockPoint(connection, command.pointId)) return@withRetryingJdbcTransaction AddTopicResult.PointGone
+                requirePreset(connection, topic.presetKey)
+                if (topicExists(connection, command.pointId, topic)) return@withRetryingJdbcTransaction AddTopicResult.DuplicateTopic
+                val now = databaseNow(connection)
+                val topicId = UUID.randomUUID()
+                val chatId = UUID.randomUUID()
+                insertTopicAndChat(connection, command.pointId, topicId, chatId, topic, now)
+                insertMembership(connection, chatId, command.actorId, now)
+                val message = systemMessages.append(connection, UUID.randomUUID(),
+                    SystemMessageDraft(SystemMessageKind.MEMBER_JOINED, command.actorId, command.pointId, chatId))
+                updateReadCursor(connection, chatId, command.actorId, message.messageSeq)
+                touchPoint(connection, command.pointId)
+                val created = CreatedTopic(command.pointId, topicId, chatId, command.actorId, now)
+                val snapshot = replaySnapshot(201, successBody(connection, created))
+                idempotency.recordSuccess(connection, command.actorId, "add_topic", command.idempotencyKey,
+                    hash, topicId, snapshot)
+                AddTopicResult.Created(created, snapshot)
             }
-            if (!lockPoint(connection, command.pointId)) return@withRetryingJdbcTransaction AddTopicResult.PointGone
-            requirePreset(connection, topic.presetKey)
-            if (topicExists(connection, command.pointId, topic)) return@withRetryingJdbcTransaction AddTopicResult.DuplicateTopic
-            val now = databaseNow(connection)
-            val topicId = UUID.randomUUID()
-            val chatId = UUID.randomUUID()
-            insertTopicAndChat(connection, command.pointId, topicId, chatId, topic, now)
-            insertMembership(connection, chatId, command.actorId, now)
-            val message = systemMessages.append(connection, UUID.randomUUID(),
-                SystemMessageDraft(SystemMessageKind.MEMBER_JOINED, command.actorId, command.pointId, chatId))
-            updateReadCursor(connection, chatId, command.actorId, message.messageSeq)
-            touchPoint(connection, command.pointId)
-            val created = CreatedTopic(command.pointId, topicId, chatId, command.actorId, now)
-            val snapshot = replaySnapshot(201, successBody(connection, created))
-            idempotency.recordSuccess(connection, command.actorId, "add_topic", command.idempotencyKey,
-                hash, topicId, snapshot)
-            AddTopicResult.Created(created, snapshot)
+        } catch (error: PSQLException) {
+            if (error.sqlState == "23505" &&
+                error.serverErrorMessage?.constraint == "point_topics_normalized_unique") {
+                AddTopicResult.DuplicateTopic
+            } else {
+                throw error
+            }
         }
     }
 
