@@ -15,6 +15,17 @@ application {
 kotlin {
     jvmToolchain(17)
 }
+
+// cmd.exe limits expanded command lines to 8191 characters. Java expands the
+// distribution lib wildcard itself, including when the checkout path is long.
+tasks.startScripts {
+    doLast {
+        windowsScript.writeText(windowsScript.readText().replace(
+            Regex("(?m)^set CLASSPATH=.*$"),
+        ) { "set CLASSPATH=%APP_HOME%\\lib\\*" })
+    }
+}
+
 dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)

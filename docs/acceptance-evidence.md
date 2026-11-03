@@ -64,3 +64,7 @@ PasswordHashBoundsTest 1, PasswordHasherTest 4, PasswordHashingWorkTest 1 and Lo
 ## T052 — Rechecked criteria
 
 PointLifecycleRealtimeIntegrationTest passed 2/0/0/0. The real HTTP/PostGIS/WebSocket paths cover committed membership/Point deletion events, rejection of an exited subscription, absence of subsequent chat events for a former member, former-recipient Point deletion and an induced SQL-trigger rollback with HTTP500, unchanged database graph and no success event in the asserted observation window. Service commit precedes publication. Durable delivery beyond this best-effort contract is not claimed.
+
+## T010 — Windows distribution and runbook lifecycle
+
+The original installed Windows launcher failed with cmd.exe input-line-too-long at this long checkout path. startScripts now sets the Windows CLASSPATH to the distribution lib wildcard, expanded by Java. installDist succeeded and the patched .bat started twice. First startup was observed through application logs and Ctrl+C completed Hikari shutdown. Second startup returned health200/statusok. Pausing only the disposable database produced health503/SERVICE_UNAVAILABLE/requestId; unpause recovered health200. Second Ctrl+C also completed Hikari shutdown. A second owned container with its own volume preserved a synthetic probe row across stop/start (count1). The initial non-elevated health connection was unavailable and is not counted as a passing observation. No external deployment or real user data was involved.
