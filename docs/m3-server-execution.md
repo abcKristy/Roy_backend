@@ -209,3 +209,12 @@ Actually updated external accounting paths:
 - `spec/plans/roadmap/M3/M3-chat-moderation.md`: corresponding M3.T2 backend 6/6, partial parent summary.
 
 All seven files remain outside backend Git and are not physically contained in the target/origin branch. This versioned ledger records the exact updated paths and topology boundary without moving or duplicating user plans. Mobile, overall parent/M3, external integration and BG-1 acceptance remain open.
+## T068 — M3.T3.B01
+
+Group5 branch `feat/chat-summary-unread`, accepted clean target/origin base `0a92097bdddee5563af9960f6670dcedc97b7418`. Existing production projection retained unchanged. Fixture: owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, migrations V001–V015, real JdbcSessionRepository and persisted refresh-capable sessions.
+
+Evidence `com.example.api.ChatSummaryIntegrationTest` executes actual GET /api/v1/me/chats. Five synthetic chats distinguish active text/system/empty membership from foreign and left membership; only the first three are listed. Exact page, summary, topic and preview field sets, IDs, address/custom topic labels, participant counts, valid timestamps and null absent proposal are asserted. Text preview follows the highest message sequence despite a future timestamp on an older sequence. System preview is the safe Russian text for member_left, without raw payload. An account without memberships gets an empty page; missing access gets 401. Repeated GET is stable and does not advance the actor read cursors. Phone values, private profile/hash/age/author/avatar fields and raw system payload are absent from the summary.
+
+Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.ChatSummaryIntegrationTest --offline --no-daemon --max-workers=1`, exit 0, BUILD SUCCESSFUL in 47s.
+
+Inspected `build/test-results/integrationTest/TEST-com.example.api.ChatSummaryIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-03T23:35:21.378Z, suite seconds=2.226. Local T068 server PASS for these assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; mobile, BG-1 and overall M3 acceptance remain open.
