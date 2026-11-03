@@ -56,3 +56,7 @@ PointEmptyDeletionIntegrationTest: 1 PostGIS test passed without skips. Non-last
 ## T006 — Rechecked criteria
 
 MigrationHistoryValidationIntegrationTest passed 1/0/0/0 on a newly recreated database after asserting the concrete Flyway pending-migration error and checksum mismatch. V013 cannot start in production; local migration advances to V014; repeat migration preserves presets; corrupting one checksum prevents local and production startup; restoring it recovers. Initial broad test passed; the first strengthened assertion failed because FlywayValidateException precedes the custom schema guard. The test expectation was corrected to the observed pending-014 error and rerun successfully. This was a test-only expectation defect, not a production protection failure. V001-V014 applied successfully through the migration command on another new database.
+
+## T012 — Rechecked criteria
+
+PasswordHashBoundsTest 1, PasswordHasherTest 4, PasswordHashingWorkTest 1 and LoginServiceTest 5 passed without skips. The local JDK17.0.10/Windows11 sequential hash+verify benchmark medians were 66ms at19456KiB/t2/p1,124ms at46080KiB/t1/p1 and380ms at65536KiB/t3/p1. Five measured samples follow one warmup. BLOCKED for target acceptance: no identified target host/resources or approved latency/concurrency SLO. Local results do not establish target capacity or monthly cost and do not change production costs.

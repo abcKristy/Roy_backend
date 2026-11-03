@@ -17,3 +17,7 @@ Observed on the development Windows 11 host (Intel Core i9-13900H, JDK 17.0.10) 
 These sequential local samples are not a capacity or price result. On a target server, concurrent authentication can consume roughly the selected memory cost times the number of simultaneous operations, plus JVM and database memory. The final cost and concurrency limit require measurement on the selected host within the 5,000 ₽ monthly budget before production registration is enabled.
 
 References: [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html), [Password4j](https://github.com/Password4j/password4j).
+
+## Local diagnostic retry, 2026-11-04
+
+JDK17.0.10,Windows11,sequential hash+verify: five measured samples after one warmup.19456KiB/t2/p1:108,87,64,66,64ms(median66);46080KiB/t1/p1:96,124,143,214,111ms(median124);65536KiB/t3/p1:381,345,399,351,380ms(median380). This is the local development host, not the unknown target deployment. No concurrent-capacity, latency-SLO or budget acceptance is claimed. Production costs remain unchanged. See acceptance-evidence.md:T012 for the remaining blocker.
