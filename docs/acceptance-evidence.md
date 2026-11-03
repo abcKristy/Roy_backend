@@ -68,3 +68,24 @@ PointLifecycleRealtimeIntegrationTest passed 2/0/0/0. The real HTTP/PostGIS/WebS
 ## T010 — Windows distribution and runbook lifecycle
 
 The original installed Windows launcher failed with cmd.exe input-line-too-long at this long checkout path. startScripts now sets the Windows CLASSPATH to the distribution lib wildcard, expanded by Java. installDist succeeded and the patched .bat started twice. First startup was observed through application logs and Ctrl+C completed Hikari shutdown. Second startup returned health200/statusok. Pausing only the disposable database produced health503/SERVICE_UNAVAILABLE/requestId; unpause recovered health200. Second Ctrl+C also completed Hikari shutdown. A second owned container with its own volume preserved a synthetic probe row across stop/start (count1). The initial non-elevated health connection was unavailable and is not counted as a passing observation. No external deployment or real user data was involved.
+
+## T028 — Current server evidence handoff
+
+The protocol artifact is confirmed in its documented local scope. The current retry has45unique successful tests in10focused runs, with zero failures/errors/skips, plus a successful corrected strengthened-history rerun(1). Approved policy/public server acceptance remains BLOCKED(T011); target-host Argon2id remains BLOCKED(T012). Old M1/M2 protocol observations remain historical and are not relabeled as new runs. The unchanged privacy prerequisites also leave BG-1/mobile open.
+
+### Observed focused run register
+
+- unit: com.example.api.SafeErrorEnvelopeTest 2/0/0/0; com.example.auth.DraftPrivacyRouteTest 4/0/0/0; com.example.config.ServerConfigTest 6/0/0/0; com.example.auth.PasswordHashBoundsTest 1/0/0/0; com.example.auth.PasswordHasherTest 4/0/0/0; com.example.auth.PasswordHashingWorkTest 1/0/0/0; com.example.auth.LoginServiceTest 5/0/0/0; com.example.geocoding.DaDataReverseGeocoderTest 3/0/0/0; com.example.api.GeocodingRouteTest 1/0/0/0; com.example.points.CreatePointNormalizerTest 3/0/0/0 (tests/failures/errors/skipped).
+- history: com.example.persistence.MigrationHistoryValidationIntegrationTest 1/0/0/0 (tests/failures/errors/skipped).
+- bootstrap: com.example.persistence.DatabaseBootstrapIntegrationTest 1/0/0/0 (tests/failures/errors/skipped).
+- privacy: com.example.auth.UnpublishedPrivacyDatabaseIntegrationTest 1/0/0/0 (tests/failures/errors/skipped).
+- viewport: com.example.points.ViewportFixtureIntegrationTest 1/0/0/0 (tests/failures/errors/skipped).
+- guards: com.example.points.PointCreationGuardsIntegrationTest 2/0/0/0; com.example.api.PointQuotaBlockRouteIntegrationTest 1/0/0/0 (tests/failures/errors/skipped).
+- topic: com.example.points.AddTopicAutojoinIntegrationTest 3/0/0/0; com.example.points.TopicUnicodeUniquenessIntegrationTest 1/0/0/0 (tests/failures/errors/skipped).
+- leave: com.example.api.PointChatLeaveRoutesIntegrationTest 1/0/0/0 (tests/failures/errors/skipped).
+- delete: com.example.points.PointEmptyDeletionIntegrationTest 1/0/0/0 (tests/failures/errors/skipped).
+- events: com.example.realtime.PointLifecycleRealtimeIntegrationTest 2/0/0/0 (tests/failures/errors/skipped).
+
+All database results were obtained with schema V014 on newly provisioned,owned,loopback PostgreSQL18.6/PostGIS3.6.4 resources; the history test provisions its own V013 then tests the upgrade. Both disposable containers and their separate test volume were removed after checks. Retained local XML/logs are ignored build evidence; this register and the updated workspace report retain the reviewed observations.
+
+The workspace specifications, backlog and single report are outside this Git repository. `acceptance-workspace-sync.patch` versions their actual changes for this retry; apply from workspace root to the prior snapshot. Reverse application is checked against the synchronized workspace. No root Git repository or external approval was created. Patch context-only blank lines are intrinsic unified-diff syntax.

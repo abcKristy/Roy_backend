@@ -1,0 +1,1340 @@
+--- a/other/reports/backend/t001-t056-review.md
++++ b/other/reports/backend/t001-t056-review.md
+@@ -1,16 +1,22 @@
+ # Ревью задач T001–T056
+ 
+-Дата: 03.11.2026. Backend: ветка main, commit f9c4c30bccadf5e8c6a17af91c352e893a9eac34; рабочее дерево чистое до ревью. Корень спецификаций не является Git-репозиторием. Область: 56 backend шагов, их требования, родители и ссылки, текущие исходники, SQL, тестовые assertions, документы и история Git. Lead интегрировал read-only выводы Review Agent (T001–T028) и Test Agent (T029–T056). Изменён только этот файл.
+-
+-Команды: Get-Content; Get-ChildItem; rg --files; rg -n; git -C project/backend status --short; branch --show-current; rev-parse HEAD; log -65 --format; show --stat --oneline для свидетельств (все 28 хешей T029–T056 разрешены). Поиск в корне Git завершился ожидаемой ошибкой отсутствия репозитория; дальнейшая история читалась в project/backend. Поиск glob в Windows несколько раз завершился ошибкой синтаксиса; использованы каталог и фактические пути. Значения .env и секреты не читались и не выводились.
+-
+-Тесты, сборка, Docker, миграции и SQL-команды в этом ревью не запускались. Имена TEST_DATABASE_URL, TEST_VIEWPORT_DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD и JAVA_HOME в окружении процесса отсутствуют; безопасная изолированная БД не установлена. Исторический PASS ниже означает только содержание прежнего протокола. Пути ниже относительно корня workspace; пути свидетельств развёрнуты до workspace-relative, когда файл однозначно разрешается. Номера строк относятся к прочитанному текущему snapshot.
++Дата первоначального read-only ревью:03.11.2026, commit f9c4c30. Повторная проверка:04.11.2026, baseline e12ec3302ae9cb74fedc59a6b7ab555742fa8e77, ветка fix/acceptance-evidence. Проверяется текущая рабочая реализация поверх baseline, включая тесты/документы этого прохода; окончательные commits фиксируются Lead после проверки. Root координировал специализированных исполнителей и независимый review; этот файл — единственный итоговый отчёт.
++
++Новые тесты запускаются только на созданном специально для ревью отдельном Docker PostGIS18/3.6 контейнере, loopback, раздельные disposable БД/fixtures. Исходная .env не использовалась, общая/пользовательская/production БД не подключалась. Строки подключения и секреты не приводятся. TEST_DATABASE_DISPOSABLE явно подтверждён после проверки владельца контейнера; имена TEST_DATABASE_URL/TEST_VIEWPORT_DATABASE_URL и test credentials переданы процессам локально.
++
++Команды: Get-Content/Get-ChildItem/rg; read-only Git history/diff; gradlew.bat installDist и runMigrations; выбранные test/integrationTest классы с --tests, --offline --daemon --max-workers=1 --console=plain; Docker create/start/stop/exec для собственных disposable ресурсов и import fixture. Точный выбор классов и проверенные XML сведены в project/backend/.local/evidence/results.json, результаты этого прохода описаны в обновлённых15разделах. Исторические анализы явно помещены в details; остальные разделы сохраняют статический срез03.11 и не означают повторный запуск всех56задач.
+ 
+ ## Сводка
+ 
+-Количество задач: 56. Без индивидуальных замечаний: 39; с индивидуальными замечаниями: 2 (T004,T016); без достаточных свидетельств: 15 (T011,T012,T002,T006,T008,T010,T019,T028,T030,T039,T040,T042,T049,T050,T052). Сквозные замечания учитываются отдельно, без умножения по задачам. Всего замечаний: P0 — 0; P1 — 1; P2 — 2; P3 — 1.
+-
+-Не выполнены: новое воспроизведение build/unit/API/DB тестов; migration/checksum/startup/outage проверки; Docker start/stop; EXPLAIN/нагрузка; target-host Argon2id benchmark; внешняя DaData; утверждение/публичная HTTPS-публикация privacy policy; Android/iOS/BG-1. Причины: runtime/изолированная DB и целевой сервер не установлены; внешние approval/deployment свидетельства отсутствуют; mobile/BG-1 выходят за область принятых backend шагов. Статус ПОДТВЕРЖДЕНО ниже ограничен статическим сопоставлением и документарной областью шага, не означает новый динамический PASS.
++Количество задач:56. Без индивидуальных замечаний и подтверждены в заявленной области:54; с активными замечаниями:0; без достаточных свидетельств:2(T011,T012). Из первоначальных15неподтверждённых задач13закрыты новыми свидетельствами;2сохранены с конкретными внешними блокерами. Четыре findings первоначального ревью исправлены:7342447,f2406b6,41279d2,e12ec33. Активные P0=0,P1=0,P2=0,P3=0; исторически было0/1/2/1.
++
++Новые JUnit результаты:45уникальных сценариев в10focused runs, failures/errors/skipped=0; затем усиленный history-сценарий повторён ещё раз и пройден1/0/0/0 (не увеличивает число уникальных тестов). Сохранены отдельные XML и run result snapshots. Промежуточный запуск с неверным узким ожиданием exception завершился FAIL; actual pending-schema rejection работал, expectation исправлен и сценарий повторён на свежей БД. Отдельно выполнены installDist/classmajor61/migrateV014, реальные Windows process lifecycle/health/outage/recovery и локальный sequential Argon2id benchmark. Новые результаты не относятся ко всему историческому M2matrix.
++
++Точная форма focused-команд: `gradlew.bat test --tests <class> ... --offline --daemon --max-workers=1 --console=plain` для unit и `gradlew.bat integrationTest --tests <class> ... --offline --daemon --max-workers=1 --console=plain` для DB. Выбор всех классов по каждому запуску сохранён в `project/backend/.local/evidence/run_acceptance.py` и `results.json`; XML скопированы отдельно до следующего Gradle test. Дополнительно: `gradlew.bat installDist`, `runMigrations`, `benchmarkPasswordHashing`; JVM17.0.10, application classes major61. Установленный `.bat` запущен через текущий Windows workspace, HTTP observations сделаны Lead. Контейнер pause/unpause и stop/start касались только собственных disposable ресурсов.
++
++Конкретные внешние блокеры:T011 — утверждённый текст/оператор/public HTTPS metadata;T012 — target-host замер и SLO. Внешний DaData, mobile и BG-1 не проверялись и не объявляются пройденными. Полная deployment/load/platform приёмка вне этого локального прохода.
++
++Не выполнено и почему: T011 approval текста/данных оператора и public HTTPS metadata — отсутствуют авторизованные входные сведения и публикация; T012 target-host/concurrency/SLO benchmark — целевой host и цели не определены. Live DaData не вызывался: локальный adapter-контракт подтверждён controlled provider, внешний credential/service run не нужен для этой области T030. Полная нагрузка, Android/iOS и BG-1 не входят в этот проход и не приняты. Динамический cancelled-client не моделировался: CancellationException rethrow проверен чтением Transport; недоказанного дефекта не заявлено.
+ 
+ ## T001 — M1.T1.B01 Зафиксировать исходный серверный baseline
+ 
+@@ -64,7 +70,36 @@
+ 
+ ## T002 — M1.T1.B02 Закрепить JVM и версии сборки
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: JVM toolchain17 отделён от JVM Gradle; aliases и версии совпадают с catalog/Wrapper. Добавлена процедура выбора Gradle JVM17 в IDE без личного пути. installDist выполнен; все application class имеют major61(Java17), commit57c8d58. Проверка поведения launcher относится к T010.
++
++Свидетельства текущей реализации и assertions: project/backend/docs/runtime-matrix.md:1–40; project/backend/build.gradle.kts:1–84; project/backend/gradle/libs.versions.toml:1–35; project/backend/gradle/wrapper/gradle-wrapper.properties:1–9.
++
++Новые выполненные тесты: Новый build/installDist: PASS; проверка Java bytecode major61: PASS.. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Записать JVM target и JDK запуска Gradle отдельно. → runtime-matrix разделяет Gradle JVM17 и target17; проверен major61 всех application classes.
++
++- 2. Сверить версии Kotlin/Ktor/Wrapper с catalog и project/backend/docs/runtime-matrix.md. → Catalog, Wrapper и runtime-matrix сверены; installDist выполнен Lead.
++
++- 3. Использовать library/plugin aliases вместо новых hardcoded versions. → build.gradle использует aliases catalog, новых hardcoded dependency versions нет.
++
++- 4. Описать выбор Gradle JDK в IDE без сохранения личного абсолютного пути. → Добавлена воспроизводимая IDE Gradle JVM17 настройка без личного пути.
++
++- 5. Связать результат с историческим BUILD SUCCESSFUL. → Исторический compile сохранён как история, новый installDist отличается от него и датирован04.11.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено; runtime приёмка T010 проверяется отдельно.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T002 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M1/T1/B02-runtime.md:1–43; родитель spec/plans/tasks/M1/M1-T1.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -112,6 +147,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T003 — M1.T1.B03 Развести bootstrap и HTTP маршруты
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -164,8 +202,12 @@
+ 
+ ## T004 — M1.T1.B04 Передать параметры окружения серверу
+ 
+-Статус ревью: ЕСТЬ ЗАМЕЧАНИЯ.
+-
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Предыдущее замечание закрыто. 7342447: ServerConfig ловит URISyntaxException и формирует безопасное исключение без cause. ServerConfigTest в новом прогоне:6tests/0failures/0errors/0skipped; synthetic malformedURI не попадает в exception/stack trace. Текущий код проверен read-only; активных замечаний по этому finding нет.
++
++<details>
++<summary>Историческое замечание03.11.2026 — исправлено</summary>
+ Проверено: строка T004 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M1/T1/B04-environment.md:1–44; родитель spec/plans/tasks/M1/M1-T1.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+ Проверяемые действия задачи (критерии области):
+@@ -222,6 +264,9 @@
+    **Совет к исправлению:** перехватывать URISyntaxException и возвращать безопасную ошибку без raw/cause.
+    **Критерий приёмки исправления:** synthetic malformed URL с недопустимым пробелом отклоняется, исходная строка отсутствует в исключении и логах.
+ 
++
++</details>
++
+ ## T005 — M1.T1.B05 Настроить локальную PostgreSQL/PostGIS
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -274,7 +319,36 @@
+ 
+ ## T006 — M1.T1.B06 Связать Flyway с этапом старта
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Первый migrate и повторный local startup приводят к текущей схеме V014; production не применяет DDL. Pending V014 препятствует старту; повреждение checksum препятствует local/production старту; finally восстанавливает checksum. Повторный seed не дублируется. Усиленный тест повторно пройден:1test/0failures/0errors/0skipped, BUILD SUCCESSFUL; pending V014 определяется точным FlywayValidateException и текстом not-applied, checksum corruption — причиной checksum mismatch.
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/persistence/HikariDatabaseBootstrap.kt:1–131; project/backend/src/main/kotlin/persistence/FlywayMigrationRunner.kt:1–28; project/backend/src/test/kotlin/persistence/MigrationHistoryValidationIntegrationTest.kt:1–62; project/backend/src/test/kotlin/persistence/DatabaseBootstrapIntegrationTest.kt:1–73.
++
++Новые выполненные тесты: MigrationHistoryValidationIntegrationTest: tests/failures/errors/skipped = 1/0/0/0; DatabaseBootstrapIntegrationTest: tests/failures/errors/skipped = 1/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Перечислить фактически применённые V001–V003 и их назначение. → V001 создаёт foundation/users/sessions/presets, V002 points, V003 topics; SQL прочитан и применён через Flyway.
++
++- 2. Запускать мигратор до подтверждения readiness. → Pending схема отвергается production bootstrap; только local мигрирует до readiness.
++
++- 3. Не изменять checksums уже применённых SQL. → История checksum не переписана: synthetic corruption проверяет отказ local/production и восстановление.
++
++- 4. Добавлять новую схему следующими миграциями без повторного CREATE существующих таблиц. → V004–V014 последовательно применяются поверх V001–V003; существующие SQL не изменялись.
++
++- 5. Описать отказ при несовместимой истории и повторный запуск без дублирования seed. → DatabaseBootstrap и MigrationHistoryValidation проверяют повтор startup и неизменность preset count.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено. Промежуточный запуск усиленного теста завершился FAIL из-за слишком узкого ожидания IllegalArgumentException: фактически FlywayValidateException корректно запрещал pending схему раньше custom guard. Это дефект тестового ожидания, не обход production readiness. После исправления ожидания тест повторно выполнен на свежей БД с указанным PASS.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T006 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M1/T1/B06-migrations.md:1–43; родитель spec/plans/tasks/M1/M1-T1.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -322,6 +396,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T007 — M1.T1.B07 Ограничить и закрывать пул БД
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -374,7 +451,38 @@
+ 
+ ## T008 — M1.T1.B08 Сериализовать безопасную ошибку API
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Typed400/401/403/404/409/422/429 сохраняют безопасный code/message; nullable details/retryAfterSeconds сериализованы явно. HTTP synthetic SQL exception возвращает safe500, malformedJSON400. requestId присутствует в envelope/header; Logback capture содержит только requestId/code/class без SQL/private text/throwable. CancellationException проверен статически как отдельный rethrow до mapper; динамическая отмена клиента не моделировалась.
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/api/Transport.kt:1–47; project/backend/src/main/kotlin/api/ErrorMapper.kt:1–45; project/backend/src/main/kotlin/api/RequestId.kt:1–23; project/backend/src/test/kotlin/api/SafeErrorEnvelopeTest.kt:1–107.
++
++Новые выполненные тесты: SafeErrorEnvelopeTest: tests/failures/errors/skipped = 2/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Использовать JSON {error:{code,message,details,retryAfterSeconds},requestId}, nullable поля по фактическому transport. → SafeErrorEnvelopeTest проверяет точные keys envelope/error и nullable поля.
++
++- 2. Сопоставить явные ошибки400/401/403/404/409/422/429 с domain code и безопасным русским message, неизвестный сбой скрыть как5xx. → Тот же тест проверяет mapper400/401/403/404/409/422/429 и HTTP unexpected SQL500.
++
++- 3. Не превращать CancellationException отменённой coroutine в обычный500 ответ: проверить границу StatusPages и распространение отмены. → Transport.kt rethrow CancellationException до ErrorMapper: проверено статически; dynamic cancelled-client не проводился.
++
++- 4. Создать либо принять валидный requestId и повторить его в envelope/X-Request-Id. → HTTP запросы подтверждают принятие UUID и генерацию нового вместо invalid-id; envelope/header совпадают.
++
++- 5. Логировать код/тип сбоя/requestId без JWT, refresh token, телефона, password, SQL bindings или частного текста. → Logback ListAppender захватывает INTERNAL_ERROR; requestId/code/class присутствуют, SQL/private text/cause отсутствуют.
++
++- 6. Зафиксировать отдельно статическое ревью и отсутствие runtime искусственного5xx в исходной приёмке. → Исходная приёмка сохранена как исторический срез; новый artificial500/log capture помечен отдельно.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в подтверждённой области. Внешний deployment/mobile/BG-1 не проверялся и не заявлен выполненным.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T008 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M1/T1/B08-errors.md:1–44; родитель spec/plans/tasks/M1/M1-T1.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -425,6 +533,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T009 — M1.T1.B09 Отражать состояние БД в health
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -477,7 +588,40 @@
+ 
+ ## T010 — M1.T1.B10 Описать воспроизводимый запуск и остановку
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Runbook разделяет Docker/.env→JVM/migrations; повторный запуск сохраняет volume, обычная остановка не удаляет данные. Документированы health и безопасная диагностика credentials. Installed distribution дважды стартовала из текущего длинного Windows workspace. Первый запуск завершён Ctrl+C с Hikari shutdown initiated/completed; повторный запуск дал HTTP200 health(status=ok). Собственная disposable БД pause→HTTP503 SERVICE_UNAVAILABLE с requestId, unpause→HTTP200 health recovery. Отдельный disposable volume после DBstop/start сохранил synthetic probe count1.
++
++Свидетельства текущей реализации и assertions: project/backend/build.gradle.kts:19–29; project/backend/README.md:1–105; project/backend/docs/database-runtime.md:1–9; project/backend/src/main/kotlin/config/ServerConfig.kt:1–125.
++
++Новые выполненные тесты: Новый installed-process запуск/повтор/health/outage/recovery: PASS по наблюдениям Lead; volume persistence synthetic probe: PASS.. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Указать подтверждённый JDK и Gradle Wrapper. → JDK17/Wrapper9.5.1 совпадают с runtime-matrix и build.
++
++- 2. Развести запуск БД, миграции и JVM environment. → README отделяет Docker env и JVM env; production DDL вынесен в runMigrations.
++
++- 3. Описать первый запуск и повторный запуск с сохранением данных. → README теперь явно описывает повторный запуск и сохранение volume; runtime evidence записывается Lead.
++
++- 4. Указать признаки health success и безопасную диагностику неверных credentials. → README даёт /health и диагностику имён env/container без публикации секретов; runtime outage проверяет Lead.
++
++- 5. Для обычной остановки не предписывать удаление volume. → Обычный stop не удаляет volume; down-v явно запрещён для обычной остановки.
++
++- 6. Сослаться на фактический пользовательский результат без новой фиктивной проверки. → Исторический пользовательский запуск не переименован в новый PASS; новые наблюдения Lead отдельны.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в локальной воспроизводимости. Внешнее deployment/чужая IDE машина не проверялись; личные пути не внесены в repository.
++
++Исправленный при проверке дефект launcher: исходный generated Windows .bat превышал cmd.exe8191 limit на длинном workspace path (input line too long), поэтому installDist сам по себе не доказывал запуск. В build.gradle.kts startScripts заменяет Windows CLASSPATH на %APP_HOME%\lib\*, который раскрывает Java. После исправления выполнены описанные реальные первый/повторный запуски, health, DBoutage/recovery; Unix launcher не изменён. Эта первоначальная неудача зафиксирована, а не выдана за успешный запуск.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T010 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M1/T1/B10-runbook.md:1–44; родитель spec/plans/tasks/M1/M1-T1.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -528,9 +672,39 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T011 — M1.T2.B01 Утвердить публичную политику
+ 
+ Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Отделение draft от public подтверждено: unpublished metadata и register возвращают503, draft consent не принят, реальные users/auth_sessions/notification_settings остаются без изменений. Это защитный backend результат; утверждённый текст, проверенные сведения оператора, постоянный HTTPS URL и публичная version/publishedAt не получены.
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/auth/DraftPrivacyPolicy.kt:1–37; project/backend/src/test/kotlin/auth/UnpublishedPrivacyDatabaseIntegrationTest.kt:1–64; project/backend/src/test/kotlin/auth/DraftPrivacyRouteTest.kt:1–119.
++
++Новые выполненные тесты: UnpublishedPrivacyDatabaseIntegrationTest: tests/failures/errors/skipped = 1/0/0/0; DraftPrivacyRouteTest: tests/failures/errors/skipped = 4/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Получить утверждённый текст и данные оператора. → БЛОКЕР: нет утверждённого текста/сведений оператора. Код не может заменить approval.
++
++- 2. Отделить локальный draft от публичной регистрации. → DraftPrivacyRouteTest и UnpublishedPrivacyDatabaseIntegrationTest подтверждают local/public separation и отсутствие DB writes при503.
++
++- 3. Указать постоянный HTTPS URL. → БЛОКЕР: нет подконтрольного опубликованного постоянного HTTPS документа.
++
++- 4. Публичный URL и version передать в metadata, черновой loopback режим не использовать для реальных пользователей. → БЛОКЕР: approved public version/publishedAt/url не предоставлены; production по-прежнему fail-closed.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Конкретные блокеры: нет утверждённого текста и сведений оператора; нет контролируемого опубликованного HTTPS документа и его version/publishedAt. Требуется предоставление/утверждение владельцем, технический draft не заменяет эти входы.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T011 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M1/T2/B01-privacy.md:1–40; родитель spec/plans/tasks/M1/M1-T2.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -573,9 +747,41 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Недостаточность свидетельств относится к явно перечисленному внешнему критерию; открытый статус не завышен.
+ 
++
++</details>
++
+ ## T012 — M1.T2.B02 Подтвердить параметры Argon2id
+ 
+ Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: PHC/salt, verify/rehash/dummy verify проверяются реальными тестами; untrusted PHC costs/length/version/algorithm отвергаются до дорогого verify. Benchmark локальной машины не является target production benchmark. Выбранный целевой host, целевые latency/concurrency/SLO и замер на нём отсутствуют.
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/auth/PasswordHasher.kt:1–88; project/backend/src/main/kotlin/auth/PasswordHashingWork.kt:1–30; project/backend/docs/password-hashing.md:1–19; project/backend/src/test/kotlin/auth/PasswordHashBoundsTest.kt:1–23; project/backend/src/test/kotlin/auth/PasswordHasherTest.kt:1–51; project/backend/src/test/kotlin/auth/LoginServiceTest.kt:1–151.
++
++Новые выполненные тесты: PasswordHashBoundsTest: tests/failures/errors/skipped = 1/0/0/0; PasswordHasherTest: tests/failures/errors/skipped = 4/0/0/0; PasswordHashingWorkTest: tests/failures/errors/skipped = 1/0/0/0; LoginServiceTest: tests/failures/errors/skipped = 5/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Сохранить salt и PHC encoded hash. → PasswordHasherTest подтверждает уникальный salt и PHC encoded hash.
++
++- 2. Измерить cost на выбранном хосте. → БЛОКЕР: target host и его SLO/concurrency не определены; local benchmark не production evidence.
++
++- 3. Сохранить dummy verify неизвестного номера. → LoginServiceTest и PasswordHashingWorkTest проверяют dummy verify неизвестного номера.
++
++- 4. Зафиксировать bounded verify и rehash policy из project/backend/docs/password-hashing.md, не понижать более сильный существующий hash. → PasswordHashBoundsTest отвергает untrusted costs/PHC bounds; PasswordHasherTest покрывает verify/rehash policy.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Конкретные блокеры: не определён целевой deployment host/доступ к нему, не заданы допустимые latency и concurrency для password hashing; отсутствует замер именно на этой среде. Локальная производительность не подтверждает production cost.
++
++Новый локальный benchmark: JVM17.0.10, Windows11; sequential hash+verify, шесть запусков с отбрасыванием первого, пять измеренных samples. 19456KiB/t2/p1:108,87,64,66,64мс, median66мс;46080KiB/t1/p1:96,124,143,214,111мс, median124мс;65536KiB/t3/p1:381,345,399,351,380мс, median380мс. Это наблюдение текущей Windows машины, не target-server/concurrency/load benchmark; production стоимость этим не утверждена.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T012 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M1/T2/B02-hasher.md:1–40; родитель spec/plans/tasks/M1/M1-T2.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -618,6 +824,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Недостаточность свидетельств относится к явно перечисленному внешнему критерию; открытый статус не завышен.
+ 
++
++</details>
++
+ ## T013 — M1.T2.B03 Создать пользователя и сеанс атомарно
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -755,8 +964,12 @@
+ 
+ ## T016 — M1.T2.B06 Ротировать refresh token
+ 
+-Статус ревью: ЕСТЬ ЗАМЕЧАНИЯ.
+-
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Предыдущее замечание закрыто. 41279d2: V014 хранит consumed refresh hashes и отзывает legacy rotated sessions; JdbcSessionRepository under locks отзывает сеанс при любом известном replay. В предыдущем исправлении04.11 проведены32auth/config/guard tests и отдельный upgrade1test без errors/skips; источник project/backend/docs/auth-acceptance-status.md. В текущем проходе этот auth-suite повторно не запускался. Текущий код проверен read-only; активных замечаний по этому finding нет.
++
++<details>
++<summary>Историческое замечание03.11.2026 — исправлено</summary>
+ Проверено: строка T016 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M1/T2/B06-refresh.md:1–40; родитель spec/plans/tasks/M1/M1-T2.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+ Проверяемые действия задачи (критерии области):
+@@ -805,6 +1018,9 @@
+    **Совет к исправлению:** сохранять использованные hash до fixed expiry и отзывать сеанс при повторе любого из них; согласовать контракт.
+    **Критерий приёмки исправления:** две и более ротации, replay r0 →401 и revoked row, текущие access/refresh этого сеанса отклонены, другой сеанс остаётся действителен.
+ 
++
++</details>
++
+ ## T017 — M1.T2.B07 Отозвать текущий сеанс
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -897,7 +1113,34 @@
+ 
+ ## T019 — M1.T4.B01 Подготовить viewport fixture
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Fixture импортирован только в новую мигрированную disposable БД с настоящими FK. Query проверяет две точки, single/multi-topic, 1/3 уникальных участников и 2/2 участников тем; связанные memberships, counts, cursor/filter и отсутствие Point наблюдаются через repository. DTO stubs не используются.
++
++Свидетельства текущей реализации и assertions: project/backend/src/test/resources/m1-t4-viewport-fixture.sql:1–78; project/backend/src/test/kotlin/points/ViewportFixtureIntegrationTest.kt:1–50; project/backend/src/main/kotlin/points/PointReadRepository.kt:1–285.
++
++Новые выполненные тесты: ViewportFixtureIntegrationTest: tests/failures/errors/skipped = 1/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Создать синтетические single/multi-topic записи. → Viewport SQL создаёт настоящие single/multi-topic записи, а не transport stubs.
++
++- 2. Задать разные количества участников. → ViewportFixtureIntegrationTest наблюдает1/3 uniquepeople и2/2 chatcounts.
++
++- 3. Связать fixture с реальными FK. → Fixture импортирован в пустую новую мигрированную БД с действующими FK и triggers.
++
++- 4. Не подменять полные DTO stub значениями. → PointReadRepository возвращает реальные проекции; pagination/cursor assertions проверены.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в подтверждённой области. Внешний deployment/mobile/BG-1 не проверялся и не заявлен выполненным.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T019 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M1/T4/B01-fixture.md:1–40; родитель spec/plans/tasks/M1/M1-T4.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -940,6 +1183,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T020 — M1.T4.B02 Настроить пространственную выборку
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -1302,7 +1548,34 @@
+ 
+ ## T028 — M1.T6.B04 Собрать серверный протокол M1
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Результат задачи — серверный протокол: локальные проверки и публичный E-M1-05 разделены. Новый отказ публичной регистрации подтверждён HTTP/DB. Документ не объявляет полный публичный M1 PASS, пока T011 заблокирован. Новые результаты не приписываются историческому протоколу.
++
++Свидетельства текущей реализации и assertions: project/backend/docs/m1-server-result.md:1–79; project/backend/docs/m1-server-acceptance-passport.md:1–34; project/backend/docs/m1-server-startup-cases.md:1–13; project/backend/docs/m1-server-auth-negative-cases.md:1–14; project/backend/src/test/kotlin/auth/UnpublishedPrivacyDatabaseIntegrationTest.kt:1–64.
++
++Новые выполненные тесты: UnpublishedPrivacyDatabaseIntegrationTest: tests/failures/errors/skipped = 1/0/0/0; DatabaseBootstrapIntegrationTest: tests/failures/errors/skipped = 1/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Включить public bbox/detail случаи. → Паспорт/протокол включает public bbox/detail; текущий fixture run дополнительно проверяет DB projection.
++
++- 2. Связать case с requirement/build/schema. → docs/m1-server-result сопоставляет cases с историческими build/schema; новые XML отделены.
++
++- 3. Зафиксировать дефекты и непроведённые случаи. → Публичный E-M1-05 остаётся BLOCKED; локальный результат не объявляет public PASS.
++
++- 4. Передать результат дальнейшим backend этапам/BG-1. → Документ передаёт backend baseline; BG-1/mobile допуск не повышен.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в подтверждённой области. Внешний deployment/mobile/BG-1 не проверялся и не заявлен выполненным.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T028 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M1/T6/B04-server-result.md:1–40; родитель spec/plans/tasks/M1/M1-T6.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -1345,6 +1618,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T029 — M2.T1.B01 Нормализовать CreatePoint команду
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -1392,7 +1668,34 @@
+ 
+ ## T030 — M2.T1.B02 Изолировать reverse geocode
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Gateway отделён от provider и транзакции создания; локальный HTTP provider проверяет success/null/timeout/unavailable, ошибки безопасны и ручной адрес остаётся самостоятельным входом. Живой внешний DaData не вызывался и не требуется для приёмки локального adapter-контракта.
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/geocoding/ReverseGeocoder.kt:1–14; project/backend/src/main/kotlin/geocoding/DaDataReverseGeocoder.kt:1–77; project/backend/src/main/kotlin/api/GeocodingRoutes.kt:1–40; project/backend/src/test/kotlin/geocoding/DaDataReverseGeocoderTest.kt:1–101; project/backend/src/test/kotlin/api/GeocodingRouteTest.kt:1–73.
++
++Новые выполненные тесты: DaDataReverseGeocoderTest: tests/failures/errors/skipped = 3/0/0/0; GeocodingRouteTest: tests/failures/errors/skipped = 1/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Получить серверный DaData ключ из config. → Ключ читается из server config; реальные provider credentials не выводились и не требовались local test.
++
++- 2. Вызвать провайдер только после выбора позиции. → GeocodingRouteTest проверяет выбор координат и обращение к gateway.
++
++- 3. Не удерживать DB transaction во внешнем запросе. → ReverseGeocoder не принимает DatabaseRuntime; запрос выполняется вне create transaction.
++
++- 4. Вернуть безопасный fallback без сырого ответа. → DaDataReverseGeocoderTest проверяет success/null/timeout; route возвращает безопасный fallback без provider body.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в подтверждённой области. Внешний deployment/mobile/BG-1 не проверялся и не заявлен выполненным.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T030 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M2/T1/B02-geocoder.md:1–40; родитель spec/plans/tasks/M2/M2-T1.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -1435,6 +1738,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T031 — M2.T1.B03 Создать Point и первое членство атомарно
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -1797,7 +2103,34 @@
+ 
+ ## T039 — M2.T2.B05 Защитить create от гонок
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Согласованные global advisory/user locks и повторный quota/block/nearby read находятся в create transaction. Конкурентный последний слот допускает одно создание и один отказ; соседние create требуют подтверждения второго actor. Нетерминальный nearby409 не сохраняется как terminal idempotent outcome. Тест доказывает конечный инвариант, не измеряет длительность overlap SQL-lock.
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/points/PointWriteService.kt:1–469; project/backend/src/test/kotlin/points/PointCreationGuardsIntegrationTest.kt:1–159.
++
++Новые выполненные тесты: PointCreationGuardsIntegrationTest: tests/failures/errors/skipped = 2/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Взять согласованный advisory и user lock. → PointWriteService берёт global advisory и actor lock внутри transaction; гонки покрыты guards test.
++
++- 2. Перечитать block и оба окна. → Под locks повторяются existing block и оба rolling quota окна.
++
++- 3. Повторить nearby query в transaction. → Nearby query повторяется после locks в той же transaction.
++
++- 4. При отсутствии confirm вернуть нетерминальный409. → Concurrent nearby case подтверждает отказ второго actor без confirm; refusal нетерминален.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в подтверждённой области. Внешний deployment/mobile/BG-1 не проверялся и не заявлен выполненным.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T039 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M2/T2/B05-transaction-guards.md:1–40; родитель spec/plans/tasks/M2/M2-T2.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -1840,9 +2173,39 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T040 — M2.T2.B06 Зафиксировать превышающую попытку
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: HTTP409 quota outcome формируется после commit block+idempotency; Point не создаётся. Потерянный quota response повторяется из сохранённого snapshot без продления720ч block. Предварительно проверяются существующий block и оба rolling окна.
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/points/PointWriteService.kt:1–469; project/backend/src/test/kotlin/api/PointQuotaBlockRouteIntegrationTest.kt:1–135.
++
++Новые выполненные тесты: PointQuotaBlockRouteIntegrationTest: tests/failures/errors/skipped = 1/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Не создавать Point при превышении. → Quota route test проверяет отсутствие нового graph при отказе.
++
++- 2. Commit block ровно30×24ч вместе с idempotency outcome. → Тест проверяет сохранённые block/outcome и fixed720h.
++
++- 3. Сформировать HTTP409 после commit. → HTTP409 возникает по результату уже committed transaction; повтор читает snapshot.
++
++- 4. Не продлевать существующий block повтором. → Повтор потерянного response не продлевает existing block.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в подтверждённой области. Внешний deployment/mobile/BG-1 не проверялся и не заявлен выполненным.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T040 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M2/T2/B06-block-outcome.md:1–40; родитель spec/plans/tasks/M2/M2-T2.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -1885,6 +2248,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T041 — M2.T3.B01 Собрать проекцию Point detail
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -1932,7 +2298,34 @@
+ 
+ ## T042 — M2.T3.B02 Нормализовать уникальность темы
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Preset key и custom label canonicalized отдельно; Unicode surrounding whitespace удаляется, Cyrillic case даёт одинаковый key. Реальные PostgreSQL duplicate constraints и create/add-topic оставляют одну custom тему и один chat; losing duplicate не добавляет membership. Проверяется совпадение Kotlin key с SQL lower(btrim()).
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/points/PointWriteModels.kt:1–67; project/backend/src/main/kotlin/points/PointWriteService.kt:1–469; project/backend/src/test/kotlin/points/TopicUnicodeUniquenessIntegrationTest.kt:1–72; project/backend/src/test/kotlin/points/AddTopicAutojoinIntegrationTest.kt:1–258.
++
++Новые выполненные тесты: TopicUnicodeUniquenessIntegrationTest: tests/failures/errors/skipped = 1/0/0/0; AddTopicAutojoinIntegrationTest: tests/failures/errors/skipped = 3/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Проверить допустимый preset. → Normalizer сверяет preset со списком допустимых key.
++
++- 2. Для other нормализовать trim/case. → Unicode test покрывает NBSP/tab/emspace и Cyrillic case duplicate.
++
++- 3. Сохранить пользовательский display label отдельно. → DB query подтверждает сохранённый display ШАХМАТЫ отдельно от canonical key.
++
++- 4. Согласовать UNIQUE expression с persistence. → Postgres lower(btrim()) совпадает с Kotlin key; одна custom тема и один chat.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в подтверждённой области. Внешний deployment/mobile/BG-1 не проверялся и не заявлен выполненным.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T042 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M2/T3/B02-topic-key.md:1–40; родитель spec/plans/tasks/M2/M2-T3.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -1975,6 +2368,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T043 — M2.T3.B03 Добавить тему с autojoin
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -2247,7 +2643,34 @@
+ 
+ ## T049 — M2.T5.B02 Снять членство пользователя
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Muted member может leave; его membership удалён, vote и booking освобождены, повтор не изменяет результат. Проверяются HTTP и DB side effects, а не только status. Отсутствующая или чужая membership не выдаёт доступ к данным.
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/points/PointWriteService.kt:1–469; project/backend/src/test/kotlin/api/PointChatLeaveRoutesIntegrationTest.kt:1–205.
++
++Новые выполненные тесты: PointChatLeaveRoutesIntegrationTest: tests/failures/errors/skipped = 1/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Разрешить выход при mute. → PointChatLeaveRoutesIntegrationTest разрешает leave muted actor.
++
++- 2. Взять actor/point/chat locks. → PointWriteService берёт actor/point/chat locks перед удалением membership.
++
++- 3. Удалить нужное членство. → DB assertions подтверждают удаление нужного membership и идемпотентность повтора.
++
++- 4. Подключить снятие голосов и пересчёт брони. → Тест наблюдает снятие vote и освобождение booking, а не только HTTP status.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в подтверждённой области. Внешний deployment/mobile/BG-1 не проверялся и не заявлен выполненным.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T049 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M2/T5/B02-leave.md:1–40; родитель spec/plans/tasks/M2/M2-T5.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -2290,9 +2713,39 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T050 — M2.T5.B03 Удалить пустую Point атомарно
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Последний leave удаляет Point со всеми topics/chats/messages и зависимостями в одной transaction. Непоследний leave сохраняет граф. Immutable creation ledger сохраняется после удаления Point и продолжает учитывать quota; событие не публикуется до commit.
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/points/PointWriteService.kt:1–469; project/backend/src/test/kotlin/points/PointEmptyDeletionIntegrationTest.kt:1–136.
++
++Новые выполненные тесты: PointEmptyDeletionIntegrationTest: tests/failures/errors/skipped = 1/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Проверить все темы под Point lock. → Service проверяет active members всех topics под Point lock.
++
++- 2. Не удалить Point с другим активным участником. → Непоследний leave сохраняет Point, lastleave удаляет.
++
++- 3. Удалить зависимые chats/topics по схеме. → DB assertions проверяют cascade chats/topics/messages и зависимостей.
++
++- 4. Сохранить creation ledger с null point FK. → Creation ledger остаётся, point FK становится null; quota history не исчезает.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в подтверждённой области. Внешний deployment/mobile/BG-1 не проверялся и не заявлен выполненным.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T050 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M2/T5/B03-delete-empty.md:1–40; родитель spec/plans/tasks/M2/M2-T5.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -2335,6 +2788,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T051 — M2.T5.B04 Описать гонку join и last leave
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -2382,7 +2838,34 @@
+ 
+ ## T052 — M2.T5.B05 Связать lifecycle с post-commit событиями
+ 
+-Статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
++Статус ревью: ПОДТВЕРЖДЕНО.
++
++Повторная проверка 04.11.2026, baseline e12ec33, ветка fix/acceptance-evidence. Источники задачи и родителя сохранены в исходном анализе ниже.
++
++Проверено: Real WebSocket наблюдает committed membership/delete; старый chat доступ закрывается, бывшие участники получают deletion event. Rollback join не публикует membership-success. Подписчики получают только post-commit lifecycle effects, без статического stub вместо WebSocket.
++
++Свидетельства текущей реализации и assertions: project/backend/src/main/kotlin/points/PointWriteService.kt:1–469; project/backend/src/test/kotlin/realtime/PointLifecycleRealtimeIntegrationTest.kt:1–288.
++
++Новые выполненные тесты: PointLifecycleRealtimeIntegrationTest: tests/failures/errors/skipped = 2/0/0/0. Сохранённые XML: project/backend/.local/evidence/TEST-<class>.xml; сводка запусков project/backend/.local/evidence/results.json. Эти локальные файлы — проверенные результаты данного запуска, не исторический PASS.
++
++Поэлементная проверка требований:
++
++- 1. Публиковать только после commit. → WebSocket тест наблюдает события committed transaction.
++
++- 2. Прекратить подписку вышедшего участника. → После leave доступ к старому chat прекращается.
++
++- 3. Передать бывшим участникам point.deleted по контракту. → Бывший участник получает point.deleted в real WebSocket.
++
++- 4. Не отправлять успех при rollback. → Rollback join не публикует membership success; test проверяет отсутствие события.
++
++Приёмка: предметный результат проверяется указанными code/SQL/HTTP/assertions; контракт входа/выхода сопоставлен с родителем и task; происхождение baseline и новые файлы/результаты отделены от старых commits. Непроведённые внешние проверки не включены в PASS.
++
++Замечаний не обнаружено в проверенной локальной области; внешние ограничения указаны отдельно.
++
++<details>
++<summary>Первоначальный анализ 03.11.2026 — исторический срез до новых проверок</summary>
++
++Первоначальный статус ревью: НЕДОСТАТОЧНО СВИДЕТЕЛЬСТВ.
+ 
+ Проверено: строка T052 в spec/plans/roadmap/execution-checklist.md; ТЗ spec/plans/tasks/M2/T5/B05-events.md:1–40; родитель spec/plans/tasks/M2/M2-T5.md. Связи API/data — spec/plans/roadmap/MO/M0-T5-api-events.md и M0-T4-data-model.md; зависимости локального порядка взяты из раздела «Место и входы/выходы» ТЗ.
+ 
+@@ -2425,6 +2908,9 @@
+ 
+ Замечания: доказанных дефектов реализации не установлено. Проверка неполна по отмеченным НЕ ПРОВЕРЕНО подпунктам; статус готовности не подтверждается полностью.
+ 
++
++</details>
++
+ ## T053 — M2.T6.B01 Подготовить паспорт fixture M2
+ 
+ Статус ревью: ПОДТВЕРЖДЕНО.
+@@ -2607,6 +3093,16 @@
+ 
+ ## Сквозные замечания
+ 
++Активных замечаний нет: P0=0,P1=0,P2=0,P3=0.
++
++- Исторический P2 misleading DB PASS закрыт f2406b6: shared testDatabaseUrl требует disposable confirmation и loopback; обычный прогон явно skipped без БД, обязательный integrationTest fails. Текущие DB сценарии выполнены на созданном Root отдельном контейнере с сохранёнными XML и нулевыми skips.
++- Исторический P3 checkbox/status закрыт e12ec33: синхронизированы4task/index/checklist/parent/milestone, локальная область отделена от public/mobile. Внешние spec находятся вне Git backend; воспроизводимые изменения сохранены patch.
++- Открытые внешние блокеры T011/T012 не являются доказанными дефектами реализации. Локальный M1/M2 результат не выдаёт BG-1 и public acceptance.
++
++<details>
++<summary>Первоначальные сквозные findings03.11 — исправлены; историческая формулировка</summary>
++
++
+ 1. **Приоритет:** P2. **Задача:** T013–T022,T029–T033,T035–T056 в части DB-свидетельств. **Замечание:** отсутствие тестовой DB может завершать тест успешно до тела сценария. **Обоснование:** project/backend/src/test/kotlin/api/PointChatJoinRoutesIntegrationTest.kt:33–34 и project/backend/src/test/kotlin/points/PointCreationGuardsIntegrationTest.kt:104–105 используют ранний return при отсутствии TEST_DATABASE_URL; найдено 55 таких env-return совпадений в test tree. Зелёный результат не доказывает DB-проверку. Regex alias допускает любой host и сам по себе не доказывает изоляцию. Это риск механизма проверки, а не утверждение, что исторические явно записанные DB-запуски не выполнялись. **Совет к исправлению:** явный skip/abort с причиной либо обязательный fail для интеграционного профиля, отдельное подтверждение одноразовой DB до исполнения. **Критерий приёмки исправления:** без DB scenario не учитывается passed; с изолированной DB выполняются assertions, отчёт различает executed/skipped.
+ 
+ 2. **Приоритет:** P3. **Задача:** T014,T015,T016,T017. **Замечание:** отметки приёмки не согласованы со статусом. **Обоснование:** spec/plans/tasks/M1/T2/B04-login.md, B05-access-guard.md, B06-refresh.md, B07-logout.md:3 имеют ГОТОВО по родителю, а разделы приёмки:34–36 оставлены [ ]. Это неточность учёта, не доказательство отсутствия кода. **Совет к исправлению:** после отдельного подтверждения критериев согласовать статус/checkboxes с фактом. **Критерий приёмки исправления:** единый статус с evidence во всех учётных местах, неподтверждённые критерии не отмечены готовыми.
+@@ -2615,8 +3111,13 @@
+ 
+ Git: указанные хеши прочитаны, для T029–T056 каждый разрешается и stat соответствует назначению. Некоторые шаги добавляют доказательства к ранее существовавшему коду. «Один шаг — один коммит» по доступным subject/stat в целом прослеживается; полная атрибуция каждой строки и squash/merge происхождения не доказана. T056 commit57f5bd5 включает исправление exact100 SQL и acceptance tests; это исправление найденной при приёмке границы, не объявлено самостоятельным нарушением. Наличие commit не доказательство тестового PASS.
+ 
++
++</details>
++
+ ## Проверка полноты
+ 
+-T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011, T012, T013, T014, T015, T016, T017, T018, T019, T020, T021, T022, T023, T024, T025, T026, T027, T028, T029, T030, T031, T032, T033, T034, T035, T036, T037, T038, T039, T040, T041, T042, T043, T044, T045, T046, T047, T048, T049, T050, T051, T052, T053, T054, T055, T056. Для каждого ID выше создан ровно один самостоятельный раздел.
+-
+-Чтение кода/SQL/тестовых assertions: T002–T009,T011–T022,T029–T033,T035–T052 и реализации сценариев T053–T056. Документарная приёмка по содержанию: T001,T010,T018,T023–T028,T034,T053–T056. Выполненные новые тесты: ни одна задача. Только исторические протоколы подтверждают прежние динамические PASS/измерения/миграции, прежде всего T005–T007,T009,T013–T022,T028,T031–T056; они не переименованы в результаты текущего запуска. T011/T012 внешние критерии недостаточно подтверждены. Lead свёл findings без дублирования; исправления, изменение статусов и создание backlog не выполнялись по read-only ограничению пользователя.
++T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011, T012, T013, T014, T015, T016, T017, T018, T019, T020, T021, T022, T023, T024, T025, T026, T027, T028, T029, T030, T031, T032, T033, T034, T035, T036, T037, T038, T039, T040, T041, T042, T043, T044, T045, T046, T047, T048, T049, T050, T051, T052, T053, T054, T055, T056. Для каждого ID присутствует ровно один самостоятельный раздел; первоначальный материал сохранён без дублирования task-заголовков.
++
++Новые выполненные тесты привязаны к T006,T008,T011,T012,T019,T028,T030,T039,T040,T042,T049,T050,T052. Build/bytecode T002 и process/runtime T010 отделены от JUnit. T004 подтверждён новым config suite, T016 — исправленным кодом и явно указанным предыдущим04.11auth/upgrade прогоном. Остальные разделы — статический/исторический анализ03.11; их прежние PASS не выданы за новые запуски.
++
++Непроверенные внешние критерии:T011 approved policy/operator/HTTPS metadata,T012 production-host benchmark/SLO. Все доступные локальные проверки этого прохода завершены. Усиленный history-тест и installed launcher повторно подтверждены после описанных первоначальных неудач; local benchmark отделён от отсутствующего target-host benchmark.
+--- /dev/null
++++ b/project/backlog/backend/argon-target-host-acceptance.md
+@@ -0,0 +1,32 @@
++# Название задачи
++
++Подтвердить Argon2id cost и concurrency limit на выбранном production-хосте.
++
++**Статус:** БЛОКИРОВАНО (04.11.2026); целевой профиль/ресурсные лимиты, target-host протокол и численный latency/concurrency SLO не определены в доступных материалах.
++
++## Суть
++
++Реализованы предварительные Argon2id `m=19456 KiB,t=2,p=1`, bounded verify, dummy verify и запрет ослабления stronger/incomparable hash. Unit tests и локальный benchmark не подтверждают production capacity и стоимость.
++
++## Родитель и причина
++
++[M1.T2.B02, T012](../../../spec/plans/tasks/M1/T2/B02-hasher.md) требует замер cost на выбранном хосте. [Password hashing](../../backend/docs/password-hashing.md) требует учитывать память concurrent операций и бюджет 5000 ₽/месяц. Профиль production CPU/RAM, возможность целевого запуска и численный SLO не определены; рабочая Windows-машина не заменяет этот хост.
++
++## Цель
++
++Получить проверяемые production cost и concurrency limit, привязанные к ресурсам, JVM/backend revision и бюджету.
++
++## Как реализовать
++
++На выбранном хосте выполнить `benchmarkPasswordHashing`, зафиксировать CPU/RAM/JVM/container limits, cost и измерения. Дополнительно проверить согласованную auth нагрузку и peak memory при bounded concurrency: последовательный benchmark сам по себе этого не доказывает. Сохранить проверку latency/concurrency SLO и бюджета без секретов, паролей и строк подключения.
++
++## Справочные ссылки
++
++- [Родитель M1.T2](../../../spec/plans/tasks/M1/M1-T2.md).
++- [T012](../../../spec/plans/tasks/M1/T2/B02-hasher.md).
++- [Password hashing](../../backend/docs/password-hashing.md).
++- [M1 server protocol](../../backend/docs/m1-server-result.md).
++
++## Приёмка
++
++Указаны реальный целевой хост/ресурсы/JVM/backend revision; cost и concurrency limit измерены и выполняют согласованный SLO в ресурсах и бюджете. Bounded verify и запрет ослабления hash сохранены. Локальные наблюдения отдельно обозначены и не объявлены production приёмкой.
+--- a/project/backlog/backend/m1-server-acceptance-completion.md
++++ b/project/backlog/backend/m1-server-acceptance-completion.md
+@@ -3,6 +3,10 @@
+ Довести публичную серверную приёмку M1 до PASS после публикации политики.
+ 
+ **Статус:** БЛОКИРОВАНО; нужна утверждённая публичная политика с постоянным HTTPS URL и версией согласия.
++
++**Уточнение блокера, 04.11.2026 (T011):** В `project/backend/docs/privacy-policy-draft.md:3,7` остаются черновой статус и placeholders оператора, адреса/контактов обращений и HTTPS URL. Утверждённые окончательный текст и версия согласия не обнаружены. Код и изолированная БД не могут установить реальные сведения и факт утверждения/публикации. `UnpublishedPrivacyDatabaseIntegrationTest` проверяет безопасный отказ без записи пользователей/сеансов/настроек при отсутствии публикации, а не публичный E-M1-05 PASS. Завершённость протокола T028 не закрывает это внешнее условие.
++
++**Уточнение блокера, 04.11.2026 (T011):** В `project/backend/docs/privacy-policy-draft.md:3,7` остаются черновой статус и placeholders оператора, адреса/контактов обращений и HTTPS URL. Утверждённые окончательный текст и версия согласия не обнаружены. Код и изолированная БД не могут установить реальные сведения и факт утверждения/публикации. `UnpublishedPrivacyDatabaseIntegrationTest` проверяет безопасный отказ без записи пользователей/сеансов/настроек при отсутствии публикации, а не публичный E-M1-05 PASS. Завершённость протокола T028 не закрывает это внешнее условие.
+ 
+ ## Суть
+ 
+--- a/spec/plans/roadmap/M1/M1-foundation-auth-map.md
++++ b/spec/plans/roadmap/M1/M1-foundation-auth-map.md
+@@ -68,3 +68,7 @@
+ ## Критерий завершения майлстоуна
+ 
+ Гость открывает карту, пользователь регистрируется/входит и возвращается к защищённому действию; сервер, БД и оба клиента участвуют в одном сценарии. Основа требований: `user-stories.md` E0/E1, `user-flows.md` F1/F2, `screens-states.md`.
++
++## Повторная локальная проверка 04.11.2026
++
++Повторно проверены доступные критерии исходных insufficient-задач T002, T006, T008, T010, T011, T012, T019, T028. Свидетельства: `project/backend/docs/acceptance-evidence.md`. T011/T012 остаются заблокированы внешней политикой/целевым сервером; локальные проверки не закрывают весь майлстоун, public acceptance, mobile или BG-1.
+--- a/spec/plans/roadmap/M2/M2-points-topics-filters.md
++++ b/spec/plans/roadmap/M2/M2-points-topics-filters.md
+@@ -69,3 +69,7 @@
+ ## Критерий завершения майлстоуна
+ 
+ Точка создаётся и находится по viewport/фильтрам; сервер исполняет все ограничения создания и жизненного цикла. Основа требований: `user-stories.md` E1, `user-flows.md` F3–F5, `entities.md`, continuation A/B.
++
++## Повторная локальная проверка 04.11.2026
++
++Повторно проверены доступные критерии исходных insufficient-задач T030, T039, T040, T042, T049, T050, T052. Свидетельства: `project/backend/docs/acceptance-evidence.md`. T011/T012 остаются заблокированы внешней политикой/целевым сервером; локальные проверки не закрывают весь майлстоун, public acceptance, mobile или BG-1.
+--- a/spec/plans/roadmap/execution-checklist.md
++++ b/spec/plans/roadmap/execution-checklist.md
+@@ -87,24 +87,24 @@
+ ## B1. Серверные задачи M1
+ 
+ - [x] **T001** · `M1.T1.B01` — [Зафиксировать исходный серверный baseline](../tasks/M1/T1/B01-baseline.md) — <span style="color:green">ГОТОВО по источнику</span>
+-- [x] **T002** · `M1.T1.B02` — [Закрепить JVM и версии сборки](../tasks/M1/T1/B02-runtime.md) — <span style="color:green">ГОТОВО по источнику</span>
++- [x] **T002** · `M1.T1.B02` — [Закрепить JVM и версии сборки](../tasks/M1/T1/B02-runtime.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ - [x] **T003** · `M1.T1.B03` — [Развести bootstrap и HTTP маршруты](../tasks/M1/T1/B03-bootstrap.md) — <span style="color:green">ГОТОВО по источнику</span>
+ - [x] **T004** · `M1.T1.B04` — [Передать параметры окружения серверу](../tasks/M1/T1/B04-environment.md) — <span style="color:green">ГОТОВО по источнику</span>
+ - [x] **T005** · `M1.T1.B05` — [Настроить локальную PostgreSQL/PostGIS](../tasks/M1/T1/B05-postgis.md) — <span style="color:green">ГОТОВО по источнику</span>
+-- [x] **T006** · `M1.T1.B06` — [Связать Flyway с этапом старта](../tasks/M1/T1/B06-migrations.md) — <span style="color:green">ГОТОВО по источнику</span>
++- [x] **T006** · `M1.T1.B06` — [Связать Flyway с этапом старта](../tasks/M1/T1/B06-migrations.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ - [x] **T007** · `M1.T1.B07` — [Ограничить и закрывать пул БД](../tasks/M1/T1/B07-datasource.md) — <span style="color:green">ГОТОВО по источнику</span>
+-- [x] **T008** · `M1.T1.B08` — [Сериализовать безопасную ошибку API](../tasks/M1/T1/B08-errors.md) — <span style="color:green">ГОТОВО по источнику</span>
++- [x] **T008** · `M1.T1.B08` — [Сериализовать безопасную ошибку API](../tasks/M1/T1/B08-errors.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ - [x] **T009** · `M1.T1.B09` — [Отражать состояние БД в health](../tasks/M1/T1/B09-readiness.md) — <span style="color:green">ГОТОВО по источнику</span>
+-- [x] **T010** · `M1.T1.B10` — [Описать воспроизводимый запуск и остановку](../tasks/M1/T1/B10-runbook.md) — <span style="color:green">ГОТОВО по источнику</span>
+-- [ ] **T011** · `M1.T2.B01` — [Утвердить публичную политику](../tasks/M1/T2/B01-privacy.md)
+-- [ ] **T012** · `M1.T2.B02` — [Подтвердить параметры Argon2id](../tasks/M1/T2/B02-hasher.md)
++- [x] **T010** · `M1.T1.B10` — [Описать воспроизводимый запуск и остановку](../tasks/M1/T1/B10-runbook.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
++- [ ] **T011** · `M1.T2.B01` — [Утвердить публичную политику](../tasks/M1/T2/B01-privacy.md) — БЛОКИРОВАНО; повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
++- [ ] **T012** · `M1.T2.B02` — [Подтвердить параметры Argon2id](../tasks/M1/T2/B02-hasher.md) — БЛОКИРОВАНО; повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ - [x] **T013** · `M1.T2.B03` — [Создать пользователя и сеанс атомарно](../tasks/M1/T2/B03-register.md) — <span style="color:green">ГОТОВО локально по родителю</span>
+ - [x] **T014** · `M1.T2.B04` — [Проверить пароль при входе](../tasks/M1/T2/B04-login.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026); свидетельства в ТЗ и backend/docs/auth-acceptance-status.md</span>
+ - [x] **T015** · `M1.T2.B05` — [Проверить защищённый access JWT](../tasks/M1/T2/B05-access-guard.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026); свидетельства в ТЗ и backend/docs/auth-acceptance-status.md</span>
+ - [x] **T016** · `M1.T2.B06` — [Ротировать refresh token](../tasks/M1/T2/B06-refresh.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026); свидетельства в ТЗ и backend/docs/auth-acceptance-status.md</span>
+ - [x] **T017** · `M1.T2.B07` — [Отозвать текущий сеанс](../tasks/M1/T2/B07-logout.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026); свидетельства в ТЗ и backend/docs/auth-acceptance-status.md</span>
+ - [x] **T018** · `M1.T2.B08` — [Передать auth контракт клиенту](../tasks/M1/T2/B08-contract.md) — <span style="color:green">ГОТОВО (серверный контракт, 02.11.2026; backend commit `72454d6`)</span>
+-- [x] **T019** · `M1.T4.B01` — [Подготовить viewport fixture](../tasks/M1/T4/B01-fixture.md) — <span style="color:green">ГОТОВО (fixture подготовлен, 02.11.2026; backend commit `f73662e`)</span>
++- [x] **T019** · `M1.T4.B01` — [Подготовить viewport fixture](../tasks/M1/T4/B01-fixture.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ - [x] **T020** · `M1.T4.B02` — [Настроить пространственную выборку](../tasks/M1/T4/B02-bbox.md) — <span style="color:green">ГОТОВО (DB-пагинация, `0602ef0`)</span>
+ - [x] **T021** · `M1.T4.B03` — [Отдать каталог тем](../tasks/M1/T4/B03-presets.md) — <span style="color:green">ГОТОВО (11 DB presets, `a0e7e40`)</span>
+ - [x] **T022** · `M1.T4.B04` — [Отдать публичные Point endpoints](../tasks/M1/T4/B04-public-detail.md) — <span style="color:green">ГОТОВО (DB-backed map/detail, `524331a`)</span>
+@@ -113,12 +113,12 @@
+ - [x] **T025** · `M1.T6.B01` — [Составить паспорт серверной приёмки M1](../tasks/M1/T6/B01-server-passport.md) — <span style="color:green">ГОТОВО (паспорт, `de81d12` + `5597b89`)</span>
+ - [x] **T026** · `M1.T6.B02` — [Разложить проверку старта БД и health](../tasks/M1/T6/B02-startup-cases.md) — <span style="color:green">ГОТОВО (cases, `d7b18ca`)</span>
+ - [x] **T027** · `M1.T6.B03` — [Разложить негативные auth случаи](../tasks/M1/T6/B03-auth-cases.md) — <span style="color:green">ГОТОВО (cases, `8c0cecc`)</span>
+-- [x] **T028** · `M1.T6.B04` — [Собрать серверный протокол M1](../tasks/M1/T6/B04-server-result.md) — <span style="color:green">ГОТОВО (протокол `285b938`; публичная E-M1-05 BLOCKED, [общий server PASS открыт](../../../project/backlog/backend/m1-server-acceptance-completion.md))</span>
++- [x] **T028** · `M1.T6.B04` — [Собрать серверный протокол M1](../tasks/M1/T6/B04-server-result.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ 
+ ## B2. Серверные задачи M2
+ 
+ - [x] **T029** · `M2.T1.B01` — [Нормализовать CreatePoint команду](../tasks/M2/T1/B01-input.md) — <span style="color:green">ГОТОВО (`a8b3d9e`, 03.11.2026)</span>
+-- [x] **T030** · `M2.T1.B02` — [Изолировать reverse geocode](../tasks/M2/T1/B02-geocoder.md) — <span style="color:green">ГОТОВО (`18795fe`, локальный provider test; live DaData не проверялся, 03.11.2026)</span>
++- [x] **T030** · `M2.T1.B02` — [Изолировать reverse geocode](../tasks/M2/T1/B02-geocoder.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ - [x] **T031** · `M2.T1.B03` — [Создать Point и первое членство атомарно](../tasks/M2/T1/B03-atomic-create.md) — <span style="color:green">ГОТОВО (`1cbb29f`, DB rollback, 03.11.2026)</span>
+ - [x] **T032** · `M2.T1.B04` — [Сохранить исход CreatePoint](../tasks/M2/T1/B04-idempotency.md) — <span style="color:green">ГОТОВО (`bf787b2`, DB replay, 03.11.2026)</span>
+ - [x] **T033** · `M2.T1.B05` — [Связать POST points с сервисом](../tasks/M2/T1/B05-create-route.md) — <span style="color:green">ГОТОВО (`3b2c065`, HTTP/DB route, 03.11.2026)</span>
+@@ -127,20 +127,20 @@
+ - [x] **T036** · `M2.T2.B02` — [Рассчитать оба окна квоты](../tasks/M2/T2/B02-rolling-quota.md) — <span style="color:green">ГОТОВО (`720dc4a`, DB UTC boundaries, 03.11.2026)</span>
+ - [x] **T037** · `M2.T2.B03` — [Найти соседей в100м](../tasks/M2/T2/B03-nearby-query.md) — <span style="color:green">ГОТОВО (`f88fa99`, PostGIS nearby query, 03.11.2026)</span>
+ - [x] **T038** · `M2.T2.B04` — [Отдать контекст создания](../tasks/M2/T2/B04-context.md) — <span style="color:green">ГОТОВО (`b9d0674`, HTTP/DB creation context, 03.11.2026)</span>
+-- [x] **T039** · `M2.T2.B05` — [Защитить create от гонок](../tasks/M2/T2/B05-transaction-guards.md) — <span style="color:green">ГОТОВО (`c3f3bd2`, concurrent create guards, 03.11.2026)</span>
+-- [x] **T040** · `M2.T2.B06` — [Зафиксировать превышающую попытку](../tasks/M2/T2/B06-block-outcome.md) — <span style="color:green">ГОТОВО (`ca69963`, quota refusal/replay, 03.11.2026)</span>
++- [x] **T039** · `M2.T2.B05` — [Защитить create от гонок](../tasks/M2/T2/B05-transaction-guards.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
++- [x] **T040** · `M2.T2.B06` — [Зафиксировать превышающую попытку](../tasks/M2/T2/B06-block-outcome.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ - [x] **T041** · `M2.T3.B01` — [Собрать проекцию Point detail](../tasks/M2/T3/B01-detail.md) — <span style="color:green">ГОТОВО (`d5c5bf4`, DB detail projection, 03.11.2026)</span>
+-- [x] **T042** · `M2.T3.B02` — [Нормализовать уникальность темы](../tasks/M2/T3/B02-topic-key.md) — <span style="color:green">ГОТОВО (`82b097d`, canonical topic key, 03.11.2026)</span>
++- [x] **T042** · `M2.T3.B02` — [Нормализовать уникальность темы](../tasks/M2/T3/B02-topic-key.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ - [x] **T043** · `M2.T3.B03` — [Добавить тему с autojoin](../tasks/M2/T3/B03-add-topic.md) — <span style="color:green">ГОТОВО (`dfb3f23`, PostGIS topic/autojoin, 03.11.2026)</span>
+ - [x] **T044** · `M2.T3.B04` — [Вернуть конфликт дубликата темы](../tasks/M2/T3/B04-duplicate.md) — <span style="color:green">ГОТОВО (`8e19a53`, duplicate topic 409, 03.11.2026)</span>
+ - [x] **T045** · `M2.T4.B01` — [Применить тему и people bounds в SQL](../tasks/M2/T4/B01-query.md) — <span style="color:green">ГОТОВО (`73001d3`, PostGIS topic/people SQL, 03.11.2026)</span>
+ - [x] **T046** · `M2.T4.B02` — [Проверить query фильтра](../tasks/M2/T4/B02-validation.md) — <span style="color:green">ГОТОВО (`a7b2618`, HTTP query validation, 03.11.2026)</span>
+ - [x] **T047** · `M2.T4.B03` — [Привязать cursor к фильтру](../tasks/M2/T4/B03-cursor.md) — <span style="color:green">ГОТОВО (`ef85c97`, filter-bound cursor, 03.11.2026)</span>
+ - [x] **T048** · `M2.T5.B01` — [Вступить в существующий чат идемпотентно](../tasks/M2/T5/B01-join.md) — <span style="color:green">ГОТОВО (`2e5a555`, idempotent HTTP join, 03.11.2026)</span>
+-- [x] **T049** · `M2.T5.B02` — [Снять членство пользователя](../tasks/M2/T5/B02-leave.md) — <span style="color:green">ГОТОВО (`ecf12bd`, HTTP leave/DB effects, 03.11.2026)</span>
+-- [x] **T050** · `M2.T5.B03` — [Удалить пустую Point атомарно](../tasks/M2/T5/B03-delete-empty.md) — <span style="color:green">ГОТОВО (`d0c181d`, DB cascade/ledger, 03.11.2026)</span>
++- [x] **T049** · `M2.T5.B02` — [Снять членство пользователя](../tasks/M2/T5/B02-leave.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
++- [x] **T050** · `M2.T5.B03` — [Удалить пустую Point атомарно](../tasks/M2/T5/B03-delete-empty.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ - [x] **T051** · `M2.T5.B04` — [Описать гонку join и last leave](../tasks/M2/T5/B04-race-case.md) — <span style="color:green">ГОТОВО (`7ac7471`, concurrent join/last leave, 03.11.2026)</span>
+-- [x] **T052** · `M2.T5.B05` — [Связать lifecycle с post-commit событиями](../tasks/M2/T5/B05-events.md) — <span style="color:green">ГОТОВО (`33b3fea`, post-commit WebSocket events, 03.11.2026)</span>
++- [x] **T052** · `M2.T5.B05` — [Связать lifecycle с post-commit событиями](../tasks/M2/T5/B05-events.md) — ГОТОВО (локальная проверка, 04.11.2026); повторные свидетельства в ТЗ и backend/docs/acceptance-evidence.md.
+ - [x] **T053** · `M2.T6.B01` — [Подготовить паспорт fixture M2](../tasks/M2/T6/B01-fixture.md) — <span style="color:green">ГОТОВО (`d79bb19`, PostGIS fixture passport, 03.11.2026)</span>
+ - [x] **T054** · `M2.T6.B02` — [Описать приёмку create и geocoder](../tasks/M2/T6/B02-create-cases.md) — <span style="color:green">ГОТОВО (`e86abe3`, HTTP/DB create/geocoder cases, 03.11.2026)</span>
+ - [x] **T055** · `M2.T6.B03` — [Описать квоты темы и фильтры](../tasks/M2/T6/B03-quota-topic-cases.md) — <span style="color:green">ГОТОВО (`9662fef`, HTTP/DB quota/topic/filter, 03.11.2026)</span>
+--- a/spec/plans/tasks/M1/M1-T1.md
++++ b/spec/plans/tasks/M1/M1-T1.md
+@@ -187,3 +187,8 @@
+ - Готовые протоколы — существующая соответствующая папка `other/reports/`; если отсутствует, сверить карту и согласовать место, не создавать молча.
+ - Указывать commit/build ID backend и mobile отдельно, окружение/дату; исключать секреты и ПДн.
+ - Зелёный статус только после выполнения критериев и передачи свидетельств; непроверенные платформы и блокеры перечислять явно.
++
++## Повторная проверка свидетельств 04.11.2026
++
++T002: ГОТОВО (локальная проверка, 04.11.2026); T006: ГОТОВО (локальная проверка, 04.11.2026); T008: ГОТОВО (локальная проверка, 04.11.2026); T010: ГОТОВО (локальная проверка, 04.11.2026).
++Подробные фактические проверки и границы: `project/backend/docs/acceptance-evidence.md`. Статус всего родителя, mobile и BG-1 не повышен; локальные результаты не заменяют утверждение privacy или целевой замер Argon2id.
+--- a/spec/plans/tasks/M1/M1-T2.md
++++ b/spec/plans/tasks/M1/M1-T2.md
+@@ -187,3 +187,8 @@
+ - Готовые протоколы — существующая соответствующая папка `other/reports/`; если отсутствует, сверить карту и согласовать место, не создавать молча.
+ - Указывать commit/build ID backend и mobile отдельно, окружение/дату; исключать секреты и ПДн.
+ - Зелёный статус только после выполнения критериев и передачи свидетельств; непроверенные платформы и блокеры перечислять явно.
++
++## Повторная проверка свидетельств 04.11.2026
++
++T011: БЛОКИРОВАНО; T012: БЛОКИРОВАНО.
++Подробные фактические проверки и границы: `project/backend/docs/acceptance-evidence.md`. Статус всего родителя, mobile и BG-1 не повышен; локальные результаты не заменяют утверждение privacy или целевой замер Argon2id.
+--- a/spec/plans/tasks/M1/M1-T4.md
++++ b/spec/plans/tasks/M1/M1-T4.md
+@@ -180,3 +180,8 @@
+ - Готовые протоколы — существующая соответствующая папка `other/reports/`; если отсутствует, сверить карту и согласовать место, не создавать молча.
+ - Указывать commit/build ID backend и mobile отдельно, окружение/дату; исключать секреты и ПДн.
+ - Зелёный статус только после выполнения критериев и передачи свидетельств; непроверенные платформы и блокеры перечислять явно.
++
++## Повторная проверка свидетельств 04.11.2026
++
++T019: ГОТОВО (локальная проверка, 04.11.2026).
++Подробные фактические проверки и границы: `project/backend/docs/acceptance-evidence.md`. Статус всего родителя, mobile и BG-1 не повышен; локальные результаты не заменяют утверждение privacy или целевой замер Argon2id.
+--- a/spec/plans/tasks/M1/M1-T6.md
++++ b/spec/plans/tasks/M1/M1-T6.md
+@@ -176,3 +176,8 @@
+ - Готовые протоколы — существующая соответствующая папка `other/reports/`; если отсутствует, сверить карту и согласовать место, не создавать молча.
+ - Указывать commit/build ID backend и mobile отдельно, окружение/дату; исключать секреты и ПДн.
+ - Зелёный статус только после выполнения критериев и передачи свидетельств; непроверенные платформы и блокеры перечислять явно.
++
++## Повторная проверка свидетельств 04.11.2026
++
++T028: ГОТОВО (локальная проверка, 04.11.2026).
++Подробные фактические проверки и границы: `project/backend/docs/acceptance-evidence.md`. Статус всего родителя, mobile и BG-1 не повышен; локальные результаты не заменяют утверждение privacy или целевой замер Argon2id.
+--- a/spec/plans/tasks/M1/T1/B02-runtime.md
++++ b/spec/plans/tasks/M1/T1/B02-runtime.md
+@@ -1,8 +1,8 @@
+ # M1.T1.B02. Закрепить JVM и версии сборки
+ 
+-**Родитель:** [M1.T1](../M1-T1.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО по родителю</span>.
++**Родитель:** [M1.T1](../M1-T1.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** 095e898; пользователь подтвердил сборку01.11.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T002. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M1/T1/B06-migrations.md
++++ b/spec/plans/tasks/M1/T1/B06-migrations.md
+@@ -1,8 +1,8 @@
+ # M1.T1.B06. Связать Flyway с этапом старта
+ 
+-**Родитель:** [M1.T1](../M1-T1.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО по родителю</span>.
++**Родитель:** [M1.T1](../M1-T1.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** a1bf365 и свидетельство первого/повторного запуска.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T006. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M1/T1/B08-errors.md
++++ b/spec/plans/tasks/M1/T1/B08-errors.md
+@@ -1,8 +1,8 @@
+ # M1.T1.B08. Сериализовать безопасную ошибку API
+ 
+-**Родитель:** [M1.T1](../M1-T1.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО по родителю</span>.
++**Родитель:** [M1.T1](../M1-T1.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** f1fe314/01c4d58; runtime искусственного5xx не объявлен пройденным.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T008. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M1/T1/B10-runbook.md
++++ b/spec/plans/tasks/M1/T1/B10-runbook.md
+@@ -1,8 +1,8 @@
+ # M1.T1.B10. Описать воспроизводимый запуск и остановку
+ 
+-**Родитель:** [M1.T1](../M1-T1.md). **Этап:** B. **Статус:** <span style="color:green">ГОТОВО по родителю</span>.
++**Родитель:** [M1.T1](../M1-T1.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** 639862e и подтверждение пользователя01.11.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T010. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M1/T1/README.md
++++ b/spec/plans/tasks/M1/T1/README.md
+@@ -7,15 +7,15 @@
+ ## Backend до BG-1
+ 
+ 1. [M1.T1.B01. Зафиксировать исходный серверный baseline](B01-baseline.md) — <span style="color:green">ГОТОВО по родителю</span>.
+-2. [M1.T1.B02. Закрепить JVM и версии сборки](B02-runtime.md) — <span style="color:green">ГОТОВО по родителю</span>.
++2. [M1.T1.B02. Закрепить JVM и версии сборки](B02-runtime.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 3. [M1.T1.B03. Развести bootstrap и HTTP маршруты](B03-bootstrap.md) — <span style="color:green">ГОТОВО по родителю</span>.
+ 4. [M1.T1.B04. Передать параметры окружения серверу](B04-environment.md) — <span style="color:green">ГОТОВО по родителю</span>.
+ 5. [M1.T1.B05. Настроить локальную PostgreSQL/PostGIS](B05-postgis.md) — <span style="color:green">ГОТОВО по родителю</span>.
+-6. [M1.T1.B06. Связать Flyway с этапом старта](B06-migrations.md) — <span style="color:green">ГОТОВО по родителю</span>.
++6. [M1.T1.B06. Связать Flyway с этапом старта](B06-migrations.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 7. [M1.T1.B07. Ограничить и закрывать пул БД](B07-datasource.md) — <span style="color:green">ГОТОВО по родителю</span>.
+-8. [M1.T1.B08. Сериализовать безопасную ошибку API](B08-errors.md) — <span style="color:green">ГОТОВО по родителю</span>.
++8. [M1.T1.B08. Сериализовать безопасную ошибку API](B08-errors.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 9. [M1.T1.B09. Отражать состояние БД в health](B09-readiness.md) — <span style="color:green">ГОТОВО по родителю</span>.
+-10. [M1.T1.B10. Описать воспроизводимый запуск и остановку](B10-runbook.md) — <span style="color:green">ГОТОВО по родителю</span>.
++10. [M1.T1.B10. Описать воспроизводимый запуск и остановку](B10-runbook.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 
+ ## Mobile после BG-1
+ 
+--- a/spec/plans/tasks/M1/T2/B01-privacy.md
++++ b/spec/plans/tasks/M1/T2/B01-privacy.md
+@@ -1,8 +1,10 @@
+ # M1.T2.B01. Утвердить публичную политику
+ 
+-**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** В ПРОЦЕССЕ.
++**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** БЛОКИРОВАНО.
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** Публичная публикация не завершена в родителе.
++**Свидетельство/граница факта:** В `project/backend/docs/privacy-policy-draft.md:3,7` текст явно не утверждён; данные оператора, адреса обращений и постоянный HTTPS URL оставлены placeholders. Локальный draft не заменяет публичную политику. Подготовлен воспроизводимый негативный HTTP/DB сценарий `UnpublishedPrivacyDatabaseIntegrationTest`; Новый локальный прогон 04.11.2026: UnpublishedPrivacyDatabaseIntegrationTest — 1/0/0/0, DraftPrivacyRouteTest — 4/0/0/0 (tests/failures/errors/skipped); реальный отказ 503 без записи users/sessions/settings подтверждён. Публичное утверждение остаётся заблокировано. Детали: `project/backend/docs/acceptance-evidence.md`, T011. [Открытый блокер публичной приёмки](../../../../../project/backlog/backend/m1-server-acceptance-completion.md).
++
++**Конкретный блокер и условие возобновления:** получить утверждённые сведения оператора и контакты обращений, окончательный текст, версию согласия и постоянный HTTPS URL с подтверждённой публикацией. После этого связать опубликованную политику с metadata/регистрацией и выполнить E-M1-05. Нельзя выдавать локальный loopback document за публичный URL; внешнее согласование и реальные сведения не определяются из кода. Android/iOS и BG-1 этим шагом не закрываются.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M1/T2/B02-hasher.md
++++ b/spec/plans/tasks/M1/T2/B02-hasher.md
+@@ -1,8 +1,10 @@
+ # M1.T2.B02. Подтвердить параметры Argon2id
+ 
+-**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** В ПРОЦЕССЕ.
++**Родитель:** [M1.T2](../M1-T2.md). **Этап:** B. **Статус:** БЛОКИРОВАНО.
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** Реализация есть, target host measurement отсутствует.
++**Свидетельство/граница факта:** Реализованы PHC salt/hash, bounded verify, dummy verify и запрет ослабления stronger/incomparable hash; `PasswordHasherTest`, `PasswordHashingWorkTest`, `LoginServiceTest` и новый `PasswordHashBoundsTest` содержат проверки этих свойств. `benchmarkPasswordHashing` измеряет последовательный hash+verify, но локальный замер не является приёмкой production-хоста. Новый локальный прогон 04.11.2026: PasswordHashBoundsTest1, PasswordHasherTest4, PasswordHashingWorkTest1, LoginServiceTest5 — все без ошибок/пропусков; локальный последовательный benchmark median66/124/380мс для трёх cost. Целевой хост и его SLO не подтверждены. Детали: `project/backend/docs/acceptance-evidence.md`, T012. [Отдельный блокер target-host приёмки](../../../../../project/backlog/backend/argon-target-host-acceptance.md).
++
++**Конкретный блокер и условие возобновления:** в доступных материалах не определён выбранный production-хост с CPU/RAM и ресурсными лимитами, отсутствует target-host протокол cost/latency/concurrency и подтверждение размещения в бюджете 5000 ₽/месяц. Нужны целевой профиль и возможность выполнить на нём замер; численный latency/concurrency SLO не задан, его нельзя выдумать. Параметры `m=19456 KiB,t=2,p=1` остаются предварительными; локальные результаты не закрывают действие «Измерить cost на выбранном хосте».
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M1/T2/README.md
++++ b/spec/plans/tasks/M1/T2/README.md
+@@ -6,8 +6,8 @@
+ 
+ ## Backend до BG-1
+ 
+-1. [M1.T2.B01. Утвердить публичную политику](B01-privacy.md) — В ПРОЦЕССЕ.
+-2. [M1.T2.B02. Подтвердить параметры Argon2id](B02-hasher.md) — В ПРОЦЕССЕ.
++1. [M1.T2.B01. Утвердить публичную политику](B01-privacy.md) — БЛОКИРОВАНО.
++2. [M1.T2.B02. Подтвердить параметры Argon2id](B02-hasher.md) — БЛОКИРОВАНО.
+ 3. [M1.T2.B03. Создать пользователя и сеанс атомарно](B03-register.md) — ГОТОВО локально по родителю.
+ 4. [M1.T2.B04. Проверить пароль при входе](B04-login.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026)</span>.
+ 5. [M1.T2.B05. Проверить защищённый access JWT](B05-access-guard.md) — <span style="color:green">ГОТОВО (локальный сервер, 04.11.2026)</span>.
+--- a/spec/plans/tasks/M1/T4/B01-fixture.md
++++ b/spec/plans/tasks/M1/T4/B01-fixture.md
+@@ -1,8 +1,8 @@
+ # M1.T4.B01. Подготовить viewport fixture
+ 
+-**Родитель:** [M1.T4](../M1-T4.md). **Этап:** B. **Статус:** ГОТОВО (fixture подготовлен, 02.11.2026).
++**Родитель:** [M1.T4](../M1-T4.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** [Тестовый SQL fixture](../../../../../project/backend/src/test/resources/m1-t4-viewport-fixture.sql), backend commit `f73662e`. Две точки (одна/две темы), четыре синтетических пользователя и реальные FK/членства; проверочные SQL-условия требуют 1 и 3 уникальных активных участника. Независимое ревью сверило схему V001–V005 и `PointReadRepository`, замечаний нет; `git diff --check` прошёл. SQL не запускался на PostgreSQL, поэтому runtime-совместимость и ответ API этим шагом не подтверждены.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T019. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M1/T4/README.md
++++ b/spec/plans/tasks/M1/T4/README.md
+@@ -6,7 +6,7 @@
+ 
+ ## Backend до BG-1
+ 
+-1. [M1.T4.B01. Подготовить viewport fixture](B01-fixture.md) — ГОТОВО (fixture подготовлен, 02.11.2026).
++1. [M1.T4.B01. Подготовить viewport fixture](B01-fixture.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 2. [M1.T4.B02. Настроить пространственную выборку](B02-bbox.md) — ГОТОВО (локальная DB-проверка, 02.11.2026).
+ 3. [M1.T4.B03. Отдать каталог тем](B03-presets.md) — ГОТОВО (серверный каталог, 02.11.2026).
+ 4. [M1.T4.B04. Отдать публичные Point endpoints](B04-public-detail.md) — ГОТОВО (публичные серверные ответы, 02.11.2026).
+--- a/spec/plans/tasks/M1/T6/B04-server-result.md
++++ b/spec/plans/tasks/M1/T6/B04-server-result.md
+@@ -1,8 +1,8 @@
+ # M1.T6.B04. Собрать серверный протокол M1
+ 
+-**Родитель:** [M1.T6](../M1-T6.md). **Этап:** B. **Статус:** ГОТОВО (серверный протокол, 02.11.2026).
++**Родитель:** [M1.T6](../M1-T6.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** [Серверный протокол](../../../../../project/backend/docs/m1-server-result.md) зафиксирован в commit `285b938` после серии проверок одного backend build `4e00ba2` на одноразовых PostGIS V013: S01–S05, E-M1-02, S-M1-MAP, S-M1-GUEST и локальные A01–A08 имеют наблюдаемые HTTP/DB результаты либо транспортное наблюдение A08, все с PASS в своей границе. E-M1-05 имеет обоснованный `BLOCKED`: утверждённой публичной политики и постоянного HTTPS URL нет. Отдельное read-only ревью протокола — APPROVE. Android/iOS не объявлены провалом серверного этапа; общий server PASS и BG-1 не заявлены. [Открытая публичная серверная приёмка](../../../../../project/backlog/backend/m1-server-acceptance-completion.md).
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T028. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M1/T6/README.md
++++ b/spec/plans/tasks/M1/T6/README.md
+@@ -9,7 +9,7 @@
+ 1. [M1.T6.B01. Составить паспорт серверной приёмки M1](B01-server-passport.md) — ГОТОВО (паспорт подготовлен, 02.11.2026).
+ 2. [M1.T6.B02. Разложить проверку старта БД и health](B02-startup-cases.md) — ГОТОВО (cases подготовлены, 02.11.2026).
+ 3. [M1.T6.B03. Разложить негативные auth случаи](B03-auth-cases.md) — ГОТОВО (cases подготовлены, 02.11.2026).
+-4. [M1.T6.B04. Собрать серверный протокол M1](B04-server-result.md) — ГОТОВО (результаты и блокер E-M1-05 зафиксированы, 02.11.2026).
++4. [M1.T6.B04. Собрать серверный протокол M1](B04-server-result.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 
+ ## Mobile после BG-1
+ 
+--- a/spec/plans/tasks/M2/M2-T1.md
++++ b/spec/plans/tasks/M2/M2-T1.md
+@@ -188,3 +188,8 @@
+ - Готовые протоколы — существующая соответствующая папка `other/reports/`; если отсутствует, сверить карту и согласовать место, не создавать молча.
+ - Указывать commit/build ID backend и mobile отдельно, окружение/дату; исключать секреты и ПДн.
+ - Зелёный статус только после выполнения критериев и передачи свидетельств; непроверенные платформы и блокеры перечислять явно.
++
++## Повторная проверка свидетельств 04.11.2026
++
++T030: ГОТОВО (локальная проверка, 04.11.2026).
++Подробные фактические проверки и границы: `project/backend/docs/acceptance-evidence.md`. Статус всего родителя, mobile и BG-1 не повышен; локальные результаты не заменяют утверждение privacy или целевой замер Argon2id.
+--- a/spec/plans/tasks/M2/M2-T2.md
++++ b/spec/plans/tasks/M2/M2-T2.md
+@@ -185,3 +185,8 @@
+ - Готовые протоколы — существующая соответствующая папка `other/reports/`; если отсутствует, сверить карту и согласовать место, не создавать молча.
+ - Указывать commit/build ID backend и mobile отдельно, окружение/дату; исключать секреты и ПДн.
+ - Зелёный статус только после выполнения критериев и передачи свидетельств; непроверенные платформы и блокеры перечислять явно.
++
++## Повторная проверка свидетельств 04.11.2026
++
++T039: ГОТОВО (локальная проверка, 04.11.2026); T040: ГОТОВО (локальная проверка, 04.11.2026).
++Подробные фактические проверки и границы: `project/backend/docs/acceptance-evidence.md`. Статус всего родителя, mobile и BG-1 не повышен; локальные результаты не заменяют утверждение privacy или целевой замер Argon2id.
+--- a/spec/plans/tasks/M2/M2-T3.md
++++ b/spec/plans/tasks/M2/M2-T3.md
+@@ -179,3 +179,8 @@
+ - Готовые протоколы — существующая соответствующая папка `other/reports/`; если отсутствует, сверить карту и согласовать место, не создавать молча.
+ - Указывать commit/build ID backend и mobile отдельно, окружение/дату; исключать секреты и ПДн.
+ - Зелёный статус только после выполнения критериев и передачи свидетельств; непроверенные платформы и блокеры перечислять явно.
++
++## Повторная проверка свидетельств 04.11.2026
++
++T042: ГОТОВО (локальная проверка, 04.11.2026).
++Подробные фактические проверки и границы: `project/backend/docs/acceptance-evidence.md`. Статус всего родителя, mobile и BG-1 не повышен; локальные результаты не заменяют утверждение privacy или целевой замер Argon2id.
+--- a/spec/plans/tasks/M2/M2-T5.md
++++ b/spec/plans/tasks/M2/M2-T5.md
+@@ -182,3 +182,8 @@
+ - Готовые протоколы — существующая соответствующая папка `other/reports/`; если отсутствует, сверить карту и согласовать место, не создавать молча.
+ - Указывать commit/build ID backend и mobile отдельно, окружение/дату; исключать секреты и ПДн.
+ - Зелёный статус только после выполнения критериев и передачи свидетельств; непроверенные платформы и блокеры перечислять явно.
++
++## Повторная проверка свидетельств 04.11.2026
++
++T049: ГОТОВО (локальная проверка, 04.11.2026); T050: ГОТОВО (локальная проверка, 04.11.2026); T052: ГОТОВО (локальная проверка, 04.11.2026).
++Подробные фактические проверки и границы: `project/backend/docs/acceptance-evidence.md`. Статус всего родителя, mobile и BG-1 не повышен; локальные результаты не заменяют утверждение privacy или целевой замер Argon2id.
+--- a/spec/plans/tasks/M2/T1/B02-geocoder.md
++++ b/spec/plans/tasks/M2/T1/B02-geocoder.md
+@@ -1,8 +1,8 @@
+ # M2.T1.B02. Изолировать reverse geocode
+ 
+-**Родитель:** [M2.T1](../M2-T1.md). **Этап:** B. **Статус:** ГОТОВО (03.11.2026).
++**Родитель:** [M2.T1](../M2-T1.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** backend commit `18795fe`; `geocoding/ReverseGeocoder.kt`, `DaDataReverseGeocoder.kt`, `api/GeocodingRoutes.kt`, конфигурация и focused tests: локальный provider/route прогон 4/0/0/0; пустой ответ и отказ допускают ручной адрес. Живой DaData не проверялся без ключа; лимит 30/с действует в одном JVM.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T030. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M2/T1/README.md
++++ b/spec/plans/tasks/M2/T1/README.md
+@@ -7,7 +7,7 @@
+ ## Backend до BG-1
+ 
+ 1. [M2.T1.B01. Нормализовать CreatePoint команду](B01-input.md) — ГОТОВО (`a8b3d9e`, 03.11.2026).
+-2. [M2.T1.B02. Изолировать reverse geocode](B02-geocoder.md) — ГОТОВО (`18795fe`, 03.11.2026).
++2. [M2.T1.B02. Изолировать reverse geocode](B02-geocoder.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 3. [M2.T1.B03. Создать Point и первое членство атомарно](B03-atomic-create.md) — ГОТОВО (`1cbb29f`, 03.11.2026).
+ 4. [M2.T1.B04. Сохранить исход CreatePoint](B04-idempotency.md) — ГОТОВО (`bf787b2`, 03.11.2026).
+ 5. [M2.T1.B05. Связать POST points с сервисом](B05-create-route.md) — ГОТОВО (`3b2c065`, 03.11.2026).
+--- a/spec/plans/tasks/M2/T2/B05-transaction-guards.md
++++ b/spec/plans/tasks/M2/T2/B05-transaction-guards.md
+@@ -1,8 +1,8 @@
+ # M2.T2.B05. Защитить create от гонок
+ 
+-**Родитель:** [M2.T2](../M2-T2.md). **Этап:** B. **Статус:** ГОТОВО.
++**Родитель:** [M2.T2](../M2-T2.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** backend commit c3f3bd2 изменил PointCreationGuardsIntegrationTest.kt; проверен существующий PointWriteService.kt. PostGIS: 2 теста, 0 ошибок; два последовательных прогона на одной БД. Отдельный серверный шаг готов; BG-1 и mobile не закрыты.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T039. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M2/T2/B06-block-outcome.md
++++ b/spec/plans/tasks/M2/T2/B06-block-outcome.md
+@@ -1,8 +1,8 @@
+ # M2.T2.B06. Зафиксировать превышающую попытку
+ 
+-**Родитель:** [M2.T2](../M2-T2.md). **Этап:** B. **Статус:** ГОТОВО.
++**Родитель:** [M2.T2](../M2-T2.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** backend commit ca69963 изменил PointQuotaBlockRouteIntegrationTest.kt; проверен существующий JdbcIdempotencyOperations.kt. PostGIS API: 1 тест, 0 ошибок; подтверждены 30×24 ч, snapshot и replay. Отдельный серверный шаг готов; BG-1 и mobile не закрыты.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T040. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M2/T2/README.md
++++ b/spec/plans/tasks/M2/T2/README.md
+@@ -10,8 +10,8 @@
+ 2. [M2.T2.B02. Рассчитать оба окна квоты](B02-rolling-quota.md) — ГОТОВО (`720dc4a`, 03.11.2026).
+ 3. [M2.T2.B03. Найти соседей в100м](B03-nearby-query.md) — ГОТОВО (`f88fa99`, 03.11.2026).
+ 4. [M2.T2.B04. Отдать контекст создания](B04-context.md) — ГОТОВО (`b9d0674`, 03.11.2026).
+-5. [M2.T2.B05. Защитить create от гонок](B05-transaction-guards.md) — ГОТОВО (`c3f3bd2`, 03.11.2026).
+-6. [M2.T2.B06. Зафиксировать превышающую попытку](B06-block-outcome.md) — ГОТОВО (`ca69963`, 03.11.2026).
++5. [M2.T2.B05. Защитить create от гонок](B05-transaction-guards.md) — ГОТОВО (локальная проверка, 04.11.2026).
++6. [M2.T2.B06. Зафиксировать превышающую попытку](B06-block-outcome.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 
+ ## Mobile после BG-1
+ 
+--- a/spec/plans/tasks/M2/T3/B02-topic-key.md
++++ b/spec/plans/tasks/M2/T3/B02-topic-key.md
+@@ -1,8 +1,8 @@
+ # M2.T3.B02. Нормализовать уникальность темы
+ 
+-**Родитель:** [M2.T3](../M2-T3.md). **Этап:** B. **Статус:** ГОТОВО.
++**Родитель:** [M2.T3](../M2-T3.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** backend commit 82b097d изменил TopicPresetKeys.kt, CreatePointNormalizer.kt, PointWriteService.kt и CreatePointNormalizerTest.kt. Unit: 3 теста, 0 ошибок; DB UNIQUE подтверждён T044. Отдельный серверный шаг готов; BG-1 и mobile не закрыты.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T042. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M2/T3/README.md
++++ b/spec/plans/tasks/M2/T3/README.md
+@@ -7,7 +7,7 @@
+ ## Backend до BG-1
+ 
+ 1. [M2.T3.B01. Собрать проекцию Point detail](B01-detail.md) — ГОТОВО (`d5c5bf4`, 03.11.2026).
+-2. [M2.T3.B02. Нормализовать уникальность темы](B02-topic-key.md) — ГОТОВО (`82b097d`, 03.11.2026).
++2. [M2.T3.B02. Нормализовать уникальность темы](B02-topic-key.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 3. [M2.T3.B03. Добавить тему с autojoin](B03-add-topic.md) — ГОТОВО (`dfb3f23`, 03.11.2026).
+ 4. [M2.T3.B04. Вернуть конфликт дубликата темы](B04-duplicate.md) — ГОТОВО (`8e19a53`, 03.11.2026).
+ 
+--- a/spec/plans/tasks/M2/T5/B02-leave.md
++++ b/spec/plans/tasks/M2/T5/B02-leave.md
+@@ -1,8 +1,8 @@
+ # M2.T5.B02. Снять членство пользователя
+ 
+-**Родитель:** [M2.T5](../M2-T5.md). **Этап:** B. **Статус:** ГОТОВО.
++**Родитель:** [M2.T5](../M2-T5.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** backend commit ecf12bd изменил PointChatLeaveRoutesIntegrationTest.kt; проверены существующие PointWriteService.leave и PointWriteRoutes.kt. PostGIS API: 1 тест, 0 ошибок в двух последовательных прогонах на одной БД; mute, голоса, бронь и повтор DELETE. BG-1 и mobile не закрыты.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T049. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M2/T5/B03-delete-empty.md
++++ b/spec/plans/tasks/M2/T5/B03-delete-empty.md
+@@ -1,8 +1,8 @@
+ # M2.T5.B03. Удалить пустую Point атомарно
+ 
+-**Родитель:** [M2.T5](../M2-T5.md). **Этап:** B. **Статус:** ГОТОВО.
++**Родитель:** [M2.T5](../M2-T5.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** backend commit d0c181d изменил PointEmptyDeletionIntegrationTest.kt; проверены PointWriteService.leave и FK каскады V002–V003. PostGIS: 1 тест, 0 ошибок; живая точка сохранена, пустая удалена, ledger остался с null FK. BG-1 и mobile не закрыты.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T050. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M2/T5/B05-events.md
++++ b/spec/plans/tasks/M2/T5/B05-events.md
+@@ -1,8 +1,8 @@
+ # M2.T5.B05. Связать lifecycle с post-commit событиями
+ 
+-**Родитель:** [M2.T5](../M2-T5.md). **Этап:** B. **Статус:** ГОТОВО.
++**Родитель:** [M2.T5](../M2-T5.md). **Этап:** B. **Статус:** ГОТОВО (локальная проверка, 04.11.2026).
+ **Допуск:** Серверный проход до общей приёмки BG-1. [Общий порядок](../../../roadmap/backend-first-plan.md).
+-**Свидетельство/граница факта:** backend commit 33b3fea добавил `PointLifecycleRealtimeIntegrationTest.kt`: HTTP join/leave/delete и WebSocket события после commit, отзыв доступа к старому chatId, уведомление бывших участников и отсутствие успеха после принудительного rollback. Адресный прогон на PostGIS: 2 теста, 0 ошибок. Подписка очищается лениво; повторная проверка членства в БД блокирует доставку после выхода. BG-1 и mobile не закрыты.
++**Свидетельство/граница факта:** Повторная проверка 04.11.2026: критерии сопоставлены с реализацией и фактическими прогонами на новой изолированной PostGIS БД либо unit/API тестами. Перечень assertions, XML-счётчики и ограничения: `project/backend/docs/acceptance-evidence.md`, раздел T052. Публичная privacy, целевой Argon2id, mobile и BG-1 этим результатом не закрыты.
+ 
+ ## Единственный результат
+ 
+--- a/spec/plans/tasks/M2/T5/README.md
++++ b/spec/plans/tasks/M2/T5/README.md
+@@ -7,10 +7,10 @@
+ ## Backend до BG-1
+ 
+ 1. [M2.T5.B01. Вступить в существующий чат идемпотентно](B01-join.md) — ГОТОВО (`2e5a555`, 03.11.2026).
+-2. [M2.T5.B02. Снять членство пользователя](B02-leave.md) — ГОТОВО (`ecf12bd`, 03.11.2026).
+-3. [M2.T5.B03. Удалить пустую Point атомарно](B03-delete-empty.md) — ГОТОВО (`d0c181d`, 03.11.2026).
++2. [M2.T5.B02. Снять членство пользователя](B02-leave.md) — ГОТОВО (локальная проверка, 04.11.2026).
++3. [M2.T5.B03. Удалить пустую Point атомарно](B03-delete-empty.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 4. [M2.T5.B04. Описать гонку join и last leave](B04-race-case.md) — ГОТОВО (`7ac7471`, 03.11.2026).
+-5. [M2.T5.B05. Связать lifecycle с post-commit событиями](B05-events.md) — ГОТОВО (`33b3fea`, 03.11.2026).
++5. [M2.T5.B05. Связать lifecycle с post-commit событиями](B05-events.md) — ГОТОВО (локальная проверка, 04.11.2026).
+ 
+ ## Mobile после BG-1
+ 
