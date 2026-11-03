@@ -36,3 +36,7 @@ DaDataReverseGeocoderTest: 3 tests passed; GeocodingRouteTest: 1 passed. Config 
 ## T039 — Rechecked criteria
 
 PointCreationGuardsIntegrationTest: 2 concurrent PostGIS tests passed without skips. PointWriteService takes global creation advisory then user lock before re-reading quotas and nearby points. JdbcIdempotencyOperations uses FOR NO KEY UPDATE; the no-confirmation response returns before success/idempotency record. Last quota slot and nearby races are asserted in the real database.
+
+## T040 — Rechecked criteria
+
+PointQuotaBlockRouteIntegrationTest: 1 HTTP/PostGIS test passed without skips. It asserts first 409, exact replay body, unchanged blockedUntil on another key, exactly 720 hours, one terminal idempotency record and no Point. JdbcIdempotencyOperations writes block and outcome on the same transaction; response construction follows the committed service result.
