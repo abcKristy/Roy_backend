@@ -40,3 +40,7 @@ PointCreationGuardsIntegrationTest: 2 concurrent PostGIS tests passed without sk
 ## T040 — Rechecked criteria
 
 PointQuotaBlockRouteIntegrationTest: 1 HTTP/PostGIS test passed without skips. It asserts first 409, exact replay body, unchanged blockedUntil on another key, exactly 720 hours, one terminal idempotency record and no Point. JdbcIdempotencyOperations writes block and outcome on the same transaction; response construction follows the committed service result.
+
+## T042 — Rechecked criteria
+
+AddTopicAutojoinIntegrationTest: 3 tests passed; TopicUnicodeUniquenessIntegrationTest: 1 passed, zero skips. The new real service/SQL test covers Unicode surrounding whitespace, Cyrillic case, preserved display label, duplicate refusal and exactly one Topic/Chat. SQL lookup and UNIQUE share lower(btrim(...)); JVM key is explicitly advisory. Universal equality across arbitrary database locales is not a normative criterion.
