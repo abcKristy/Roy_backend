@@ -24,3 +24,7 @@ SafeErrorEnvelopeTest: 2 tests passed, zero failures/errors/skips. The tests exe
 ## T011 — Rechecked criteria
 
 UnpublishedPrivacyDatabaseIntegrationTest: 1 real HTTP/JDBC test passed with zero skips; metadata and registration return 503 and users/sessions/settings are unchanged. DraftPrivacyRouteTest: 4 passed. BLOCKED for approval/publication: operator identity and contacts, approved immutable text/version and public HTTPS publication are absent. Local behavior is not legal approval or public acceptance.
+
+## T019 — Rechecked criteria
+
+ViewportFixtureIntegrationTest: 1 PostGIS test passed, zero failures/errors/skips, on the exact guarded viewport database. The SQL fixture was applied successfully once to empty migrated V014 schema before independent clones. It asserts both Points, distinct people and chat member counts, pagination, filter-bound cursor and missing Point. No load or EXPLAIN result is claimed.
