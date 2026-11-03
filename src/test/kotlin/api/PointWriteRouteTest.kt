@@ -24,7 +24,7 @@ import kotlin.test.assertTrue
 
 class PointWriteRouteTest {
     @Test
-    fun `unknown topic preset is rejected before database mutation`() = testApplication {
+    fun `create route rejects unauthorized and invalid requests before database mutation`() = testApplication {
         val database = object : DatabaseRuntime {
             override suspend fun isReady() = true
             override fun close() = Unit
@@ -60,5 +60,31 @@ class PointWriteRouteTest {
         }
         assertEquals(HttpStatusCode.BadRequest, missingKey.status)
         assertTrue(missingKey.bodyAsText().contains("INVALID_FIELD"))
+
+        val unauthenticated = client.post("/api/v1/points") {
+            header("Idempotency-Key", UUID.randomUUID().toString())
+            contentType(ContentType.Application.Json)
+            setBody("""{"position":{"lat":55.75,"lon":37.62},"topic":{"presetKey":"football"},"address":"Test","addressSource":"manual","confirmNearby":true}""")
+        }
+        assertEquals(HttpStatusCode.Unauthorized, unauthenticated.status)
+        assertTrue(unauthenticated.bodyAsText().contains("AUTH_REQUIRED"))
+
+        val unknownField = client.post("/api/v1/points") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            header("Idempotency-Key", UUID.randomUUID().toString())
+            contentType(ContentType.Application.Json)
+            setBody("""{"position":{"lat":55.75,"lon":37.62},"topic":{"presetKey":"football"},"address":"Test","addressSource":"manual","confirmNearby":true,"quota":{"weekUsed":0}}""")
+        }
+        assertEquals(HttpStatusCode.UnprocessableEntity, unknownField.status)
+        assertTrue(unknownField.bodyAsText().contains("INVALID_FIELD"))
+
+        val missingConfirmation = client.post("/api/v1/points") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            header("Idempotency-Key", UUID.randomUUID().toString())
+            contentType(ContentType.Application.Json)
+            setBody("""{"position":{"lat":55.75,"lon":37.62},"topic":{"presetKey":"football"},"address":"Test","addressSource":"manual"}""")
+        }
+        assertEquals(HttpStatusCode.UnprocessableEntity, missingConfirmation.status)
+        assertTrue(missingConfirmation.bodyAsText().contains("INVALID_FIELD"))
     }
 }

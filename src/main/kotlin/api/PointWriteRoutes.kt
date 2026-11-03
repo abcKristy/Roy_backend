@@ -12,6 +12,7 @@ import com.example.points.PointPosition
 import com.example.points.PointTopicInput
 import com.example.points.PointWriteService
 import com.example.points.TopicPresetKeys
+import com.example.points.normalized
 import com.example.realtime.RealtimeHub
 import com.example.realtime.RealtimeEvent
 import com.example.realtime.RealtimeEventType
@@ -64,18 +65,21 @@ internal fun Route.pointWriteRoutes(write: PointWriteService, sessions: SessionA
         val actor = actorId(sessions, call.request.headers[HttpHeaders.Authorization])
         val key = idempotencyKey(call.request.headers["Idempotency-Key"])
         val input = call.receiveStrictJson(CreatePointInput.serializer())
-        validatePosition(input.position)
-        validateAddress(input.address)
-        val topic = validateTopic(input.topic)
         val source = when (input.addressSource) {
             "provider" -> PointAddressSource.GEOCODED
             "manual" -> PointAddressSource.MANUAL
             else -> throw invalidPointField()
         }
+        val command = try {
+            CreatePointCommand(actor, key, PointPosition(input.position.lat, input.position.lon),
+                PointTopicInput(input.topic.presetKey, input.topic.customLabel), input.address,
+                source, input.confirmNearby).normalized()
+        } catch (_: IllegalArgumentException) {
+            throw invalidPointField()
+        }
         val requestId = call.requestId()
         val result = write.create(
-            CreatePointCommand(actor, key, PointPosition(input.position.lat, input.position.lon),
-                topic, input.address, source, input.confirmNearby),
+            command,
             PointWriteSnapshot::create,
         ) { blockedUntil ->
             buildJsonObject {
@@ -233,16 +237,6 @@ private fun parseId(raw: String?): UUID {
 }
 
 private fun invalidIdentifier() = ApiException(HttpStatusCode.BadRequest, "INVALID_FIELD", "Некорректный идентификатор")
-
-private fun validatePosition(position: PositionInput) {
-    if (!position.lat.isFinite() || !position.lon.isFinite() ||
-        position.lat !in -90.0..90.0 || position.lon !in -180.0..180.0) throw invalidPointField()
-}
-
-private fun validateAddress(address: String) {
-    val value = address.trim()
-    if (value.codePointCount(0, value.length) !in 1..300) throw invalidPointField()
-}
 
 private fun validateTopic(topic: TopicInput): PointTopicInput {
     val label = topic.customLabel?.trim()

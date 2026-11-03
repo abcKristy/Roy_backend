@@ -81,6 +81,10 @@ class PointRoutesIntegrationTest {
             assertEquals(HttpStatusCode.Created, first.status)
             val firstBody = first.bodyAsText()
             val point = Json.parseToJsonElement(firstBody).jsonObject["point"]!!.jsonObject
+            val response = Json.parseToJsonElement(firstBody).jsonObject
+            assertEquals(setOf("point", "chat", "quota"), response.keys)
+            assertEquals("1", response["quota"]!!.jsonObject["weekUsed"]!!.jsonPrimitive.content)
+            assertEquals("1", response["chat"]!!.jsonObject["participantCount"]!!.jsonPrimitive.content)
             val pointId = point["id"]!!.jsonPrimitive.content
             val chatId = Json.parseToJsonElement(firstBody).jsonObject["chat"]!!.jsonObject["id"]!!.jsonPrimitive.content
             assertEquals(HttpStatusCode.Created, create().status)
