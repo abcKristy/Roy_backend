@@ -25,7 +25,6 @@ import java.sql.Connection
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -66,11 +65,11 @@ class PointWriteService(
                 JdbcIdempotencyOperations.Decision.New -> Unit
             }
             val now = databaseNow(connection)
-            blockedUntil(connection, command.actorId)?.takeIf { it > now }?.let {
+            val quota = PointQuotaSql.read(connection, command.actorId, now)
+            quota.blockedUntil?.let {
                 return@withRetryingJdbcTransaction CreatePointResult.QuotaBlocked(it)
             }
-            val (weekUsed, monthUsed) = quotaUsage(connection, command.actorId, now)
-            if (weekUsed >= 3 || monthUsed >= 10) {
+            if (quota.weekRemaining == 0 || quota.monthRemaining == 0) {
                 var response: JsonObject? = null
                 val until = idempotency.recordQuotaExceeded(
                     connection, command.actorId, "create_point", command.idempotencyKey, hash,
@@ -320,27 +319,6 @@ class PointWriteService(
             check(rows.next())
             rows.getObject(1, OffsetDateTime::class.java).toInstant()
         }
-    }
-
-    private fun blockedUntil(connection: Connection, userId: UUID): Instant? = connection.prepareStatement(
-        "SELECT create_point_blocked_until FROM users WHERE id = ?"
-    ).use { statement ->
-        statement.setObject(1, userId)
-        statement.executeQuery().use { rows ->
-            check(rows.next())
-            rows.getObject(1, OffsetDateTime::class.java)?.toInstant()
-        }
-    }
-
-    private fun quotaUsage(connection: Connection, userId: UUID, now: Instant): Pair<Int, Int> = connection.prepareStatement(
-        """SELECT count(*) FILTER (WHERE created_at > ?) AS week_used,
-                  count(*) FILTER (WHERE created_at > ?) AS month_used
-           FROM point_creation_events WHERE creator_user_id = ?"""
-    ).use { statement ->
-        statement.setObject(1, now.minus(7, ChronoUnit.DAYS).atOffset(ZoneOffset.UTC))
-        statement.setObject(2, now.minus(30, ChronoUnit.DAYS).atOffset(ZoneOffset.UTC))
-        statement.setObject(3, userId)
-        statement.executeQuery().use { rows -> check(rows.next()); rows.getInt(1) to rows.getInt(2) }
     }
 
     private fun nearby(connection: Connection, position: PointPosition): List<NearbyPoint> = connection.prepareStatement(

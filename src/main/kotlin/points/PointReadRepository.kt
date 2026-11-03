@@ -193,35 +193,8 @@ class PointReadRepository(private val database: DatabaseRuntime, cursorSecret: S
         }
     }
 
-    private fun readQuota(connection: Connection, userId: UUID): PointQuotaRead = connection.prepareStatement(
-        """WITH clock_now AS (SELECT clock_timestamp() AS ts)
-           SELECT count(*) FILTER (WHERE e.created_at > n.ts - interval '168 hours'),
-                  count(*) FILTER (WHERE e.created_at > n.ts - interval '720 hours'),
-                  min(e.created_at) FILTER (WHERE e.created_at > n.ts - interval '168 hours'),
-                  min(e.created_at) FILTER (WHERE e.created_at > n.ts - interval '720 hours'),
-                  u.create_point_blocked_until,n.ts
-           FROM users AS u CROSS JOIN clock_now AS n
-           LEFT JOIN point_creation_events AS e ON e.creator_user_id = u.id
-           WHERE u.id = ? AND u.deleted_at IS NULL
-           GROUP BY u.id,u.create_point_blocked_until,n.ts"""
-    ).use { statement ->
-        statement.setObject(1, userId)
-        statement.executeQuery().use { rows ->
-            check(rows.next()) { "Active user is required" }
-            val week = rows.getInt(1)
-            val month = rows.getInt(2)
-            val weekOldest = rows.getObject(3, OffsetDateTime::class.java)?.toInstant()
-            val monthOldest = rows.getObject(4, OffsetDateTime::class.java)?.toInstant()
-            val blocked = rows.getObject(5, OffsetDateTime::class.java)?.toInstant()
-                ?.takeIf { it > rows.getObject(6, OffsetDateTime::class.java).toInstant() }
-            PointQuotaRead(
-                week, month,
-                if (week >= 3) weekOldest?.plusSeconds(7 * 24 * 3600L) else null,
-                if (month >= 10) monthOldest?.plusSeconds(30 * 24 * 3600L) else null,
-                blocked,
-            )
-        }
-    }
+    private fun readQuota(connection: Connection, userId: UUID): PointQuotaRead =
+        PointQuotaSql.read(connection, userId, PointQuotaSql.databaseNow(connection))
 
     private fun readTopics(connection: Connection, ids: List<UUID>): Map<UUID, List<PointTopicRead>> {
         if (ids.isEmpty()) return emptyMap()
