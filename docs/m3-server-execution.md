@@ -74,3 +74,17 @@ The concurrent scenario starts actual join and last-leave coroutines after both 
 Lead executed on 04.11.2026 (JDK17/Gradle9.5.1): `./gradlew.bat integrationTest --tests com.example.api.LeaveLifecycleIntegrationTest --offline --no-daemon --max-workers=1`: exit 0, BUILD SUCCESSFUL in 41s.
 
 Inspected `build/test-results/integrationTest/TEST-com.example.api.LeaveLifecycleIntegrationTest.xml`: tests=2, skipped=0, failures=0, errors=0, timestamp=2026-11-03T22:11:14.918Z, suite seconds=2.607. Local T061 server PASS for these cases. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; no mobile, BG-1 or overall M3 acceptance is claimed.
+## Group 2 accepted integration and accounting ledger — 04.11.2026
+
+Working branch `feat/chat-search-lifecycle`, created from accepted clean target/origin `f1ef52a300d0390a408364313efca4df5e273737`. Task commits: T060 `2b7e5a6db31a0c68ef0145c81b93620befbd8482`, T061 `1d13f3ce41c4d4c4ebe9b5a49cd3a8d72045ff72`. Independent task and whole-branch read-only reviews: APPROVE, no findings. Lead confirmed fast-forward merge and non-force push only to `feat/back-part-3`; local and origin target both resolved to `1d13f3ce41c4d4c4ebe9b5a49cd3a8d72045ff72` with clean working tree at the group gate. Main before and after this integration: `2c1de31de2a5481e90e3c84e93a8abdb38f16169`, unchanged by this work.
+
+Actually updated external accounting files:
+
+- `spec/plans/tasks/M3/T1/B04-search-query.md`: T060 local server ГОТОВО with checked acceptance, actual 1/0/0/0 execution and commit evidence.
+- `spec/plans/tasks/M3/T1/B05-leave-command.md`: T061 local server ГОТОВО with checked acceptance, actual 2/0/0/0 execution and commit evidence.
+- `spec/plans/tasks/M3/T1/README.md`: B04–B05 checked with date and task commits.
+- `spec/plans/roadmap/execution-checklist.md`: T060–T061 checked with local PASS/date/task commits; M3.T1 backend 5/5, client open; freshly recounted 59/455 checked tasks. Unrelated statuses preserved using optimistic comparison immediately before writing.
+- `spec/plans/tasks/M3/M3-T1.md`: backend B01–B05 complete locally, C01–C06 and whole-parent acceptance remain open.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: matching M3.T1 backend 5/5 and partial whole-parent summary.
+
+All six accounting files remain outside backend Git and are not physically versioned by the target branch. This ledger records the actual edits and exact topology limitation, without moving or duplicating plans. Versionable tests and protocol are on the target branch; these local server results do not close mobile tasks, BG-1 or overall M3.
