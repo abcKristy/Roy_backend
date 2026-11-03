@@ -162,3 +162,17 @@ Earlier fixture attempts were not product defects or successful acceptance: ordi
 Lead executed on04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.realtime.WebSocketSubscriptionIntegrationTest --offline --no-daemon --max-workers=1`, final exit0, BUILD SUCCESSFUL in42s.
 
 Final XML inspected: `build/test-results/integrationTest/TEST-com.example.realtime.WebSocketSubscriptionIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-03T23:10:11.823Z`, suite seconds 3.556. Local T065 server PASS for these assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; mobile, BG-1 and overall M3 remain open.
+
+## T066 — M3.T2.B05
+
+Preceding accepted task commit `7a8a8c4` (T065), branch `feat/chat-realtime-sessions`. Production publication retained unchanged; the fixture uses real JdbcSessionRepository sessions and the owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015.
+
+Evidence `com.example.realtime.MessagePublicationIntegrationTest` executes actual HTTP POST through ChatWriteRoutes/ChatSendService and three headless sockets. Author and recipient subscribed to the same chat receive the same canonical UUID eventId and v1 envelope, chat scope, occurredAt and complete Message payload equal to HTTP201 (ID/sequence/text/author/time and full DTO). An independent JDBC connection reads the persisted message after event receipt and confirms the returned fields. The adjacent-topic subscriber receives no message event before its correlated user sentinel or during the subsequent 250ms observation.
+
+A same-key POST returns the original201 DTO and unchanged snapshots of messages/chat/point/memberships, both sending actors' rate/outcome records and notification events. On each socket a user sentinel published after the awaited POST is drained while rejecting every chat.message.created, followed by a bounded 250ms no-frame observation. A unique temporary outcome-insert trigger forces HTTP500 for a different active sender; identical full snapshots prove rollback. All sockets again reach their user sentinels without a message event and remain alive through the observation window. Trigger/function cleanup runs in finally.
+
+The correlation and 250ms windows establish the actual observed no-repeat/no-rollback-success cases; they do not promise unbounded exactly-once delivery or durable WS replay. User sentinels are synthetic observation probes; the successful Message event itself is produced by the actual POST route after commit.
+
+Lead executed on04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.realtime.MessagePublicationIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in44s.
+
+Final XML inspected: `build/test-results/integrationTest/TEST-com.example.realtime.MessagePublicationIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-03T23:15:59.432Z`, suite seconds 4.844. Local T066 server PASS for these assertions. Independent read-only task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance; mobile, BG-1 and overall M3 remain open.
