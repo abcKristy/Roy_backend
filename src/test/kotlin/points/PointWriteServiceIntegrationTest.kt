@@ -18,6 +18,40 @@ import kotlin.test.assertTrue
 
 class PointWriteServiceIntegrationTest {
     @Test
+    fun `lost create response replays stored outcome and rejects a changed payload`() = runBlocking {
+        val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
+        require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step4write$").matches(url))
+        val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
+        val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
+        val actor = UUID.randomUUID()
+        DriverManager.getConnection(url, user, password).use { connection ->
+            connection.autoCommit = false
+            seedUser(connection, actor)
+            connection.commit()
+        }
+        HikariDatabaseBootstrap(ServerConfig(url, user, password, "test-secret",
+            appEnvironment = AppEnvironment.PRODUCTION)).start().use { runtime ->
+            val service = PointWriteService(runtime)
+            val command = CreatePointCommand(actor, UUID.randomUUID(),
+                PointPosition(ThreadLocalRandom.current().nextDouble(55.0, 56.0),
+                    ThreadLocalRandom.current().nextDouble(37.0, 38.0)),
+                PointTopicInput("football"), "Idempotent create probe", PointAddressSource.MANUAL, true)
+            val original = assertIs<CreatePointResult.Created>(service.create(command, ::createdPointBody, ::quotaBody))
+            // The caller loses the response, but retains the same key and business input.
+            val replay = assertIs<CreatePointResult.Replay>(service.create(
+                command.copy(confirmNearby = false), ::createdPointBody, ::quotaBody))
+            assertEquals(original.responseSnapshot, replay.responseSnapshot)
+            assertIs<CreatePointResult.KeyReused>(service.create(
+                command.copy(address = "Changed address"), ::createdPointBody, ::quotaBody))
+            DriverManager.getConnection(url, user, password).use { connection ->
+                assertEquals(1, count(connection, "SELECT count(*) FROM points WHERE created_by_user_id = ?", actor))
+                assertEquals(1, count(connection, "SELECT count(*) FROM point_creation_events WHERE creator_user_id = ?", actor))
+                assertEquals(1, count(connection, "SELECT count(*) FROM operation_idempotency WHERE actor_user_id = ?", actor))
+            }
+        }
+    }
+
+    @Test
     fun `create rolls back the complete graph when response projection fails`() = runBlocking {
         val url = System.getenv("TEST_DATABASE_URL") ?: return@runBlocking
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step4write$").matches(url))
