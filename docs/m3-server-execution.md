@@ -88,3 +88,22 @@ Actually updated external accounting files:
 - `spec/plans/roadmap/M3/M3-chat-moderation.md`: matching M3.T1 backend 5/5 and partial whole-parent summary.
 
 All six accounting files remain outside backend Git and are not physically versioned by the target branch. This ledger records the actual edits and exact topology limitation, without moving or duplicating plans. Versionable tests and protocol are on the target branch; these local server results do not close mobile tasks, BG-1 or overall M3.
+
+## T062 — M3.T2.B01
+
+Group 3 working branch `feat/chat-send-transactions`, created from accepted clean target/origin `934a61e2cb5f05a902c8760565e793da8dffb550`. The existing strict JSON/JWT/UUID route continues to call the single ChatSendService. The newer author-approved 4096-character message limit is recorded in `docs/database-migration-execution.md`; historical M0's 2000-character text is not used to silently narrow it.
+
+Evidence: `com.example.api.SendInputIntegrationTest`, self-contained synthetic UUID fixture in the owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`. Malformed JSON, unknown/missing/null/numeric fields, array body, empty/blank/4097-codepoint text, missing/invalid key/path, missing/invalid authorization and non-membership are rejected. Database snapshots verify no message, rate, outcome, notification or sequence/read-cursor side effects. Accepted trimmed 4096-emoji input identifies the authenticated author and route chat, persists the returned message ID once, and same-key replay preserves the snapshot. JWT validation uses the production SessionAccessService with a session-registry test double.
+
+The initial required run failed in 44s: a valid 4096-emoji request returned HTTP500 because its saved response exceeded the prior 16KiB `operation_idempotency_snapshot_check`. This was a real server boundary defect, not a skipped test. Append-only `V015__message_idempotency_snapshot_size.sql` raises only `send_message` response snapshots to 65536 bytes; other operations retain 16384 bytes and the object/null shape constraint. Applied V001–V014 were not edited. Migration run completed successfully in 35s; schema is now V015. The retry passed in 37s.
+
+The enhanced regression additionally sends 4096 non-whitespace U+0001 controls from a second active member, confirms HTTP201 and actual stored snapshot size above 24576 and at most 65536 bytes. Real SQLSTATE23514 checks retain the other-operation 16KiB cap, send 64KiB cap and object shape. Worst-case JSON escaping is six bytes per codepoint: 24576 bytes for text plus at most 480 bytes for the canonical author name trimmed by current registration/profile services (at most 80 characters). V006 bounds char_length(btrim(display_name)), so this is not a raw-length guarantee for arbitrary legacy or direct-SQL rows; UUIDs, fixed avatar URL, timestamp and JSON fields fit within a conservative 4KiB envelope budget, totaling under 30KiB. The 64KiB limit covers this representation without removing a bound.
+
+Actual commands executed by Lead on 04.11.2026 with JDK17/Gradle9.5.1:
+
+- `./gradlew.bat runMigrations --offline --no-daemon --max-workers=1`: PASS, 35s, V015 applied/validated.
+- `./gradlew.bat integrationTest --tests com.example.api.SendInputIntegrationTest --offline --no-daemon --max-workers=1`: initial FAIL44s, retry PASS37s, enhanced PASS36s, NUL-fix final PASS38s (exit0).
+
+Task-review finding `T062-INPUT-NUL` (P2): REQUEST CHANGES. Reviewer identified that `ChatSendService.send` accepted U+0000 at input validation, while PostgreSQL text rejects it during insertion, producing HTTP500. The minimal fix rejects NUL as `InvalidText` before entering the transaction. The HTTP `a\u0000b` regression now expects 422 INVALID_FIELD and unchanged full database snapshot; U+0001 remains accepted. This is a task-review finding, not a final-block audit ID. Code and regression are fixed; independent targeted re-review APPROVE, 04.11.2026.
+
+Final XML inspected: `build/test-results/integrationTest/TEST-com.example.api.SendInputIntegrationTest.xml`, tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-03T22:32:04.913Z`, suite seconds 2.673. Local T062 server PASS for the enumerated assertions. Independent targeted task re-review: APPROVE, no remaining findings, 04.11.2026. External accounting remains pending group acceptance. No mobile, BG-1 or overall M3 acceptance is claimed.

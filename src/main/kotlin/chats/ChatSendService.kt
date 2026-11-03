@@ -30,7 +30,7 @@ class ChatSendService(
 ) {
     suspend fun send(command: SendMessageCommand, successBody: (Connection, MessageView) -> JsonObject): SendMessageResult {
         val text = command.text.trim()
-        if (text.isEmpty() || text.codePointCount(0, text.length) > 4096) return SendMessageResult.InvalidText
+        if (text.isEmpty() || '\u0000' in text || text.codePointCount(0, text.length) > 4096) return SendMessageResult.InvalidText
         val hash = JdbcIdempotencyOperations.requestHash("send_message", listOf(command.chatId),
             buildJsonObject { put("text", text) })
         return database.withRetryingJdbcTransaction { connection ->
