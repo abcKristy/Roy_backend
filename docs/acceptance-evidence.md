@@ -52,3 +52,7 @@ PointChatLeaveRoutesIntegrationTest: 1 HTTP/PostGIS test passed without skips. M
 ## T050 — Rechecked criteria
 
 PointEmptyDeletionIntegrationTest: 1 PostGIS test passed without skips. Non-last leave retains the Point; last leave removes topics/chats/memberships, while creation ledger survives with null Point reference. V003 cascades and V002 ledger SET NULL match the service deletion under Point lock.
+
+## T006 — Rechecked criteria
+
+MigrationHistoryValidationIntegrationTest passed 1/0/0/0 on a newly recreated database after asserting the concrete Flyway pending-migration error and checksum mismatch. V013 cannot start in production; local migration advances to V014; repeat migration preserves presets; corrupting one checksum prevents local and production startup; restoring it recovers. Initial broad test passed; the first strengthened assertion failed because FlywayValidateException precedes the custom schema guard. The test expectation was corrected to the observed pending-014 error and rerun successfully. This was a test-only expectation defect, not a production protection failure. V001-V014 applied successfully through the migration command on another new database.
