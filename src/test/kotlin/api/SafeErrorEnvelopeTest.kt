@@ -1,5 +1,6 @@
 package com.example.api
 
+import com.example.persistence.InactiveActorException
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.header
@@ -28,6 +29,17 @@ import ch.qos.logback.core.read.ListAppender
 import org.slf4j.LoggerFactory
 
 class SafeErrorEnvelopeTest {
+    @Test
+    fun `inactive actor maps to session expiry while programming failures remain internal`() {
+        val mapper = ErrorMapper()
+        val expired = mapper.map(InactiveActorException())
+        assertEquals(HttpStatusCode.Unauthorized, expired.status)
+        assertEquals(ApiError("SESSION_EXPIRED", "Сеанс истёк. Войдите снова"), expired.error)
+        val unexpected = mapper.map(IllegalStateException("Active actor is required"))
+        assertEquals(HttpStatusCode.InternalServerError, unexpected.status)
+        assertEquals(ApiError("INTERNAL_ERROR", "Внутренняя ошибка сервера"), unexpected.error)
+    }
+
     @Test
     fun `explicit client failures preserve status code and nullable contract fields`() {
         val mapper = ErrorMapper()

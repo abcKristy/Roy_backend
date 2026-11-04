@@ -2,6 +2,7 @@ package com.example.meetings
 
 import com.example.chats.ChatCursorCodec
 import com.example.persistence.DatabaseRuntime
+import com.example.persistence.InactiveActorException
 import com.example.persistence.JdbcIdempotencyOperations
 import com.example.persistence.JdbcNotificationRecipients
 import com.example.persistence.JdbcNotificationWriter
@@ -40,6 +41,7 @@ class ProposalService(
     // Testable creation time, sampled after locks; production retains PostgreSQL wall time.
     private val clock: Clock? = null,
     private val cancellationPolicy: BookingCancellationPolicy = BookingCancellationPolicy(),
+    private val voteClock: Clock? = null,
 ) {
     private val cursors = ChatCursorCodec(cursorSecret)
 
@@ -192,7 +194,8 @@ class ProposalService(
         }
         val state = proposalState(connection, command.proposalId)
         if (state.closed) return@withRetryingJdbcTransaction VoteResult.Closed
-        if (!state.startsAt.isAfter(databaseNow(connection))) return@withRetryingJdbcTransaction VoteResult.Started
+        val now = voteClock?.instant() ?: databaseNow(connection)
+        if (!state.startsAt.isAfter(now)) return@withRetryingJdbcTransaction VoteResult.Started
         val before = voteCount(connection, command.proposalId)
         val changed = if (command.going) connection.prepareStatement(
             """INSERT INTO votes (proposal_id,user_id,created_at) VALUES (?,?,clock_timestamp())
@@ -319,7 +322,7 @@ class ProposalService(
     private fun lockActor(connection: Connection, actorId: UUID) {
         connection.prepareStatement("SELECT 1 FROM users WHERE id=? AND deleted_at IS NULL FOR NO KEY UPDATE").use { statement ->
             statement.setObject(1, actorId)
-            statement.executeQuery().use { check(it.next()) { "Active user required" } }
+            statement.executeQuery().use { if (!it.next()) throw InactiveActorException() }
         }
     }
 

@@ -1,5 +1,6 @@
 package com.example.api
 
+import com.example.persistence.InactiveActorException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.plugins.BadRequestException
 import kotlinx.serialization.Serializable
@@ -32,6 +33,10 @@ class ErrorMapper {
         is ApiException -> ApiFailure(
             cause.status,
             ApiError(cause.code, cause.safeMessage, cause.details, cause.retryAfterSeconds),
+        )
+        is InactiveActorException -> ApiFailure(
+            HttpStatusCode.Unauthorized,
+            ApiError("SESSION_EXPIRED", "Сеанс истёк. Войдите снова"),
         )
         is BadRequestException -> ApiFailure(
             HttpStatusCode.BadRequest,

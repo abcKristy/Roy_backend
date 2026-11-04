@@ -15,14 +15,19 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 
 /** UUID-owned real database context shared by the M4 server acceptance tests. */
-internal class MeetingAcceptanceFixture(afterSeed: (MeetingAcceptanceFixture) -> Unit = {}) : AutoCloseable {
+internal class MeetingAcceptanceFixture(
+    databaseLockTimeoutMs: Long = 1_000,
+    databaseStatementTimeoutMs: Long = 5_000,
+    afterSeed: (MeetingAcceptanceFixture) -> Unit = {},
+) : AutoCloseable {
     private val url = testDatabaseUrl().also {
         require(it == "jdbc:postgresql://127.0.0.1:55485/roy_m4_acceptance_fixture")
     }
     private val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER required")
     private val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD required")
     val secret = "m4-acceptance-fixture-local-secret-at-least-32"
-    val runtime = HikariDatabaseBootstrap(ServerConfig(url, user, password, secret, appEnvironment = AppEnvironment.LOCAL)).start()
+    val runtime = HikariDatabaseBootstrap(ServerConfig(url, user, password, secret, appEnvironment = AppEnvironment.LOCAL,
+        databaseLockTimeoutMs = databaseLockTimeoutMs, databaseStatementTimeoutMs = databaseStatementTimeoutMs)).start()
     val author = UUID.randomUUID()
     val voter = UUID.randomUUID()
     val observer = UUID.randomUUID()
@@ -39,8 +44,10 @@ internal class MeetingAcceptanceFixture(afterSeed: (MeetingAcceptanceFixture) ->
     val clock = ControlledUtcClock(anchor.minusSeconds(86400))
 
     // The normal chain keeps PostgreSQL wall time. Boundary tests opt in explicitly.
-    fun proposals(controlledTime: Boolean = false) = ProposalService(runtime, secret, clock = if (controlledTime) clock else null)
-    fun bookings(controlledCloseTime: Boolean = false) = BookingService(runtime, closeClock = if (controlledCloseTime) clock else null)
+    fun proposals(controlledTime: Boolean = false, controlledVoteTime: Boolean = false) = ProposalService(runtime, secret,
+        clock = if (controlledTime) clock else null, voteClock = if (controlledVoteTime) clock else null)
+    fun bookings(controlledCloseTime: Boolean = false, controlledBookTime: Boolean = false) = BookingService(runtime,
+        closeClock = if (controlledCloseTime) clock else null, bookClock = if (controlledBookTime) clock else null)
 
     init {
         try {
