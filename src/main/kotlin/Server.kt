@@ -111,6 +111,7 @@ fun Application.module() {
             },
         )
         configureRouting(
+            documentationBaseUrl = config.publicBaseUrl?.toString(),
             database = database,
             registrationService = RegistrationService(
                 policy = draftPolicy ?: UnpublishedPrivacyPolicy,
@@ -135,7 +136,9 @@ fun Application.module() {
             chatSendService = ChatSendService(database, MessageContentPolicy()),
             proposalService = ProposalService(database, config.jwtSecret),
             bookingService = BookingService(database),
-            notificationService = NotificationService(database, config.jwtSecret),
+            notificationService = NotificationService(
+                database, config.jwtSecret, locationPrivacyVersion = draftPolicy?.version,
+            ),
             deviceService = config.pushTokenEncryptionKeyBase64?.let { key ->
                 DeviceService(database, DeviceTokenCipher.fromBase64(key))
             },

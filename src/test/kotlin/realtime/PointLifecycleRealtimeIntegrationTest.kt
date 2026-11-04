@@ -118,6 +118,11 @@ class PointLifecycleRealtimeIntegrationTest {
                     val creatorJoinEvent = creatorSocket.nextEvent()
                     assertEquals("chat.membership.changed", creatorJoinEvent["type"]?.jsonPrimitive?.content)
                     assertEquals("joined", creatorJoinEvent["payload"]?.jsonObject?.get("action")?.jsonPrimitive?.content)
+                    for (change in listOf(nextEvent(), creatorSocket.nextEvent())) {
+                        assertEquals("point.changed", change["type"]?.jsonPrimitive?.content)
+                        assertEquals(point.toString(), change["payload"]?.jsonObject?.get("pointId")?.jsonPrimitive?.content)
+                        assertTrue(change["payload"]?.jsonObject?.get("updatedAt")?.jsonPrimitive?.content != null)
+                    }
                     send(Frame.Text(subscribe(chat)))
                     assertEquals(chat.toString(), nextEvent()["acceptedChatIds"]?.jsonArray?.single()?.jsonPrimitive?.content)
 

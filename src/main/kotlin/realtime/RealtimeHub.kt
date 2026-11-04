@@ -17,6 +17,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -167,6 +168,44 @@ class RealtimeHub(
         )
         publishCommitted(event)
         publishCommitted(event.copy(id = UUID.randomUUID(), scopeKind = RealtimeScopeKind.USER, scopeId = userId))
+        publishPointChangedForChat(chatId)
+    }
+
+    /** Re-read committed point state and notify members across all its topics, without a chat subscription. */
+    suspend fun publishPointChangedForChat(chatId: UUID) {
+        val change = database.withReadOnlyJdbcTransaction { connection ->
+            val point = connection.prepareStatement(
+                """SELECT point.id,point.updated_at FROM chats AS chat
+                   JOIN point_topics AS topic ON topic.id=chat.point_topic_id
+                   JOIN points AS point ON point.id=topic.point_id WHERE chat.id=?"""
+            ).use { statement ->
+                statement.setObject(1, chatId)
+                statement.executeQuery().use { rows ->
+                    if (!rows.next()) null else rows.getObject(1, UUID::class.java) to
+                        rows.getObject(2, OffsetDateTime::class.java).toInstant()
+                }
+            } ?: return@withReadOnlyJdbcTransaction null
+            val recipients = connection.prepareStatement(
+                """SELECT DISTINCT membership.user_id FROM chat_memberships AS membership
+                   JOIN users AS recipient ON recipient.id=membership.user_id AND recipient.deleted_at IS NULL
+                   JOIN chats AS chat ON chat.id=membership.chat_id
+                   JOIN point_topics AS topic ON topic.id=chat.point_topic_id
+                   WHERE topic.point_id=? AND membership.left_at IS NULL"""
+            ).use { statement ->
+                statement.setObject(1, point.first)
+                statement.executeQuery().use { rows -> buildList {
+                    while (rows.next()) add(rows.getObject(1, UUID::class.java))
+                } }
+            }
+            Triple(point.first, point.second, recipients)
+        } ?: return
+        for (recipientId in change.third) {
+            publishCommitted(RealtimeEvent(UUID.randomUUID(), RealtimeEventType.POINT_CHANGED,
+                RealtimeScopeKind.USER, recipientId, change.second, buildJsonObject {
+                    put("pointId", change.first.toString())
+                    put("updatedAt", change.second.toString())
+                }))
+        }
     }
 
     /** Invoke after revocation commits; only matching jti sockets receive the event and close. */

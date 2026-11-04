@@ -1,0 +1,4317 @@
+{
+  "paths": {
+    "/api/v1/me/chats": {
+      "get": {
+        "tags": [
+          "Чаты"
+        ],
+        "operationId": "listMyChats",
+        "summary": "Мои чаты",
+        "description": "Только активные членства; сортировка по chats.created_at и id по убыванию. unreadCount — точное число видимых сообщений после курсора прочтения; интерфейс может отображать 99+. lastMessage/currentProposal присутствуют и могут быть null. Побочных эффектов нет. currentProposal выбирается из предложений с lifecycle=OPEN и startsAt > now: ближайшее startsAt, затем id по возрастанию; после начала отсутствует (null). Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSummaryPage"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "items": [
+                        {
+                          "id": "22222222-2222-4222-8222-222222222222",
+                          "pointId": "33333333-3333-4333-8333-333333333333",
+                          "topic": {
+                            "id": "33333333-3333-4333-8333-333333333333",
+                            "presetKey": "running",
+                            "label": "Бег",
+                            "participantCount": 2,
+                            "chatId": "22222222-2222-4222-8222-222222222222"
+                          },
+                          "address": "Тестовый сквер, 1",
+                          "participantCount": 2,
+                          "lastMessage": {
+                            "id": "44444444-4444-4444-8444-444444444444",
+                            "type": "text",
+                            "text": "Встречаемся в субботу?",
+                            "createdAt": "2027-02-08T12:00:00Z"
+                          },
+                          "unreadCount": 1,
+                          "currentProposal": null,
+                          "updatedAt": "2027-02-08T12:00:00Z"
+                        }
+                      ],
+                      "nextCursor": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR: Повреждённый курсор либо курсор от другого пользователя/операции/ресурса/limit/поискового запроса.\n\nINVALID_FIELD: Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_CURSOR": {
+                    "summary": "Повреждённый курсор либо курсор от другого пользователя/операции/ресурса/limit/поискового запроса.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_CURSOR",
+                        "message": "Некорректный курсор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные параметры",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Размер страницы; при передаче cursor сохранять тот же limit.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            },
+            "example": 30
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Непрозрачный подписанный (HMAC-SHA256, base64url; не шифрование) nextCursor из предыдущей страницы; связан с пользователем, операцией, ресурсом, limit и фильтрами. Не изменять и не переносить между запросами.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/chats/{chatId}": {
+      "get": {
+        "tags": [
+          "Чаты"
+        ],
+        "operationId": "getChat",
+        "summary": "Получить сведения о чате",
+        "description": "Сведения о своём чате, членство и последний порядковый номер сообщения (seq). Побочных эффектов нет. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatDetail"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "pointId": "33333333-3333-4333-8333-333333333333",
+                      "topic": {
+                        "id": "33333333-3333-4333-8333-333333333333",
+                        "presetKey": "running",
+                        "label": "Бег",
+                        "participantCount": 2,
+                        "chatId": "22222222-2222-4222-8222-222222222222"
+                      },
+                      "address": "Тестовый сквер, 1",
+                      "participantCount": 2,
+                      "lastMessage": {
+                        "id": "44444444-4444-4444-8444-444444444444",
+                        "type": "text",
+                        "text": "Встречаемся в субботу?",
+                        "createdAt": "2027-02-08T12:00:00Z"
+                      },
+                      "unreadCount": 1,
+                      "currentProposal": null,
+                      "updatedAt": "2027-02-08T12:00:00Z",
+                      "membership": {
+                        "chatId": "22222222-2222-4222-8222-222222222222",
+                        "userId": "11111111-1111-4111-8111-111111111111",
+                        "joinedAt": "2027-02-08T12:00:00Z",
+                        "lastReadMessageSeq": 41
+                      },
+                      "lastMessageSeq": 42
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные параметры",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "NOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к чату",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "22222222-2222-4222-8222-222222222222"
+          }
+        ]
+      }
+    },
+    "/api/v1/chats/{chatId}/messages": {
+      "get": {
+        "tags": [
+          "Сообщения"
+        ],
+        "operationId": "listMessages",
+        "summary": "История сообщений",
+        "description": "Без seq возвращает последние сообщения по убыванию. beforeSeq — строго меньшие номера по убыванию; afterSeq — строго большие номера по возрастанию для восстановления пропущенного. Параметры взаимоисключающие. Продолжать по nextBeforeSeq/nextAfterSeq; null означает конец. Читает всю доступную историю, в том числе до вступления. Курсор прочтения не меняется. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatHistory"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "items": [
+                        {
+                          "id": "66666666-6666-4666-8666-666666666666",
+                          "chatId": "22222222-2222-4222-8222-222222222222",
+                          "messageSeq": 42,
+                          "type": "system",
+                          "author": null,
+                          "text": null,
+                          "system": {
+                            "kind": "meeting_proposed",
+                            "actorUserId": "11111111-1111-4111-8111-111111111111",
+                            "pointId": "33333333-3333-4333-8333-333333333333",
+                            "chatId": "22222222-2222-4222-8222-222222222222",
+                            "proposalId": "33333333-3333-4333-8333-333333333333",
+                            "bookingId": null,
+                            "startsAt": "2027-02-10T15:00:00Z",
+                            "endsAt": "2027-02-10T16:00:00Z",
+                            "reason": null
+                          },
+                          "createdAt": "2027-02-08T12:00:00Z"
+                        },
+                        {
+                          "id": "44444444-4444-4444-8444-444444444444",
+                          "chatId": "22222222-2222-4222-8222-222222222222",
+                          "messageSeq": 41,
+                          "type": "text",
+                          "author": {
+                            "id": "11111111-1111-4111-8111-111111111111",
+                            "displayName": "Тестовый участник",
+                            "avatarUrl": null
+                          },
+                          "text": "Встречаемся в субботу?",
+                          "system": null,
+                          "createdAt": "2027-02-08T12:00:00Z"
+                        }
+                      ],
+                      "nextBeforeSeq": null,
+                      "nextAfterSeq": null
+                    }
+                  },
+                  "afterSeq": {
+                    "summary": "Восстановление после seq=0: по возрастанию",
+                    "value": {
+                      "items": [
+                        {
+                          "id": "44444444-4444-4444-8444-444444444444",
+                          "chatId": "22222222-2222-4222-8222-222222222222",
+                          "messageSeq": 41,
+                          "type": "text",
+                          "author": {
+                            "id": "11111111-1111-4111-8111-111111111111",
+                            "displayName": "Тестовый участник",
+                            "avatarUrl": null
+                          },
+                          "text": "Встречаемся в субботу?",
+                          "system": null,
+                          "createdAt": "2027-02-08T12:00:00Z"
+                        },
+                        {
+                          "id": "66666666-6666-4666-8666-666666666666",
+                          "chatId": "22222222-2222-4222-8222-222222222222",
+                          "messageSeq": 42,
+                          "type": "system",
+                          "author": null,
+                          "text": null,
+                          "system": {
+                            "kind": "meeting_proposed",
+                            "actorUserId": "11111111-1111-4111-8111-111111111111",
+                            "pointId": "33333333-3333-4333-8333-333333333333",
+                            "chatId": "22222222-2222-4222-8222-222222222222",
+                            "proposalId": "33333333-3333-4333-8333-333333333333",
+                            "bookingId": null,
+                            "startsAt": "2027-02-10T15:00:00Z",
+                            "endsAt": "2027-02-10T16:00:00Z",
+                            "reason": null
+                          },
+                          "createdAt": "2027-02-08T12:00:00Z"
+                        }
+                      ],
+                      "nextBeforeSeq": null,
+                      "nextAfterSeq": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные параметры",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "NOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к чату",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "22222222-2222-4222-8222-222222222222"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Размер страницы; при передаче cursor сохранять тот же limit.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            },
+            "example": 30
+          },
+          {
+            "name": "beforeSeq",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            },
+            "example": 100,
+            "description": ""
+          },
+          {
+            "name": "afterSeq",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            },
+            "example": 0,
+            "description": ""
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Сообщения"
+        ],
+        "operationId": "sendMessage",
+        "summary": "Отправить сообщение",
+        "description": "Отправка только текстовых сообщений (text): пробелы по краям удаляются; длина после удаления — 1–4096 кодовых точек Unicode, NUL запрещён. Атомарно создаёт сообщение с монотонным messageSeq и запись для ограничения частоты, повышает курсор отправителя, обновляет точку и создаёт уведомления другим участникам. После фиксации транзакции отправляет событие WS chat.message.created без гарантии доставки. Сохранённый результат повторного запроса проверяется до членства, блокировки и ограничения частоты, но после базовой нормализации text. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Сообщение создано; повтор успешного ключа возвращает исходный статус 201 и тело ответа без повторной записи.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessage"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "id": "44444444-4444-4444-8444-444444444444",
+                      "chatId": "22222222-2222-4222-8222-222222222222",
+                      "messageSeq": 41,
+                      "type": "text",
+                      "author": {
+                        "id": "11111111-1111-4111-8111-111111111111",
+                        "displayName": "Тестовый участник",
+                        "avatarUrl": null
+                      },
+                      "text": "Встречаемся в субботу?",
+                      "system": null,
+                      "createdAt": "2027-02-08T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "IDEMPOTENCY_KEY_REUSED: Тот же Idempotency-Key уже принят с другим ресурсом/бизнес-телом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "IDEMPOTENCY_KEY_REUSED": {
+                    "summary": "Тот же Idempotency-Key уже принят с другим ресурсом/бизнес-телом.",
+                    "value": {
+                      "error": {
+                        "code": "IDEMPOTENCY_KEY_REUSED",
+                        "message": "Ключ запроса уже использован",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "MESSAGE_MUTED: Серверное mutedUntil пользователя ещё в будущем.\n\nNOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "MESSAGE_MUTED": {
+                    "summary": "Серверное mutedUntil пользователя ещё в будущем.",
+                    "value": {
+                      "error": {
+                        "code": "MESSAGE_MUTED",
+                        "message": "Отправка сообщений временно недоступна",
+                        "details": {
+                          "mutedUntil": "2027-02-15T12:00:00Z"
+                        },
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к чату",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "MESSAGE_REJECTED_PATTERN: Фильтр chat-content-v1.0 отверг телефон, ссылку или ненормативную лексику.\n\nINVALID_FIELD: text после удаления пробелов по краям пуст, содержит NUL или длиннее 4096 кодовых точек Unicode. Также INVALID_FIELD: неизвестное/пропущенное поле или неверный JSON-тип.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "MESSAGE_REJECTED_PATTERN": {
+                    "summary": "Фильтр chat-content-v1.0 отверг телефон, ссылку или ненормативную лексику.",
+                    "value": {
+                      "error": {
+                        "code": "MESSAGE_REJECTED_PATTERN",
+                        "message": "Сообщение нарушает правила",
+                        "details": {
+                          "category": "phone_or_url_or_profanity"
+                        },
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_FIELD": {
+                    "summary": "text после удаления пробелов по краям пуст, содержит NUL или длиннее 4096 кодовых точек Unicode.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный текст сообщения",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "MESSAGE_FLOOD: Глобально по пользователю во всех чатах: предыдущая принятая отправка менее 2 секунд назад или уже 30 отправок за скользящие 300 секунд.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "MESSAGE_FLOOD": {
+                    "summary": "Глобально по пользователю во всех чатах: предыдущая принятая отправка менее 2 секунд назад или уже 30 отправок за скользящие 300 секунд.",
+                    "value": {
+                      "error": {
+                        "code": "MESSAGE_FLOOD",
+                        "message": "Слишком частые сообщения",
+                        "details": null,
+                        "retryAfterSeconds": 2
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Положительное целое секунд до допуска повтора; совпадает с error.retryAfterSeconds.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "example": 2
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: Некорректный UUID пути/отсутствующий или некорректный Idempotency-Key либо недопустимый параметр строки запроса, если он объявлен.\n\nINVALID_JSON: Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути/отсутствующий или некорректный Idempotency-Key либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_JSON": {
+                    "summary": "Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_JSON",
+                        "message": "Некорректный JSON",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "INVALID_FIELD: Тело JSON превышает 65536 байт.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Тело JSON превышает 65536 байт.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Слишком большой запрос",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "22222222-2222-4222-8222-222222222222"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID операции. Повтор с тем же актором, операцией и каноническим телом возвращает сохранённый статус и тело ответа без повторных эффектов. Другой путь/бизнес-поля с тем же ключом дают 409. expectedRevision и confirmOverlap исключены из хеша.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "88888888-8888-4888-8888-888888888888"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "UTF-8 JSON не более 65536 байт. Неизвестные ключи, отсутствие обязательных полей, null вместо требуемого типа запрещены.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "После удаления пробелов по краям: 1–4096 кодовых точек Unicode; NUL запрещён. Лимит JSON 65536 байт применяется до удаления пробелов по краям."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "text": "Встречаемся в субботу?"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chats/{chatId}/messages/search": {
+      "get": {
+        "tags": [
+          "Сообщения"
+        ],
+        "operationId": "searchMessages",
+        "summary": "Поиск сообщений",
+        "description": "Поиск только текстовых сообщений (TEXT): буквальная подстрока без учёта регистра; специальные символы SQL %/_ экранируются. Пробелы по краям q удаляются; после удаления требуется 3–256 кодовых точек Unicode без NUL. Сортировка по createdAt и id по убыванию; cursor фиксирует верхнюю границу seq первой страницы. Курсор прочтения не меняется. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSearchPage"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "items": [
+                        {
+                          "id": "44444444-4444-4444-8444-444444444444",
+                          "chatId": "22222222-2222-4222-8222-222222222222",
+                          "messageSeq": 41,
+                          "type": "text",
+                          "author": {
+                            "id": "11111111-1111-4111-8111-111111111111",
+                            "displayName": "Тестовый участник",
+                            "avatarUrl": null
+                          },
+                          "text": "Встречаемся в субботу?",
+                          "system": null,
+                          "createdAt": "2027-02-08T12:00:00Z"
+                        }
+                      ],
+                      "nextCursor": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR: Повреждённый курсор либо курсор от другого пользователя/операции/ресурса/limit/поискового запроса.\n\nINVALID_FIELD: Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_CURSOR": {
+                    "summary": "Повреждённый курсор либо курсор от другого пользователя/операции/ресурса/limit/поискового запроса.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_CURSOR",
+                        "message": "Некорректный курсор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные параметры",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "NOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к чату",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "22222222-2222-4222-8222-222222222222"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3
+            },
+            "example": "субботу",
+            "description": " Сначала удаляются пробелы по краям; нормализованный запрос должен содержать 3–256 кодовых точек Unicode; U+0000 запрещён."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Размер страницы; при передаче cursor сохранять тот же limit.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            },
+            "example": 30
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Непрозрачный подписанный (HMAC-SHA256, base64url; не шифрование) nextCursor из предыдущей страницы; связан с пользователем, операцией, ресурсом, limit и фильтрами. Не изменять и не переносить между запросами.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/chats/{chatId}/read-cursor": {
+      "put": {
+        "tags": [
+          "Чаты"
+        ],
+        "operationId": "advanceReadCursor",
+        "summary": "Обновить курсор прочтения",
+        "description": "Активный участник повышает курсор до максимума из старого и переданного значения. Повтор или меньшее значение не уменьшает курсор. Влияет на unreadCount. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMembership"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "chatId": "22222222-2222-4222-8222-222222222222",
+                      "userId": "11111111-1111-4111-8111-111111111111",
+                      "joinedAt": "2027-02-08T12:00:00Z",
+                      "lastReadMessageSeq": 41
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_FIELD: lastReadMessageSeq отрицательный или больше последнего seq чата. Также INVALID_FIELD: неизвестное/пропущенное поле или неверный JSON-тип.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "lastReadMessageSeq отрицательный или больше последнего seq чата.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный курсор чтения",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.\n\nINVALID_JSON: Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные параметры",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_JSON": {
+                    "summary": "Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_JSON",
+                        "message": "Некорректный JSON",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "NOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к чату",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "INVALID_FIELD: Тело JSON превышает 65536 байт.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Тело JSON превышает 65536 байт.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Слишком большой запрос",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "22222222-2222-4222-8222-222222222222"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "UTF-8 JSON не более 65536 байт. Неизвестные ключи, отсутствие обязательных полей, null вместо требуемого типа запрещены.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "lastReadMessageSeq"
+                ],
+                "properties": {
+                  "lastReadMessageSeq": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "lastReadMessageSeq": 41
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chats/{chatId}/proposals": {
+      "get": {
+        "tags": [
+          "Встречи и бронирования"
+        ],
+        "operationId": "listProposals",
+        "summary": "Предложения встреч в чате",
+        "description": "История и актуальные предложения своего чата; сортировка по createdAt и id по убыванию. Не меняет состояние. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingProposalPage"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "items": [
+                        {
+                          "id": "33333333-3333-4333-8333-333333333333",
+                          "chatId": "22222222-2222-4222-8222-222222222222",
+                          "proposedByUserId": "11111111-1111-4111-8111-111111111111",
+                          "startsAt": "2027-02-10T15:00:00Z",
+                          "endsAt": "2027-02-10T16:00:00Z",
+                          "status": "voting",
+                          "goingCount": 0,
+                          "viewerGoing": false,
+                          "booking": null,
+                          "revision": 0,
+                          "createdAt": "2027-02-08T12:00:00Z",
+                          "updatedAt": "2027-02-08T12:00:00Z"
+                        }
+                      ],
+                      "nextCursor": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR: Повреждённый курсор либо курсор от другого пользователя/операции/ресурса/limit/поискового запроса.\n\nINVALID_FIELD: Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_CURSOR": {
+                    "summary": "Повреждённый курсор либо курсор от другого пользователя/операции/ресурса/limit/поискового запроса.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_CURSOR",
+                        "message": "Некорректный курсор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "NOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к чату",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "22222222-2222-4222-8222-222222222222"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Размер страницы; при передаче cursor сохранять тот же limit.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            },
+            "example": 30
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Непрозрачный подписанный (HMAC-SHA256, base64url; не шифрование) nextCursor из предыдущей страницы; связан с пользователем, операцией, ресурсом, limit и фильтрами. Не изменять и не переносить между запросами.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Встречи и бронирования"
+        ],
+        "operationId": "createProposal",
+        "summary": "Предложить встречу",
+        "description": "Активный участник создаёт будущий полуоткрытый интервал [startsAt,endsAt); верхний предел длительности или срока маршрутом не задан. Атомарно добавляет системное сообщение meeting_proposed и уведомления nearby_meeting. После фиксации транзакции отправляет события WS сообщения и предложения. Блокировка отправки сообщений не запрещает эту операцию. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Создано предложение без автоматического голоса автора; повтор возвращает исходный статус 201 и тело ответа.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingProposal"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "id": "33333333-3333-4333-8333-333333333333",
+                      "chatId": "22222222-2222-4222-8222-222222222222",
+                      "proposedByUserId": "11111111-1111-4111-8111-111111111111",
+                      "startsAt": "2027-02-10T15:00:00Z",
+                      "endsAt": "2027-02-10T16:00:00Z",
+                      "status": "voting",
+                      "goingCount": 0,
+                      "viewerGoing": false,
+                      "booking": null,
+                      "revision": 0,
+                      "createdAt": "2027-02-08T12:00:00Z",
+                      "updatedAt": "2027-02-08T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_GONE: Чат/предложение или его точка отсутствует/удалено при мутации.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "RESOURCE_GONE": {
+                    "summary": "Чат/предложение или его точка отсутствует/удалено при мутации.",
+                    "value": {
+                      "error": {
+                        "code": "RESOURCE_GONE",
+                        "message": "Предложение не найдено",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "IDEMPOTENCY_KEY_REUSED: Тот же Idempotency-Key уже принят с другим ресурсом/бизнес-телом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "IDEMPOTENCY_KEY_REUSED": {
+                    "summary": "Тот же Idempotency-Key уже принят с другим ресурсом/бизнес-телом.",
+                    "value": {
+                      "error": {
+                        "code": "IDEMPOTENCY_KEY_REUSED",
+                        "message": "Ключ запроса уже использован",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_FIELD: Невалидный Instant, endsAt <= startsAt либо startsAt <= серверного now. Также INVALID_FIELD: неизвестное/пропущенное поле или неверный JSON-тип.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Невалидный Instant, endsAt <= startsAt либо startsAt <= серверного now.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректное время встречи",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: Некорректный UUID пути/отсутствующий или некорректный Idempotency-Key либо недопустимый параметр строки запроса, если он объявлен.\n\nINVALID_JSON: Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути/отсутствующий или некорректный Idempotency-Key либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_JSON": {
+                    "summary": "Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_JSON",
+                        "message": "Некорректный JSON",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "NOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к чату",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "INVALID_FIELD: Тело JSON превышает 65536 байт.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Тело JSON превышает 65536 байт.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Слишком большой запрос",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "22222222-2222-4222-8222-222222222222"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID операции. Повтор с тем же актором, операцией и каноническим телом возвращает сохранённый статус и тело ответа без повторных эффектов. Другой путь/бизнес-поля с тем же ключом дают 409. expectedRevision и confirmOverlap исключены из хеша.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "88888888-8888-4888-8888-888888888888"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "UTF-8 JSON не более 65536 байт. Неизвестные ключи, отсутствие обязательных полей, null вместо требуемого типа запрещены.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "startsAt",
+                  "endsAt"
+                ],
+                "properties": {
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "startsAt": "2027-02-10T15:00:00Z",
+                "endsAt": "2027-02-10T16:00:00Z"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/proposals/{proposalId}": {
+      "get": {
+        "tags": [
+          "Встречи и бронирования"
+        ],
+        "operationId": "getProposal",
+        "summary": "Получить сведения о встрече",
+        "description": "Актуальное персональное представление предложения: число голосов, viewerGoing и выбранная бронь. Активная бронь (active) имеет приоритет над последней отменённой (cancelled). При активной брони статус — booked; иначе при lifecycle=CLOSED или наступившем начале — closed; при числе голосов >1 — ready_to_book, иначе voting. Не меняет состояние. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingProposal"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "id": "33333333-3333-4333-8333-333333333333",
+                      "chatId": "22222222-2222-4222-8222-222222222222",
+                      "proposedByUserId": "11111111-1111-4111-8111-111111111111",
+                      "startsAt": "2027-02-10T15:00:00Z",
+                      "endsAt": "2027-02-10T16:00:00Z",
+                      "status": "booked",
+                      "goingCount": 2,
+                      "viewerGoing": true,
+                      "booking": {
+                        "id": "55555555-5555-4555-8555-555555555555",
+                        "proposalId": "33333333-3333-4333-8333-333333333333",
+                        "bookedByUserId": "11111111-1111-4111-8111-111111111111",
+                        "status": "active",
+                        "bookingOrder": 1,
+                        "overlappingActive": [],
+                        "bookedAt": "2027-02-08T12:00:00Z",
+                        "cancelledAt": null,
+                        "cancelReason": null
+                      },
+                      "revision": 3,
+                      "createdAt": "2027-02-08T12:00:00Z",
+                      "updatedAt": "2027-02-08T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "NOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к встрече",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "33333333-3333-4333-8333-333333333333"
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/votes": {
+      "get": {
+        "tags": [
+          "Встречи и бронирования"
+        ],
+        "operationId": "listProposalVotes",
+        "summary": "Участники голосования",
+        "description": "Действующие голоса участников; сортировка по createdAt и userId по убыванию. Не меняет состояние. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingVotePage"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "items": [
+                        {
+                          "proposalId": "33333333-3333-4333-8333-333333333333",
+                          "user": {
+                            "id": "11111111-1111-4111-8111-111111111111",
+                            "displayName": "Тестовый участник",
+                            "avatarUrl": null
+                          },
+                          "createdAt": "2027-02-08T12:00:00Z"
+                        }
+                      ],
+                      "nextCursor": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_CURSOR: Повреждённый курсор либо курсор от другого пользователя/операции/ресурса/limit/поискового запроса.\n\nINVALID_FIELD: Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_CURSOR": {
+                    "summary": "Повреждённый курсор либо курсор от другого пользователя/операции/ресурса/limit/поискового запроса.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_CURSOR",
+                        "message": "Некорректный курсор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "NOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к встрече",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "33333333-3333-4333-8333-333333333333"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Размер страницы; при передаче cursor сохранять тот же limit.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            },
+            "example": 30
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Непрозрачный подписанный (HMAC-SHA256, base64url; не шифрование) nextCursor из предыдущей страницы; связан с пользователем, операцией, ресурсом, limit и фильтрами. Не изменять и не переносить между запросами.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/vote": {
+      "put": {
+        "tags": [
+          "Встречи и бронирования"
+        ],
+        "operationId": "setProposalVote",
+        "summary": "Изменить свой голос",
+        "description": "going=true добавляет один голос на пару «предложение, пользователь», false снимает голос. Изменение повышает revision; переход с <=1 на >1 голосов создаёт meeting_ready. Если число голосов активной брони падает до <=1, атомарно отменяет бронь и напоминания, создаёт системное сообщение и уведомления. После фиксации транзакции отправляет события WS proposal.updated, сообщения и booking.changed. Повтор без изменения оставляет revision прежним. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Голос изменён либо уже имел требуемое состояние; повтор состояния не создаёт второй голос.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingProposal"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "id": "33333333-3333-4333-8333-333333333333",
+                      "chatId": "22222222-2222-4222-8222-222222222222",
+                      "proposedByUserId": "11111111-1111-4111-8111-111111111111",
+                      "startsAt": "2027-02-10T15:00:00Z",
+                      "endsAt": "2027-02-10T16:00:00Z",
+                      "status": "voting",
+                      "goingCount": 1,
+                      "viewerGoing": true,
+                      "booking": null,
+                      "revision": 1,
+                      "createdAt": "2027-02-08T12:00:00Z",
+                      "updatedAt": "2027-02-08T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_GONE: Чат/предложение или его точка отсутствует/удалено при мутации.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "RESOURCE_GONE": {
+                    "summary": "Чат/предложение или его точка отсутствует/удалено при мутации.",
+                    "value": {
+                      "error": {
+                        "code": "RESOURCE_GONE",
+                        "message": "Предложение не найдено",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PROPOSAL_CLOSED: lifecycle предложения закрыт.\n\nMEETING_ALREADY_STARTED: startsAt <= серверного now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "PROPOSAL_CLOSED": {
+                    "summary": "lifecycle предложения закрыт.",
+                    "value": {
+                      "error": {
+                        "code": "PROPOSAL_CLOSED",
+                        "message": "Предложение закрыто",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "MEETING_ALREADY_STARTED": {
+                    "summary": "startsAt <= серверного now.",
+                    "value": {
+                      "error": {
+                        "code": "MEETING_ALREADY_STARTED",
+                        "message": "Встреча уже началась",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.\n\nINVALID_JSON: Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_JSON": {
+                    "summary": "Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_JSON",
+                        "message": "Некорректный JSON",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "NOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к встрече",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_FIELD: Неизвестное/пропущенное поле или неверный тип JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Неизвестное/пропущенное поле или неверный тип JSON.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные данные",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "INVALID_FIELD: Тело JSON превышает 65536 байт.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Тело JSON превышает 65536 байт.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Слишком большой запрос",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "33333333-3333-4333-8333-333333333333"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "UTF-8 JSON не более 65536 байт. Неизвестные ключи, отсутствие обязательных полей, null вместо требуемого типа запрещены.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "going"
+                ],
+                "properties": {
+                  "going": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "going": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/proposals/{proposalId}/booking": {
+      "post": {
+        "tags": [
+          "Встречи и бронирования"
+        ],
+        "operationId": "bookProposal",
+        "summary": "Забронировать встречу",
+        "description": "Активный участник с собственным голосом going и общим числом голосов >1 бронирует до начала. confirmOverlap=true разрешает вторую пересекающуюся бронь той же точки. Интервалы [start,end) полуоткрытые; касание границ не считается конфликтом. Меньший bookingOrder задаёт приоритет каждой пары прямых пересечений. Атомарно создаёт активную бронь (ACTIVE), новую revision, системное сообщение meeting_booked и уведомления; после фиксации транзакции отправляет события WS. overlaps содержит только прямые активные пересечения по возрастанию bookingOrder. Нетерминальный отказ повторяют с тем же ключом после актуализации revision или подтверждения. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Бронь создана; повтор возвращает исходный статус 201 и тело ответа.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingProposal"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "id": "33333333-3333-4333-8333-333333333333",
+                      "chatId": "22222222-2222-4222-8222-222222222222",
+                      "proposedByUserId": "11111111-1111-4111-8111-111111111111",
+                      "startsAt": "2027-02-10T15:00:00Z",
+                      "endsAt": "2027-02-10T16:00:00Z",
+                      "status": "booked",
+                      "goingCount": 2,
+                      "viewerGoing": true,
+                      "booking": {
+                        "id": "55555555-5555-4555-8555-555555555555",
+                        "proposalId": "33333333-3333-4333-8333-333333333333",
+                        "bookedByUserId": "11111111-1111-4111-8111-111111111111",
+                        "status": "active",
+                        "bookingOrder": 1,
+                        "overlappingActive": [],
+                        "bookedAt": "2027-02-08T12:00:00Z",
+                        "cancelledAt": null,
+                        "cancelReason": null
+                      },
+                      "revision": 3,
+                      "createdAt": "2027-02-08T12:00:00Z",
+                      "updatedAt": "2027-02-08T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_GONE: Чат/предложение или его точка отсутствует/удалено при мутации.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "RESOURCE_GONE": {
+                    "summary": "Чат/предложение или его точка отсутствует/удалено при мутации.",
+                    "value": {
+                      "error": {
+                        "code": "RESOURCE_GONE",
+                        "message": "Предложение не найдено",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "IDEMPOTENCY_KEY_REUSED: Тот же Idempotency-Key уже принят с другим ресурсом/бизнес-телом.\n\nSTALE_STATE: expectedRevision не равен текущей revision.\n\nPROPOSAL_CLOSED: Состояние lifecycle отличается от OPEN.\n\nMEETING_ALREADY_STARTED: Время startsAt уже наступило по серверным часам (startsAt <= now).\n\nALREADY_BOOKED: У предложения уже есть активная бронь (ACTIVE).\n\nVOTE_REQUIRED: Нет собственного голоса going пользователя.\n\nINSUFFICIENT_VOTES: Число действующих голосов <=1.\n\nOVERLAP_CONFIRM_REQUIRED: Есть прямое пересечение с активная бронь (ACTIVE)ю этой точки и confirmOverlap=false; нетерминально, повторить тем же ключом с true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "IDEMPOTENCY_KEY_REUSED": {
+                    "summary": "Тот же Idempotency-Key уже принят с другим ресурсом/бизнес-телом.",
+                    "value": {
+                      "error": {
+                        "code": "IDEMPOTENCY_KEY_REUSED",
+                        "message": "Ключ запроса уже использован",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "STALE_STATE": {
+                    "summary": "expectedRevision не равен текущей revision.",
+                    "value": {
+                      "error": {
+                        "code": "STALE_STATE",
+                        "message": "Состояние встречи изменилось",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "PROPOSAL_CLOSED": {
+                    "summary": "Состояние lifecycle отличается от OPEN.",
+                    "value": {
+                      "error": {
+                        "code": "PROPOSAL_CLOSED",
+                        "message": "Предложение закрыто",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "MEETING_ALREADY_STARTED": {
+                    "summary": "Время startsAt уже наступило по серверным часам (startsAt <= now).",
+                    "value": {
+                      "error": {
+                        "code": "MEETING_ALREADY_STARTED",
+                        "message": "Встреча уже началась",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "ALREADY_BOOKED": {
+                    "summary": "У предложения уже есть активная бронь (ACTIVE).",
+                    "value": {
+                      "error": {
+                        "code": "ALREADY_BOOKED",
+                        "message": "Встреча уже забронирована",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "VOTE_REQUIRED": {
+                    "summary": "Нет собственного голоса going пользователя.",
+                    "value": {
+                      "error": {
+                        "code": "VOTE_REQUIRED",
+                        "message": "Сначала подтвердите участие",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INSUFFICIENT_VOTES": {
+                    "summary": "Число действующих голосов <=1.",
+                    "value": {
+                      "error": {
+                        "code": "INSUFFICIENT_VOTES",
+                        "message": "Недостаточно участников",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "OVERLAP_CONFIRM_REQUIRED": {
+                    "summary": "Есть прямое пересечение с активная бронь (ACTIVE)ю этой точки и confirmOverlap=false; нетерминально, повторить тем же ключом с true.",
+                    "value": {
+                      "error": {
+                        "code": "OVERLAP_CONFIRM_REQUIRED",
+                        "message": "Время пересекается с другой встречей",
+                        "details": {
+                          "overlaps": [
+                            {
+                              "bookingId": "55555555-5555-4555-8555-555555555555",
+                              "proposalId": "33333333-3333-4333-8333-333333333333",
+                              "startsAt": "2027-02-10T15:00:00Z",
+                              "endsAt": "2027-02-10T16:00:00Z",
+                              "bookedAt": "2027-02-08T12:00:00Z",
+                              "bookingOrder": 1
+                            }
+                          ]
+                        },
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_FIELD: expectedRevision <0 или невалидное тело. Также INVALID_FIELD: неизвестное/пропущенное поле или неверный JSON-тип.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "expectedRevision <0 или невалидное тело.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные данные встречи",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: Некорректный UUID пути/отсутствующий или некорректный Idempotency-Key либо недопустимый параметр строки запроса, если он объявлен.\n\nINVALID_JSON: Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути/отсутствующий или некорректный Idempotency-Key либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_JSON": {
+                    "summary": "Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_JSON",
+                        "message": "Некорректный JSON",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "NOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к встрече",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "INVALID_FIELD: Тело JSON превышает 65536 байт.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Тело JSON превышает 65536 байт.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Слишком большой запрос",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "33333333-3333-4333-8333-333333333333"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID операции. Повтор с тем же актором, операцией и каноническим телом возвращает сохранённый статус и тело ответа без повторных эффектов. Другой путь/бизнес-поля с тем же ключом дают 409. expectedRevision и confirmOverlap исключены из хеша.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "88888888-8888-4888-8888-888888888888"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "UTF-8 JSON не более 65536 байт. Неизвестные ключи, отсутствие обязательных полей, null вместо требуемого типа запрещены.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "confirmOverlap",
+                  "expectedRevision"
+                ],
+                "properties": {
+                  "confirmOverlap": {
+                    "type": "boolean"
+                  },
+                  "expectedRevision": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "confirmOverlap": false,
+                "expectedRevision": 2
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/proposals/{proposalId}/close": {
+      "post": {
+        "tags": [
+          "Встречи и бронирования"
+        ],
+        "operationId": "closeProposal",
+        "summary": "Закрыть предложение встречи",
+        "description": "Только активный участник — автор предложения, до startsAt. Атомарно закрывает lifecycle и повышает revision; отменяет активную бронь с причиной closed_by_author и её напоминания, создаёт системные сообщения meeting_closed/meeting_booking_cancelled и уведомления. После фиксации транзакции отправляет события WS. expectedRevision не входит в хеш идемпотентности; при необходимости актуализируйте ревизию и повторите запрос с тем же ключом. Требуется заголовок Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сеанса в БД. Чтение доступно при блокировке отправки сообщений (mute); блокировка ограничивает только отправку текстовых сообщений.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Предложение закрыто; повтор возвращает исходный статус 200 и тело ответа.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingProposal"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "id": "33333333-3333-4333-8333-333333333333",
+                      "chatId": "22222222-2222-4222-8222-222222222222",
+                      "proposedByUserId": "11111111-1111-4111-8111-111111111111",
+                      "startsAt": "2027-02-10T15:00:00Z",
+                      "endsAt": "2027-02-10T16:00:00Z",
+                      "status": "closed",
+                      "goingCount": 0,
+                      "viewerGoing": false,
+                      "booking": null,
+                      "revision": 1,
+                      "createdAt": "2027-02-08T12:00:00Z",
+                      "updatedAt": "2027-02-08T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_GONE: Чат/предложение или его точка отсутствует/удалено при мутации.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "RESOURCE_GONE": {
+                    "summary": "Чат/предложение или его точка отсутствует/удалено при мутации.",
+                    "value": {
+                      "error": {
+                        "code": "RESOURCE_GONE",
+                        "message": "Предложение не найдено",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "IDEMPOTENCY_KEY_REUSED: Тот же Idempotency-Key уже принят с другим ресурсом/бизнес-телом.\n\nSTALE_STATE: expectedRevision не равен текущей revision.\n\nPROPOSAL_CLOSED: Состояние lifecycle уже закрыто.\n\nMEETING_ALREADY_STARTED: Время startsAt уже наступило по серверным часам (startsAt <= now).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "IDEMPOTENCY_KEY_REUSED": {
+                    "summary": "Тот же Idempotency-Key уже принят с другим ресурсом/бизнес-телом.",
+                    "value": {
+                      "error": {
+                        "code": "IDEMPOTENCY_KEY_REUSED",
+                        "message": "Ключ запроса уже использован",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "STALE_STATE": {
+                    "summary": "expectedRevision не равен текущей revision.",
+                    "value": {
+                      "error": {
+                        "code": "STALE_STATE",
+                        "message": "Состояние встречи изменилось",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "PROPOSAL_CLOSED": {
+                    "summary": "Состояние lifecycle уже закрыто.",
+                    "value": {
+                      "error": {
+                        "code": "PROPOSAL_CLOSED",
+                        "message": "Предложение закрыто",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "MEETING_ALREADY_STARTED": {
+                    "summary": "Время startsAt уже наступило по серверным часам (startsAt <= now).",
+                    "value": {
+                      "error": {
+                        "code": "MEETING_ALREADY_STARTED",
+                        "message": "Встреча уже началась",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: Активный участник не автор предложения.\n\nNOT_MEMBER: Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "FORBIDDEN": {
+                    "summary": "Активный участник не автор предложения.",
+                    "value": {
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "message": "Закрыть предложение может только автор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "NOT_MEMBER": {
+                    "summary": "Нет активного членства в чате; GET также скрывает отсутствующий чат/предложение этим ответом.",
+                    "value": {
+                      "error": {
+                        "code": "NOT_MEMBER",
+                        "message": "Нет доступа к встрече",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_FIELD: expectedRevision отрицателен или невалидное тело. Также INVALID_FIELD: неизвестное/пропущенное поле или неверный JSON-тип.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "expectedRevision отрицателен или невалидное тело.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные данные встречи",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: Некорректный UUID пути/отсутствующий или некорректный Idempotency-Key либо недопустимый параметр строки запроса, если он объявлен.\n\nINVALID_JSON: Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Некорректный UUID пути/отсутствующий или некорректный Idempotency-Key либо недопустимый параметр строки запроса, если он объявлен.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "INVALID_JSON": {
+                    "summary": "Синтаксически неверный JSON, пустое тело или некорректный UTF-8.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_JSON",
+                        "message": "Некорректный JSON",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Неверный формат Bearer, JWT, срок действия или утверждения токена, отозванный или истёкший сеанс, удалённый аккаунт или изменённая authVersion.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная ошибка, включая недоступную БД или исчерпание транзакционных повторов.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "INVALID_FIELD: Тело JSON превышает 65536 байт.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Тело JSON превышает 65536 байт.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Слишком большой запрос",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "77777777-7777-4777-8777-777777777777"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса. Синтетический пример; замените ID существующим.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "33333333-3333-4333-8333-333333333333"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID операции. Повтор с тем же актором, операцией и каноническим телом возвращает сохранённый статус и тело ответа без повторных эффектов. Другой путь/бизнес-поля с тем же ключом дают 409. expectedRevision и confirmOverlap исключены из хеша.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "88888888-8888-4888-8888-888888888888"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "UTF-8 JSON не более 65536 байт. Неизвестные ключи, отсутствие обязательных полей, null вместо требуемого типа запрещены.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expectedRevision"
+                ],
+                "properties": {
+                  "expectedRevision": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "expectedRevision": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ChatUser": {
+        "type": "object",
+        "required": [
+          "id",
+          "displayName",
+          "avatarUrl"
+        ],
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatSystemMessage": {
+        "type": "object",
+        "required": [
+          "kind",
+          "actorUserId",
+          "pointId",
+          "chatId",
+          "proposalId",
+          "bookingId",
+          "startsAt",
+          "endsAt",
+          "reason"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "meeting_proposed",
+              "meeting_ready",
+              "meeting_booked",
+              "meeting_booking_cancelled",
+              "meeting_closed",
+              "member_joined",
+              "member_left",
+              "point_deleted"
+            ]
+          },
+          "actorUserId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pointId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "proposalId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bookingId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startsAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endsAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "insufficient_votes",
+                  "point_deleted",
+                  "closed_by_author"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatMessage": {
+        "type": "object",
+        "required": [
+          "id",
+          "chatId",
+          "messageSeq",
+          "type",
+          "author",
+          "text",
+          "system",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "messageSeq": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "system"
+            ]
+          },
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatUser"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "system": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatSystemMessage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Для сообщения text: author — объект, text — строка, system — null. Для сообщения system: author/text — null, system — объект. Для текстового сообщения удалённого автора сохраняется displayName; id/avatarUrl могут быть null."
+      },
+      "ChatMembership": {
+        "type": "object",
+        "required": [
+          "chatId",
+          "userId",
+          "joinedAt",
+          "lastReadMessageSeq"
+        ],
+        "properties": {
+          "chatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastReadMessageSeq": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatTopic": {
+        "type": "object",
+        "required": [
+          "id",
+          "presetKey",
+          "label",
+          "participantCount",
+          "chatId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "presetKey": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "participantCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "chatId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatMessagePreview": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "text",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "system"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatProposalPreview": {
+        "type": "object",
+        "required": [
+          "id",
+          "startsAt",
+          "endsAt",
+          "status",
+          "goingCount",
+          "bookingId",
+          "revision"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "voting",
+              "ready_to_book",
+              "booked",
+              "closed"
+            ]
+          },
+          "goingCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "bookingId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "pointId",
+          "topic",
+          "address",
+          "participantCount",
+          "lastMessage",
+          "unreadCount",
+          "currentProposal",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pointId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/ChatTopic"
+          },
+          "address": {
+            "type": "string"
+          },
+          "participantCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "lastMessage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatMessagePreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "currentProposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatProposalPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatDetail": {
+        "type": "object",
+        "required": [
+          "id",
+          "pointId",
+          "topic",
+          "address",
+          "participantCount",
+          "lastMessage",
+          "unreadCount",
+          "currentProposal",
+          "updatedAt",
+          "membership",
+          "lastMessageSeq"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pointId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/ChatTopic"
+          },
+          "address": {
+            "type": "string"
+          },
+          "participantCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "lastMessage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatMessagePreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "currentProposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatProposalPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "membership": {
+            "$ref": "#/components/schemas/ChatMembership"
+          },
+          "lastMessageSeq": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatHistory": {
+        "type": "object",
+        "required": [
+          "items",
+          "nextBeforeSeq",
+          "nextAfterSeq"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            }
+          },
+          "nextBeforeSeq": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nextAfterSeq": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "MeetingConflict": {
+        "type": "object",
+        "required": [
+          "bookingId",
+          "proposalId",
+          "startsAt",
+          "endsAt",
+          "bookedAt",
+          "bookingOrder"
+        ],
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "proposalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bookedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bookingOrder": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "MeetingBooking": {
+        "type": "object",
+        "required": [
+          "id",
+          "proposalId",
+          "bookedByUserId",
+          "status",
+          "bookingOrder",
+          "overlappingActive",
+          "bookedAt",
+          "cancelledAt",
+          "cancelReason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "proposalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bookedByUserId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "cancelled"
+            ]
+          },
+          "bookingOrder": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "overlappingActive": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeetingConflict"
+            }
+          },
+          "bookedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancelledAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancelReason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "insufficient_votes",
+                  "point_deleted",
+                  "closed_by_author"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "MeetingProposal": {
+        "type": "object",
+        "required": [
+          "id",
+          "chatId",
+          "proposedByUserId",
+          "startsAt",
+          "endsAt",
+          "status",
+          "goingCount",
+          "viewerGoing",
+          "booking",
+          "revision",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "proposedByUserId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "voting",
+              "ready_to_book",
+              "booked",
+              "closed"
+            ]
+          },
+          "goingCount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "viewerGoing": {
+            "type": "boolean"
+          },
+          "booking": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeetingBooking"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MeetingVote": {
+        "type": "object",
+        "required": [
+          "proposalId",
+          "user",
+          "createdAt"
+        ],
+        "properties": {
+          "proposalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user": {
+            "type": "object",
+            "required": [
+              "id",
+              "displayName",
+              "avatarUrl"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "avatarUrl": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatSummaryPage": {
+        "type": "object",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatSummary"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChatSearchPage": {
+        "type": "object",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "MeetingProposalPage": {
+        "type": "object",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeetingProposal"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "MeetingVotePage": {
+        "type": "object",
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeetingVote"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

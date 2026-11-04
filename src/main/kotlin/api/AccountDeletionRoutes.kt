@@ -72,11 +72,16 @@ internal fun Route.accountDeletionRoutes(service: AccountDeletionService, sessio
                         catch (failure: Exception) { call.application.log.warn("Meeting state broadcast failed", failure) }
                     }
                 }
+                if (realtime != null) for (chatId in result.membershipMessages.map { it.message.chatId }.distinct()) {
+                    try { realtime.publishPointChangedForChat(chatId) }
+                    catch (cancel: CancellationException) { throw cancel }
+                    catch (failure: Exception) { call.application.log.warn("Point change broadcast failed", failure) }
+                }
                 if (realtime != null) for (point in result.removedPoints) for (recipientId in point.formerMemberIds) {
                     try {
                         realtime.publishCommitted(RealtimeEvent(UUID.randomUUID(), RealtimeEventType.POINT_DELETED,
                             RealtimeScopeKind.USER, recipientId, Instant.now(),
-                            buildJsonObject { put("pointId", point.pointId.toString()) }))
+                            buildJsonObject { put("pointId", point.pointId.toString()); put("reason", "no_members") }))
                     } catch (cancel: CancellationException) { throw cancel }
                     catch (failure: Exception) { call.application.log.warn("Point deletion broadcast failed", failure) }
                 }

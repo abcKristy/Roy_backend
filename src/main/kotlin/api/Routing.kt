@@ -61,8 +61,10 @@ fun Application.configureRouting(
     accountDeletionService: AccountDeletionService? = null,
     realtimeHub: RealtimeHub? = null,
     reverseGeocoder: ReverseGeocoder? = null,
+    documentationBaseUrl: String? = null,
 ) {
     routing {
+        documentationRoutes(documentationBaseUrl)
         if (realtimeHub != null) realtimeRoutes(realtimeHub)
         if (pointReadRepository != null) {
             pointReadRoutes(pointReadRepository, sessionAccess)

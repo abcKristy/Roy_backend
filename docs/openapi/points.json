@@ -1,0 +1,2511 @@
+{
+  "paths": {
+    "/api/v1/topics/presets": {
+      "get": {
+        "operationId": "pointTopicPresets",
+        "tags": [
+          "Темы и членство"
+        ],
+        "summary": "Получить справочник тем",
+        "description": "Публичный справочник постоянных ключей тем в порядке, заданном каталогом. Авторизация не требуется; состояние не изменяется.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nGET /api/v1/topics/presets HTTP/1.1\nHost: 127.0.0.1:8080\n```",
+        "security": [],
+        "responses": {
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Полный справочник ключей и названий тем (11 записей).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointPresets"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Полный справочник из начальных данных",
+                    "value": {
+                      "items": [
+                        {
+                          "key": "football",
+                          "label": "Футбол"
+                        },
+                        {
+                          "key": "volleyball",
+                          "label": "Волейбол"
+                        },
+                        {
+                          "key": "basketball",
+                          "label": "Баскетбол"
+                        },
+                        {
+                          "key": "tennis",
+                          "label": "Теннис"
+                        },
+                        {
+                          "key": "running",
+                          "label": "Бег"
+                        },
+                        {
+                          "key": "workout",
+                          "label": "Воркаут"
+                        },
+                        {
+                          "key": "table_tennis",
+                          "label": "Настольный теннис"
+                        },
+                        {
+                          "key": "badminton",
+                          "label": "Бадминтон"
+                        },
+                        {
+                          "key": "board_games",
+                          "label": "Настолки"
+                        },
+                        {
+                          "key": "mafia",
+                          "label": "Мафия"
+                        },
+                        {
+                          "key": "other",
+                          "label": "Другое"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/points": {
+      "get": {
+        "operationId": "pointList",
+        "tags": [
+          "Карта и точки"
+        ],
+        "summary": "Получить точки в видимой области карты",
+        "description": "Публичный маршрут. Пагинация по ключу с сортировкой createdAt DESC, id DESC. Точка попадает в результат, если хотя бы одна её тема соответствует фильтру темы/своего названия и включительному диапазону числа участников. Для каждой подходящей точки возвращаются все её темы. peopleCount — число уникальных активных участников всех чатов точки. GET не изменяет квоту или бизнес-состояние.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nGET /api/v1/points?west=37.58&south=55.73&east=37.64&north=55.77&limit=30 HTTP/1.1\nHost: 127.0.0.1:8080\n```",
+        "security": [],
+        "responses": {
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Точки в видимой области карты; пустой items — успешный результат без точек. nextCursor=null означает последнюю страницу.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointPage"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Точки в видимой области карты; пустой items — успешный результат без точек. nextCursor=null означает последнюю страницу.",
+                    "value": {
+                      "items": [
+                        {
+                          "id": "11111111-1111-4111-8111-111111111111",
+                          "position": {
+                            "lat": 55.7512,
+                            "lon": 37.6184
+                          },
+                          "address": "Москва, улица Примерная, 4",
+                          "addressSource": "manual",
+                          "peopleCount": 1,
+                          "topics": [
+                            {
+                              "id": "22222222-2222-4222-8222-222222222222",
+                              "presetKey": "football",
+                              "label": "Футбол",
+                              "participantCount": 1,
+                              "chatId": "33333333-3333-4333-8333-333333333333"
+                            }
+                          ],
+                          "createdAt": "2026-11-04T12:00:00Z",
+                          "updatedAt": "2026-11-04T12:00:00Z"
+                        }
+                      ],
+                      "nextCursor": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_BBOX: Координата bbox отсутствует, повторяется, не является числом, не конечна или вне допустимого диапазона; west >= east либо south >= north.\n\nINVALID_FIELD: Фильтр повторяется; некорректное целое число, limit или диапазон числа участников; неизвестный topicKey; customTopicLabel передан без other, пуст либо превышает 40 кодовых точек Unicode после удаления пробелов по краям.\n\nINVALID_CURSOR: Курсор повторяется, превышает 1024 символа, повреждён или подделан, имеет неподдерживаемую версию либо передан с изменёнными bbox, фильтрами или limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_BBOX": {
+                    "summary": "Координата bbox отсутствует, повторяется, не является числом, не конечна или вне допустимого диапазона; west >= east либо south >= north.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_BBOX",
+                        "message": "Некорректные координаты",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "INVALID_FIELD": {
+                    "summary": "Фильтр повторяется; некорректное целое число, limit или диапазон числа участников; неизвестный topicKey; customTopicLabel передан без other, пуст либо превышает 40 кодовых точек Unicode после удаления пробелов по краям.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный фильтр",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "INVALID_CURSOR": {
+                    "summary": "Курсор повторяется, превышает 1024 символа, повреждён или подделан, имеет неподдерживаемую версию либо передан с изменёнными bbox, фильтрами или limit.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_CURSOR",
+                        "message": "Некорректный курсор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "west",
+            "in": "query",
+            "required": true,
+            "description": "Обязательная координата bbox в WGS84. Должны выполняться west < east и south < north; допустимо ровно одно значение.",
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "example": 37.58
+          },
+          {
+            "name": "south",
+            "in": "query",
+            "required": true,
+            "description": "Обязательная координата bbox в WGS84. Должны выполняться west < east и south < north; допустимо ровно одно значение.",
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "example": 55.73
+          },
+          {
+            "name": "east",
+            "in": "query",
+            "required": true,
+            "description": "Обязательная координата bbox в WGS84. Должны выполняться west < east и south < north; допустимо ровно одно значение.",
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "example": 37.64
+          },
+          {
+            "name": "north",
+            "in": "query",
+            "required": true,
+            "description": "Обязательная координата bbox в WGS84. Должны выполняться west < east и south < north; допустимо ровно одно значение.",
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "example": 55.77
+          },
+          {
+            "name": "topicKey",
+            "in": "query",
+            "required": false,
+            "description": "Необязательный фильтр темы.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "football",
+                "volleyball",
+                "basketball",
+                "tennis",
+                "running",
+                "workout",
+                "table_tennis",
+                "badminton",
+                "board_games",
+                "mafia",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "customTopicLabel",
+            "in": "query",
+            "required": false,
+            "description": "Допустим только при topicKey=other. Пробелы по краям удаляются, затем выполняется точное сравнение без учёта регистра. Лимит 40 кодовых точек Unicode применяется после удаления пробелов по краям, а не к исходной длине параметра запроса.",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "peopleMin",
+            "in": "query",
+            "required": false,
+            "description": "Нижняя включительная граница числа участников подходящей темы; это не общее число уникальных людей точки.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50,
+              "default": 0
+            }
+          },
+          {
+            "name": "peopleMax",
+            "in": "query",
+            "required": false,
+            "description": "Верхняя включительная граница числа участников; должна быть >= peopleMin.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50,
+              "default": 50
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Размер страницы; включается в отпечаток параметров курсора.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Передайте nextCursor без изменений; все фильтры и limit должны оставаться прежними.",
+            "schema": {
+              "type": "string",
+              "maxLength": 1024
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "pointCreate",
+        "tags": [
+          "Карта и точки"
+        ],
+        "summary": "Создать точку, тему, чат и членство",
+        "description": "Требуется авторизация; mute не запрещает создание. Атомарно создаются точка, первая тема, чат, членство создателя и системное сообщение member_joined. Курсор чтения устанавливается после собственного вступления, квота списывается один раз, ответ сохраняется устойчиво; после коммита предпринимается доставка события о членстве. Пробелы по краям адреса и названия своей темы удаляются; свои темы уникальны без учёта регистра. Лимиты — 3 точки за 7 суток и 10 за 30 суток, включая удалённые точки. Превышение устанавливает блокировку на 30×24 часа по UTC. Активная блокировка и исчерпание квоты проверяются до проверки близости. Если confirmNearby=false и есть точка на расстоянии <=100 м, возвращается требование подтверждения с не более чем 20 ближайшими точками. Повторите запрос с тем же ключом и confirmNearby=true. confirmNearby исключён из бизнес-хеша. Повтор завершённой операции не создаёт точку и не списывает квоту снова; окончательный отказ по квоте воспроизводится с исходными requestId и blockedUntil. Геокодер в этой операции не вызывается.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nPOST /api/v1/points HTTP/1.1\nHost: 127.0.0.1:8080\nAuthorization: Bearer <access-token-from-login>\nIdempotency-Key: 66666666-6666-4666-8666-666666666666\nContent-Type: application/json\n\n{\"position\": {\"lat\": 55.7512, \"lon\": 37.6184}, \"topic\": {\"presetKey\": \"football\", \"customLabel\": null}, \"address\": \"Москва, улица Примерная, 4\", \"addressSource\": \"manual\", \"confirmNearby\": false}\n```",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_JSON: Тело содержит некорректный JSON или UTF-8, в том числе при пустом теле.\n\nINVALID_FIELD: Idempotency-Key отсутствует или не разбирается как UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_JSON": {
+                    "summary": "Тело содержит некорректный JSON или UTF-8, в том числе при пустом теле.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_JSON",
+                        "message": "Некорректный JSON",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "INVALID_FIELD": {
+                    "summary": "Idempotency-Key отсутствует или не разбирается как UUID.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_FIELD: Неизвестные ключи, отсутствие обязательных полей, неверные типы или недопустимый null либо нарушение бизнес-ограничений полей, описанных для этой операции.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Неизвестные ключи, отсутствие обязательных полей, неверные типы или недопустимый null либо нарушение бизнес-ограничений полей, описанных для этой операции.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные данные",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "INVALID_FIELD: Размер JSON-тела запроса превышает 65 536 байт.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Размер JSON-тела запроса превышает 65 536 байт.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Слишком большой запрос",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Атомарно созданные ресурсы и итоговая квота. Идентичный повтор возвращает исходное сохранённое тело ответа 201.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointCreateResult"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Атомарно созданные ресурсы и итоговая квота. Идентичный повтор возвращает исходное сохранённое тело ответа 201.",
+                    "value": {
+                      "point": {
+                        "id": "11111111-1111-4111-8111-111111111111",
+                        "position": {
+                          "lat": 55.7512,
+                          "lon": 37.6184
+                        },
+                        "address": "Москва, улица Примерная, 4",
+                        "addressSource": "manual",
+                        "peopleCount": 1,
+                        "topics": [
+                          {
+                            "id": "22222222-2222-4222-8222-222222222222",
+                            "presetKey": "football",
+                            "label": "Футбол",
+                            "participantCount": 1,
+                            "chatId": "33333333-3333-4333-8333-333333333333"
+                          }
+                        ],
+                        "createdAt": "2026-11-04T12:00:00Z",
+                        "updatedAt": "2026-11-04T12:00:00Z"
+                      },
+                      "chat": {
+                        "id": "33333333-3333-4333-8333-333333333333",
+                        "pointId": "11111111-1111-4111-8111-111111111111",
+                        "topic": {
+                          "id": "22222222-2222-4222-8222-222222222222",
+                          "presetKey": "football",
+                          "label": "Футбол",
+                          "participantCount": 1,
+                          "chatId": "33333333-3333-4333-8333-333333333333"
+                        },
+                        "address": "Москва, улица Примерная, 4",
+                        "participantCount": 1,
+                        "lastMessage": {
+                          "id": "55555555-5555-4555-8555-555555555555",
+                          "type": "system",
+                          "text": "Участник присоединился",
+                          "createdAt": "2026-11-04T12:00:00Z"
+                        },
+                        "unreadCount": 0,
+                        "currentProposal": null,
+                        "updatedAt": "2026-11-04T12:00:00Z"
+                      },
+                      "quota": {
+                        "weekUsed": 1,
+                        "weekLimit": 3,
+                        "weekRemaining": 2,
+                        "weekNextAvailableAt": null,
+                        "monthUsed": 1,
+                        "monthLimit": 10,
+                        "monthRemaining": 9,
+                        "monthNextAvailableAt": null,
+                        "blockedUntil": null,
+                        "lastAvailableWarning": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NEARBY_CONFIRM_REQUIRED: Есть хотя бы одна точка в радиусе 100 м и confirmNearby=false; точка не создаётся, квота не списывается, результат идемпотентности не фиксируется.\n\nPOINT_QUOTA_EXCEEDED: Активной блокировки нет, но недельная или месячная квота исчерпана. Фиксируется блокировка на 30×24 часа, и отказ сохраняется для этого ключа.\n\nPOINT_QUOTA_BLOCKED: У пользователя уже установлено blockedUntil позже текущего серверного времени; запрос отклоняется без продления блокировки.\n\nIDEMPOTENCY_KEY_REUSED: Для того же пользователя и операции create_point уже сохранён этот ключ с другими каноническими бизнес-данными запроса.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "NEARBY_CONFIRM_REQUIRED": {
+                    "summary": "Есть хотя бы одна точка в радиусе 100 м и confirmNearby=false; точка не создаётся, квота не списывается, результат идемпотентности не фиксируется.",
+                    "value": {
+                      "error": {
+                        "code": "NEARBY_CONFIRM_REQUIRED",
+                        "message": "Рядом уже есть точки",
+                        "details": {
+                          "nearby": [
+                            {
+                              "id": "11111111-1111-4111-8111-111111111111",
+                              "position": {
+                                "lat": 55.7512,
+                                "lon": 37.6184
+                              },
+                              "address": "Москва, улица Примерная, 4",
+                              "distanceMeters": 12
+                            }
+                          ]
+                        },
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "POINT_QUOTA_EXCEEDED": {
+                    "summary": "Активной блокировки нет, но недельная или месячная квота исчерпана. Фиксируется блокировка на 30×24 часа, и отказ сохраняется для этого ключа.",
+                    "value": {
+                      "error": {
+                        "code": "POINT_QUOTA_EXCEEDED",
+                        "message": "Превышена квота создания точек",
+                        "details": {
+                          "blockedUntil": "2026-12-04T12:00:00Z"
+                        },
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "POINT_QUOTA_BLOCKED": {
+                    "summary": "У пользователя уже установлено blockedUntil позже текущего серверного времени; запрос отклоняется без продления блокировки.",
+                    "value": {
+                      "error": {
+                        "code": "POINT_QUOTA_BLOCKED",
+                        "message": "Создание точек временно недоступно",
+                        "details": {
+                          "blockedUntil": "2026-12-04T12:00:00Z"
+                        },
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "IDEMPOTENCY_KEY_REUSED": {
+                    "summary": "Для того же пользователя и операции create_point уже сохранён этот ключ с другими каноническими бизнес-данными запроса.",
+                    "value": {
+                      "error": {
+                        "code": "IDEMPOTENCY_KEY_REUSED",
+                        "message": "Ключ запроса уже использован",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Обязательный UUID в области пользователя и операции. При потере ответа повторите запрос с тем же ключом и теми же каноническими бизнес-данными. Сохранённый результат завершённой операции воспроизводится с теми же статусом и телом; другие данные возвращают 409. Флаги подтверждения исключены из хеша. Запись хранится не менее 30 суток; не используйте старые ключи повторно для новых операций.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "66666666-6666-4666-8666-666666666666"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PointCreateInput"
+              },
+              "examples": {
+                "request": {
+                  "summary": "Корректный JSON-запрос с синтетическими данными",
+                  "value": {
+                    "position": {
+                      "lat": 55.7512,
+                      "lon": 37.6184
+                    },
+                    "topic": {
+                      "presetKey": "football",
+                      "customLabel": null
+                    },
+                    "address": "Москва, улица Примерная, 4",
+                    "addressSource": "manual",
+                    "confirmNearby": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/points/{pointId}": {
+      "get": {
+        "operationId": "pointDetail",
+        "tags": [
+          "Карта и точки"
+        ],
+        "summary": "Получить точку и её темы",
+        "description": "Публичный снимок текущего состояния точки. Координаты после создания неизменяемы. Удалённая или отсутствующая точка недоступна для чтения.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nGET /api/v1/points/11111111-1111-4111-8111-111111111111 HTTP/1.1\nHost: 127.0.0.1:8080\n```",
+        "security": [],
+        "responses": {
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Текущее состояние точки с темами и числом активных участников.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointResource"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Текущее состояние точки с темами и числом активных участников.",
+                    "value": {
+                      "id": "11111111-1111-4111-8111-111111111111",
+                      "position": {
+                        "lat": 55.7512,
+                        "lon": 37.6184
+                      },
+                      "address": "Москва, улица Примерная, 4",
+                      "addressSource": "manual",
+                      "peopleCount": 1,
+                      "topics": [
+                        {
+                          "id": "22222222-2222-4222-8222-222222222222",
+                          "presetKey": "football",
+                          "label": "Футбол",
+                          "participantCount": 1,
+                          "chatId": "33333333-3333-4333-8333-333333333333"
+                        }
+                      ],
+                      "createdAt": "2026-11-04T12:00:00Z",
+                      "updatedAt": "2026-11-04T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: pointId не удаётся разобрать как UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "pointId не удаётся разобрать как UUID.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_GONE: Точка отсутствует либо удалена после выхода последнего участника.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "RESOURCE_GONE": {
+                    "summary": "Точка отсутствует либо удалена после выхода последнего участника.",
+                    "value": {
+                      "error": {
+                        "code": "RESOURCE_GONE",
+                        "message": "Точка не найдена",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pointId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          }
+        ]
+      }
+    },
+    "/api/v1/points/creation-context": {
+      "get": {
+        "operationId": "pointCreationContext",
+        "tags": [
+          "Карта и точки"
+        ],
+        "summary": "Получить ближайшие точки и квоту перед созданием",
+        "description": "Требуется авторизация. Это только предварительный просмотр: возвращаются точки на точном геодезическом расстоянии <=100 метров с сортировкой по расстоянию, затем id; округлённое distanceMeters предназначено только для отображения. Квота не резервируется, блокировка не устанавливается. POST повторно проверяет близость и квоту в своей транзакции.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nGET /api/v1/points/creation-context?lat=55.7512&lon=37.6184 HTTP/1.1\nHost: 127.0.0.1:8080\nAuthorization: Bearer <access-token-from-login>\n```",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Ближайшие точки и текущая квота пользователя; nearby может быть пустым.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointCreationContext"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Ближайшие точки и текущая квота пользователя; nearby может быть пустым.",
+                    "value": {
+                      "nearby": [
+                        {
+                          "id": "11111111-1111-4111-8111-111111111111",
+                          "position": {
+                            "lat": 55.7512,
+                            "lon": 37.6184
+                          },
+                          "address": "Москва, улица Примерная, 4",
+                          "distanceMeters": 12
+                        }
+                      ],
+                      "quota": {
+                        "weekUsed": 1,
+                        "weekLimit": 3,
+                        "weekRemaining": 2,
+                        "weekNextAvailableAt": null,
+                        "monthUsed": 1,
+                        "monthLimit": 10,
+                        "monthRemaining": 9,
+                        "monthNextAvailableAt": null,
+                        "blockedUntil": null,
+                        "lastAvailableWarning": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_BBOX: lat или lon отсутствует, повторяется, не является числом, не конечен или вне допустимого диапазона.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_BBOX": {
+                    "summary": "lat или lon отсутствует, повторяется, не является числом, не конечен или вне допустимого диапазона.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_BBOX",
+                        "message": "Некорректные координаты",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "description": "Ровно одно значение широты в WGS84.",
+            "schema": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "example": 55.7512
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "description": "Ровно одно значение долготы в WGS84.",
+            "schema": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "example": 37.6184
+          }
+        ]
+      }
+    },
+    "/api/v1/me/point-quota": {
+      "get": {
+        "operationId": "pointQuota",
+        "tags": [
+          "Карта и точки"
+        ],
+        "summary": "Получить свою квоту создания точек",
+        "description": "Требуется авторизация. Учитываются успешные создания за скользящие 7×24 часа (лимит 3) и 30×24 часа (лимит 10), включая впоследствии удалённые точки. Если в окне есть свободная квота, соответствующее поле nextAvailableAt равно null; иначе указано время выхода самого старого учитываемого события из окна. Вне активной блокировки blockedUntil=null. lastAvailableWarning=true, если пользователь не заблокирован и в одном из окон осталась одна доступная точка. Чтение не резервирует квоту и не устанавливает блокировку.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nGET /api/v1/me/point-quota HTTP/1.1\nHost: 127.0.0.1:8080\nAuthorization: Bearer <access-token-from-login>\n```",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Текущая квота; поля времени, допускающие null, всегда явно присутствуют в ответе.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointQuota"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Текущая квота; поля времени, допускающие null, всегда явно присутствуют в ответе.",
+                    "value": {
+                      "weekUsed": 1,
+                      "weekLimit": 3,
+                      "weekRemaining": 2,
+                      "weekNextAvailableAt": null,
+                      "monthUsed": 1,
+                      "monthLimit": 10,
+                      "monthRemaining": 9,
+                      "monthNextAvailableAt": null,
+                      "blockedUntil": null,
+                      "lastAvailableWarning": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/geocoding/reverse": {
+      "post": {
+        "operationId": "pointReverseGeocode",
+        "tags": [
+          "Карта и точки"
+        ],
+        "summary": "Определить адрес по координатам",
+        "description": "Требуется авторизация. Запрос к внешнему провайдеру выполняется вне транзакции создания точки. Idempotency-Key не нужен. Отсутствие адреса у провайдера — успешный ответ с address=null и source=none. Если адрес не найден или сервис недоступен, клиент может передать адрес вручную. На весь процесс действует ограничение 30 обращений к провайдеру за скользящую секунду; превышение возвращает тот же ответ 503 GEOCODER_UNAVAILABLE без заголовка Retry-After. Тайм-аут подключения — 2 секунды, запроса — 3 секунды.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nPOST /api/v1/geocoding/reverse HTTP/1.1\nHost: 127.0.0.1:8080\nAuthorization: Bearer <access-token-from-login>\nContent-Type: application/json\n\n{\"position\": {\"lat\": 55.7512, \"lon\": 37.6184}}\n```",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_JSON: Тело содержит некорректный JSON или UTF-8, в том числе при пустом теле.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_JSON": {
+                    "summary": "Тело содержит некорректный JSON или UTF-8, в том числе при пустом теле.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_JSON",
+                        "message": "Некорректный JSON",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_FIELD: Неизвестные ключи, отсутствие обязательных полей, неверные типы или недопустимый null либо нарушение бизнес-ограничений полей, описанных для этой операции.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Неизвестные ключи, отсутствие обязательных полей, неверные типы или недопустимый null либо нарушение бизнес-ограничений полей, описанных для этой операции.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные данные",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "invalidCoordinates": {
+                    "summary": "Структура DTO корректна, но lat или lon выходит за диапазон WGS84.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные координаты",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "INVALID_FIELD: Размер JSON-тела запроса превышает 65 536 байт.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Размер JSON-тела запроса превышает 65 536 байт.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Слишком большой запрос",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Адрес найден провайдером либо отсутствует; ни один вариант не создаёт точку.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointReverseResult"
+                },
+                "examples": {
+                  "found": {
+                    "summary": "Провайдер нашёл адрес.",
+                    "value": {
+                      "address": "Москва, улица Примерная, 4",
+                      "source": "provider"
+                    }
+                  },
+                  "none": {
+                    "summary": "Провайдер не вернул подходящий адрес; используйте ручной ввод.",
+                    "value": {
+                      "address": null,
+                      "source": "none"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "GEOCODER_UNAVAILABLE: Ключ API провайдера отсутствует, истёк тайм-аут, получен неуспешный ответ или некорректные данные провайдера, произошёл сбой провайдера или сети. Ручной ввод адреса точки остаётся доступен. Также возвращается при исчерпании общего для процесса лимита 30 обращений к провайдеру в секунду.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "GEOCODER_UNAVAILABLE": {
+                    "summary": "Ключ API провайдера отсутствует, истёк тайм-аут, получен неуспешный ответ или некорректные данные провайдера, произошёл сбой провайдера или сети. Ручной ввод адреса точки остаётся доступен. Также возможна причина: исчерпан общий для процесса лимит обращений к провайдеру (30 в секунду).",
+                    "value": {
+                      "error": {
+                        "code": "GEOCODER_UNAVAILABLE",
+                        "message": "Не удалось определить адрес",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PointReverseInput"
+              },
+              "examples": {
+                "request": {
+                  "summary": "Корректный JSON-запрос с синтетическими данными",
+                  "value": {
+                    "position": {
+                      "lat": 55.7512,
+                      "lon": 37.6184
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/points/{pointId}/topics": {
+      "post": {
+        "operationId": "pointTopicCreate",
+        "tags": [
+          "Темы и членство"
+        ],
+        "summary": "Добавить тему и вступить в её новый чат",
+        "description": "Требуется авторизация; предварительное членство не нужно. Атомарно создаются тема, чат, членство автора и системное сообщение member_joined; повышается собственный курсор чтения, обновляется updatedAt точки и сохраняется ответ. После коммита предпринимается доставка события о членстве. Квота создания точек не расходуется. Для предустановленных тем, кроме other, своё название запрещено. Для other название после удаления пробелов по краям должно содержать 1–40 кодовых точек Unicode; дубликаты определяются без учёта регистра. Повтор возвращает сохранённые ресурсы без повторного создания.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nPOST /api/v1/points/11111111-1111-4111-8111-111111111111/topics HTTP/1.1\nHost: 127.0.0.1:8080\nAuthorization: Bearer <access-token-from-login>\nIdempotency-Key: 66666666-6666-4666-8666-666666666666\nContent-Type: application/json\n\n{\"topic\": {\"presetKey\": \"other\", \"customLabel\": \"Шахматы\"}}\n```",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_JSON: Тело содержит некорректный JSON или UTF-8, в том числе при пустом теле.\n\nINVALID_FIELD: Idempotency-Key отсутствует или некорректен либо некорректен pointId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_JSON": {
+                    "summary": "Тело содержит некорректный JSON или UTF-8, в том числе при пустом теле.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_JSON",
+                        "message": "Некорректный JSON",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "INVALID_FIELD": {
+                    "summary": "Idempotency-Key отсутствует или некорректен либо некорректен pointId.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_FIELD: Неизвестные ключи, отсутствие обязательных полей, неверные типы или недопустимый null либо нарушение бизнес-ограничений полей, описанных для этой операции.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Неизвестные ключи, отсутствие обязательных полей, неверные типы или недопустимый null либо нарушение бизнес-ограничений полей, описанных для этой операции.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректные данные",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "INVALID_FIELD: Размер JSON-тела запроса превышает 65 536 байт.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Размер JSON-тела запроса превышает 65 536 байт.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Слишком большой запрос",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Новые тема и чат с активным членством автора либо исходный сохранённый результат при повторе.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointAddTopicResult"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Новые тема и чат с активным членством автора либо исходный сохранённый результат при повторе.",
+                    "value": {
+                      "topic": {
+                        "id": "22222222-2222-4222-8222-222222222222",
+                        "presetKey": "other",
+                        "label": "Шахматы",
+                        "participantCount": 1,
+                        "chatId": "33333333-3333-4333-8333-333333333333"
+                      },
+                      "chat": {
+                        "id": "33333333-3333-4333-8333-333333333333",
+                        "pointId": "11111111-1111-4111-8111-111111111111",
+                        "topic": {
+                          "id": "22222222-2222-4222-8222-222222222222",
+                          "presetKey": "other",
+                          "label": "Шахматы",
+                          "participantCount": 1,
+                          "chatId": "33333333-3333-4333-8333-333333333333"
+                        },
+                        "address": "Москва, улица Примерная, 4",
+                        "participantCount": 1,
+                        "lastMessage": {
+                          "id": "55555555-5555-4555-8555-555555555555",
+                          "type": "system",
+                          "text": "Участник присоединился",
+                          "createdAt": "2026-11-04T12:00:00Z"
+                        },
+                        "unreadCount": 0,
+                        "currentProposal": null,
+                        "updatedAt": "2026-11-04T12:00:00Z"
+                      },
+                      "membership": {
+                        "chatId": "33333333-3333-4333-8333-333333333333",
+                        "userId": "44444444-4444-4444-8444-444444444444",
+                        "joinedAt": "2026-11-04T12:00:00Z",
+                        "lastReadMessageSeq": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_GONE: Точка удалена или не существует.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "RESOURCE_GONE": {
+                    "summary": "Точка удалена или не существует.",
+                    "value": {
+                      "error": {
+                        "code": "RESOURCE_GONE",
+                        "message": "Точка не найдена",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "DUPLICATE_TOPIC: Предустановленная тема уже существует в этой точке либо уже есть тема other с тем же нормализованным названием, в том числе при конкурентном создании.\n\nIDEMPOTENCY_KEY_REUSED: Для того же пользователя и операции add_topic ключ уже существует с другим pointId или другими каноническими данными темы.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "DUPLICATE_TOPIC": {
+                    "summary": "Предустановленная тема уже существует в этой точке либо уже есть тема other с тем же нормализованным названием, в том числе при конкурентном создании.",
+                    "value": {
+                      "error": {
+                        "code": "DUPLICATE_TOPIC",
+                        "message": "Такая тема уже есть",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "IDEMPOTENCY_KEY_REUSED": {
+                    "summary": "Для того же пользователя и операции add_topic ключ уже существует с другим pointId или другими каноническими данными темы.",
+                    "value": {
+                      "error": {
+                        "code": "IDEMPOTENCY_KEY_REUSED",
+                        "message": "Ключ запроса уже использован",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pointId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "11111111-1111-4111-8111-111111111111"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Обязательный UUID в области пользователя и операции. При потере ответа повторите запрос с тем же ключом и теми же каноническими бизнес-данными. Сохранённый результат завершённой операции воспроизводится с теми же статусом и телом; другие данные возвращают 409. Флаги подтверждения исключены из хеша. Запись хранится не менее 30 суток; не используйте старые ключи повторно для новых операций.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "66666666-6666-4666-8666-666666666666"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PointAddTopicInput"
+              },
+              "examples": {
+                "request": {
+                  "summary": "Корректный JSON-запрос с синтетическими данными",
+                  "value": {
+                    "topic": {
+                      "presetKey": "other",
+                      "customLabel": "Шахматы"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chats/{chatId}/membership": {
+      "put": {
+        "operationId": "pointChatJoin",
+        "tags": [
+          "Темы и членство"
+        ],
+        "summary": "Вступить или повторно вступить в чат темы",
+        "description": "Требуется авторизация; mute и квота точек не ограничивают вступление. Тело пустое, Idempotency-Key не нужен. При первом и повторном вступлении создаётся системное сообщение member_joined, собственный курсор чтения повышается до него; старая история остаётся доступной и не становится вновь непрочитанной. Повторное вступление обновляет joinedAt и очищает leftAt. При уже активном членстве возвращается то же членство без повторного сообщения о вступлении. Обновляются точка и числа активных участников; событие о членстве отправляется только при новом вступлении.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nPUT /api/v1/chats/33333333-3333-4333-8333-333333333333/membership HTTP/1.1\nHost: 127.0.0.1:8080\nAuthorization: Bearer <access-token-from-login>\n```",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Активное членство, включая повторный запрос уже состоящего в чате пользователя.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointMembership"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Активное членство, включая повторный запрос уже состоящего в чате пользователя.",
+                    "value": {
+                      "chatId": "33333333-3333-4333-8333-333333333333",
+                      "userId": "44444444-4444-4444-8444-444444444444",
+                      "joinedAt": "2026-11-04T12:00:00Z",
+                      "lastReadMessageSeq": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_FIELD: chatId не удаётся разобрать как UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "chatId не удаётся разобрать как UUID.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_GONE: Чат или его точка больше не существует.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "RESOURCE_GONE": {
+                    "summary": "Чат или его точка больше не существует.",
+                    "value": {
+                      "error": {
+                        "code": "RESOURCE_GONE",
+                        "message": "Чат не найден",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "33333333-3333-4333-8333-333333333333"
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "pointChatLeave",
+        "tags": [
+          "Темы и членство"
+        ],
+        "summary": "Выйти из чата темы",
+        "description": "Требуется авторизация; выход разрешён при запрете отправки сообщений (mute). Тело запроса и Idempotency-Key не нужны. Собственное членство помечается завершённым, голоса пользователя в этом чате удаляются, ревизии предложений обновляются. До начала встречи активные брони отменяются, если остаётся <=1 голоса; создаются системные сообщения, отменяются напоминания и формируются уведомления участникам. Если активных членств не осталось ни в одном чате точки, удаляются точка и зависимые чаты. После коммита предпринимается доставка событий WebSocket о членстве, предложениях, бронях и point.deleted. Если пользователь уже вышел или никогда не состоял в существующем чате, возвращается 204 без изменений. Повтор после удаления опустевшей точки возвращает 404.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nDELETE /api/v1/chats/33333333-3333-4333-8333-333333333333/membership HTTP/1.1\nHost: 127.0.0.1:8080\nAuthorization: Bearer <access-token-from-login>\n```",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденное исключение, ошибка базы данных или исчерпание повторов транзакции; внутренняя диагностика не раскрывается.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\n\nSESSION_EXPIRED: Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Заголовок не соответствует формату Bearer <access JWT>, JWT недействителен или просрочен, обязательные утверждения токена некорректны либо сеанс, пользователь или authVersion больше не действуют.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Членство завершено, пользователь уже вышел либо никогда не состоял в этом существующем чате. Тело ответа отсутствует."
+          },
+          "400": {
+            "description": "INVALID_FIELD: chatId не удаётся разобрать как UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "chatId не удаётся разобрать как UUID.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Некорректный идентификатор",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_GONE: Чат или точка отсутствует либо удалён, в том числе при повторе после удаления точки последним участником.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "RESOURCE_GONE": {
+                    "summary": "Чат или точка отсутствует либо удалён, в том числе при повторе после удаления точки последним участником.",
+                    "value": {
+                      "error": {
+                        "code": "RESOURCE_GONE",
+                        "message": "Чат не найден",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "path",
+            "required": true,
+            "description": "UUID ресурса.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "33333333-3333-4333-8333-333333333333"
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PointPosition": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lon": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        },
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "additionalProperties": false
+      },
+      "PointTopic": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "presetKey": {
+            "type": "string",
+            "enum": [
+              "football",
+              "volleyball",
+              "basketball",
+              "tennis",
+              "running",
+              "workout",
+              "table_tennis",
+              "badminton",
+              "board_games",
+              "mafia",
+              "other"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "participantCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "chatId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "presetKey",
+          "label",
+          "participantCount",
+          "chatId"
+        ],
+        "additionalProperties": false
+      },
+      "PointResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "$ref": "#/components/schemas/PointPosition"
+          },
+          "address": {
+            "type": "string"
+          },
+          "addressSource": {
+            "type": "string",
+            "enum": [
+              "provider",
+              "manual"
+            ]
+          },
+          "peopleCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PointTopic"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "address",
+          "addressSource",
+          "peopleCount",
+          "topics",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "PointPreview": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "$ref": "#/components/schemas/PointPosition"
+          },
+          "address": {
+            "type": "string"
+          },
+          "distanceMeters": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "address",
+          "distanceMeters"
+        ],
+        "additionalProperties": false
+      },
+      "PointQuota": {
+        "type": "object",
+        "properties": {
+          "weekUsed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "weekLimit": {
+            "const": 3,
+            "type": "integer"
+          },
+          "weekRemaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "weekNextAvailableAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "monthUsed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "monthLimit": {
+            "const": 10,
+            "type": "integer"
+          },
+          "monthRemaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "monthNextAvailableAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "blockedUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "lastAvailableWarning": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "weekUsed",
+          "weekLimit",
+          "weekRemaining",
+          "weekNextAvailableAt",
+          "monthUsed",
+          "monthLimit",
+          "monthRemaining",
+          "monthNextAvailableAt",
+          "blockedUntil",
+          "lastAvailableWarning"
+        ],
+        "additionalProperties": false
+      },
+      "PointTopicInput": {
+        "type": "object",
+        "properties": {
+          "presetKey": {
+            "type": "string",
+            "enum": [
+              "football",
+              "volleyball",
+              "basketball",
+              "tennis",
+              "running",
+              "workout",
+              "table_tennis",
+              "badminton",
+              "board_games",
+              "mafia",
+              "other"
+            ]
+          },
+          "customLabel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "description": "Необязательное поле, по умолчанию null. Только при presetKey=other обязательно непустое значение после удаления пробелов по краям (1–40 кодовых точек Unicode); для остальных предустановленных тем поле должно отсутствовать или быть null."
+          }
+        },
+        "required": [
+          "presetKey"
+        ],
+        "additionalProperties": false
+      },
+      "PointCreateInput": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "$ref": "#/components/schemas/PointPosition"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/PointTopicInput"
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Пробелы по краям удаляются; после этого длина должна составлять 1–300 кодовых точек Unicode."
+          },
+          "addressSource": {
+            "type": "string",
+            "enum": [
+              "provider",
+              "manual"
+            ]
+          },
+          "confirmNearby": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "position",
+          "topic",
+          "address",
+          "addressSource",
+          "confirmNearby"
+        ],
+        "additionalProperties": false
+      },
+      "PointAddTopicInput": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "$ref": "#/components/schemas/PointTopicInput"
+          }
+        },
+        "required": [
+          "topic"
+        ],
+        "additionalProperties": false
+      },
+      "PointMembership": {
+        "type": "object",
+        "properties": {
+          "chatId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastReadMessageSeq": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "chatId",
+          "userId",
+          "joinedAt",
+          "lastReadMessageSeq"
+        ],
+        "additionalProperties": false
+      },
+      "PointNewChatSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pointId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic": {
+            "$ref": "#/components/schemas/PointTopic"
+          },
+          "address": {
+            "type": "string"
+          },
+          "participantCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "lastMessage": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "type": {
+                "type": "string",
+                "const": "system"
+              },
+              "text": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "text",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          },
+          "unreadCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currentProposal": {
+            "type": "null"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "pointId",
+          "topic",
+          "address",
+          "participantCount",
+          "lastMessage",
+          "unreadCount",
+          "currentProposal",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "PointCreateResult": {
+        "type": "object",
+        "properties": {
+          "point": {
+            "$ref": "#/components/schemas/PointResource"
+          },
+          "chat": {
+            "$ref": "#/components/schemas/PointNewChatSummary"
+          },
+          "quota": {
+            "$ref": "#/components/schemas/PointQuota"
+          }
+        },
+        "required": [
+          "point",
+          "chat",
+          "quota"
+        ],
+        "additionalProperties": false
+      },
+      "PointAddTopicResult": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "$ref": "#/components/schemas/PointTopic"
+          },
+          "chat": {
+            "$ref": "#/components/schemas/PointNewChatSummary"
+          },
+          "membership": {
+            "$ref": "#/components/schemas/PointMembership"
+          }
+        },
+        "required": [
+          "topic",
+          "chat",
+          "membership"
+        ],
+        "additionalProperties": false
+      },
+      "PointPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PointResource"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Непрозрачный подписанный курсор. null означает последнюю страницу. Передавайте его без изменений с прежними bbox, фильтрами и limit."
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "PointCreationContext": {
+        "type": "object",
+        "properties": {
+          "nearby": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PointPreview"
+            }
+          },
+          "quota": {
+            "$ref": "#/components/schemas/PointQuota"
+          }
+        },
+        "required": [
+          "nearby",
+          "quota"
+        ],
+        "additionalProperties": false
+      },
+      "PointPresets": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "football",
+                    "volleyball",
+                    "basketball",
+                    "tennis",
+                    "running",
+                    "workout",
+                    "table_tennis",
+                    "badminton",
+                    "board_games",
+                    "mafia",
+                    "other"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "label"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "PointReverseInput": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "$ref": "#/components/schemas/PointPosition"
+          }
+        },
+        "required": [
+          "position"
+        ],
+        "additionalProperties": false
+      },
+      "PointReverseResult": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "provider",
+              "none"
+            ]
+          }
+        },
+        "required": [
+          "address",
+          "source"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

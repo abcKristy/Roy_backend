@@ -27,6 +27,7 @@ tasks.startScripts {
 }
 
 dependencies {
+    implementation(libs.swagger.ui)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
     implementation(libs.ktor.server.content.negotiation)
@@ -62,7 +63,22 @@ tasks.register<JavaExec>("runMigrations") {
     mainClass.set("com.example.persistence.MigrationMainKt")
 }
 
+val verifyApiDocs by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Validate published OpenAPI, route coverage and request/response examples (Python 3 required)"
+    commandLine("python", "tools/api_docs.py", "check")
+}
+
+tasks.check { dependsOn(verifyApiDocs) }
+
 tasks.processResources {
+    from("docs/openapi.json") { into("api-docs") }
+    from("docs/websocket-api.md") { into("api-docs") }
+    from("docs/api-contract-differences.md") { into("api-docs") }
+    inputs.property("swaggerUiVersion", libs.versions.swagger.ui.get())
+    filesMatching("api-docs/index.html") {
+        filter { it.replace("@SWAGGER_UI_VERSION@", libs.versions.swagger.ui.get()) }
+    }
     from("docs/privacy-policy-draft.md") {
         into("legal")
     }
