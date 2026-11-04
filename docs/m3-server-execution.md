@@ -328,3 +328,19 @@ Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest 
 Inspected `build/test-results/integrationTest/TEST-com.example.api.ReportTransactionIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T00:29:49.716Z, suite seconds=2.589. Local T074 server PASS for the stated assertions. Mobile, BG-1 and overall M3 remain open.
 
 Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
+
+## Group 7 accepted integration and accounting ledger — 04.11.2026
+
+Working branch `feat/chat-report-transactions`, accepted clean target/origin base `8decc3f4107f2fdc66319d6da08cdc578ca833cd`. Task commits: T072 `644b8c0ae9a63417462647821e369ab7589dc7d7`, T073 `575f1a0c82ab944168936758da3d8f96563e06ba`, T074 `f8b1f6ed5483c8df0d1f0b300ecab7f2e5cd91a5`. Independent task and whole-branch read-only reviews: APPROVE, no remaining findings. Lead confirmed fast-forward integration and non-force target push; local `feat/back-part-3` and `origin/feat/back-part-3` both resolved to `f8b1f6ed5483c8df0d1f0b300ecab7f2e5cd91a5`, clean at the group gate. Main before/after remained `2c1de31de2a5481e90e3c84e93a8abdb38f16169`.
+
+Actually updated external accounting paths:
+
+- `spec/plans/tasks/M3/T4/B01-report-context.md`: T072 local server ГОТОВО, checked criteria, HTTP context/target/input evidence and commit.
+- `spec/plans/tasks/M3/T4/B02-report-unique.md`: T073 local server ГОТОВО, checked criteria, concurrent pair/lifetime retention/replay evidence and commit.
+- `spec/plans/tasks/M3/T4/B03-report-transaction.md`: T074 local server ГОТОВО, checked criteria, deferred COMMIT-failure rollback/canonical outcome evidence and commit.
+- `spec/plans/tasks/M3/T4/README.md`: B01–B03 checked with date and task commits.
+- `spec/plans/roadmap/execution-checklist.md`: T072–T074 checked; M3.T4 partial backend 3/5 and client open; freshly recounted 72/455 checked tasks, unrelated accounting preserved with optimistic reread.
+- `spec/plans/tasks/M3/M3-T4.md`: B01–B03 complete locally; B04–B05/C and whole-parent acceptance open.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: corresponding partial M3.T4 server summary.
+
+The owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat` remains at V001–V015, with actual JdbcSessionRepository sessions. All seven accounting files remain outside backend Git and are not physically versioned by target/origin; the versioned ledger records the exact updated paths and topology limitation without moving or duplicating plans. The executed two-request race does not prove every interleaving, and T074's sixteenth-report atomic update does not replace T075 full threshold acceptance. Mobile, BG-1, overall parent/M3 and external integration acceptance remain open.
