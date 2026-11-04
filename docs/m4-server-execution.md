@@ -454,3 +454,201 @@ execution-checklist.md (93/455), M4-T2.md (backend4/4) and M4-meetings-booking.m
 outside backend Git. Task commit subject: `Verify atomic readiness transitions`;
 the future SHA is not fabricated. Independent read-only task review: APPROVE before commit.
 Group review remains separate; client, BG-1 and overall M4 completion are open.
+
+T095 task commit: `08d903b4eee17186ec1a43e24879f051f0aeea5b`, after independent
+task APPROVE. The separate group 4 reviewer approved T094/T095 and the whole
+branch diff, including external-evidence wording corrections. Group 4 merged and
+published as `1398e7b0b8097d0250c227960c5f0b184edf8c7e`; push/fetch/ls-remote
+verified main=origin/main at that commit and the accessible working tree was clean.
+Sequential pool 4 finished before pool 5 began.
+
+## Group 5 — T096 / M4.T3.B01 — one active booking schema
+
+Branch `feat/booking-core` starts at the verified published merge
+`1398e7b0b8097d0250c227960c5f0b184edf8c7e`.
+V010 already contains the proposal-scoped partial ACTIVE unique index, owner and
+proposal foreign keys, state CHECK and database-generated booking_order. It was
+retained; no applied migration or production service/route was changed.
+Added `BookingSchemaIntegrationTest`, guarded to own `roy_m4_booking_schema`.
+
+The SQL fixture/savepoint scenario verifies actual SQLSTATE23505 for a second
+ACTIVE booking of one proposal, while another proposal can have an ACTIVE row.
+It exercises invalid proposal/owner foreign keys, null proposal, generated-order
+override rejection and invalid state/cancellation combinations. Cancellation is
+retained as history; rebooking uses a new ID and larger order without modifying
+the cancelled snapshot. Identity sequence gaps from rejected statements are valid,
+so the test does not require old order+1. Owner deletion preserves a nullable
+historical owner; proposal deletion cascades only its bookings. All fixture rows
+are rolled back in finally; expected SQL errors are isolated by savepoints.
+
+This is local booking-core schema acceptance. Public booking routes already
+existed in the baseline; exposure was not expanded and nothing was deployed.
+Combined T3–T5/T6 server acceptance, client behavior and BG-1 remain open.
+Executed 04.11.2026 after dot-sourcing the ignored test-environment recipe with
+alias `roy_m4_booking_schema`; its credentials are not reproduced here.
+Exact command: `.\gradlew.bat integrationTest --tests com.example.meetings.BookingSchemaIntegrationTest --offline --no-daemon --max-workers=1`.
+BUILD SUCCESSFUL in35s, exit0;2 tasks executed,4 up-to-date. Actual XML:
+tests=1/skipped=0/failures=0/errors=0, timestamp2026-11-04T14:04:52.547Z,
+suite2.324s/test2.321s. No T096 failed test or confirmed production finding occurred.
+
+Pre-run targeted Docker inspection verified the same owned container ID
+`8b30a5dd02db7ef3a1cdd8bae238b5d7d9af7b7ca163bc10ee2794c0fa5d566b`,
+ownership label m4-t087-t114, running and loopback127.0.0.1:55484. The run used
+authorized escalation for Docker/Gradle cache only, without dumping environment.
+Post-run exact command:
+
+```powershell
+docker exec codex-m4-disposable psql -U m4_test -d roy_m4_booking_schema -At -c "SELECT current_database(),current_setting('server_version'),postgis_lib_version(); SELECT string_agg(version,',' ORDER BY installed_rank) FROM flyway_schema_history WHERE success AND version IS NOT NULL; SELECT (SELECT count(*) FROM users),(SELECT count(*) FROM points),(SELECT count(*) FROM meeting_proposals),(SELECT count(*) FROM bookings);"
+```
+
+It confirmed own alias, PostgreSQL18.6/PostGIS3.6.4, successful V001–V015 and
+users/points/proposals/bookings=0/0/0/0. V010 SHA256 before/after the run was identical:
+`D96E1DEAE94966185F3D1F07B67CD19B43EB1CD418AA7CF82C93EB2C49A00EAC`.
+No migration was added or modified; identity sequence gaps from rolled-back
+inserts are intentionally outside the zero-row cleanup claim.
+
+External status files updated: T3/B01-booking-unique.md, T3/README.md,
+execution-checklist.md (94/455), M4-T3.md (backend1/5), M4-meetings-booking.md
+(T3 backend1/5; M4 backend10/28), all outside backend Git.
+Task commit subject: `Verify active booking schema invariants`.
+Independent read-only task review: APPROVE before commit. Whole-T3 acceptance
+is not inferred from this schema run.
+
+T096 task APPROVE preceded commit `67ab9a370eeec5813d68c2c2dbd7e11ac440d9ff`.
+The five external T096 references now carry actual SHA `67ab9a3` and the unique
+subject, without temporary future-SHA suffixes.
+
+## Group 5 — T097 / M4.T3.B02 — booking eligibility guards
+
+Added `BookingGuardsIntegrationTest`, guarded to own `roy_m4_booking_guards`,
+using native loopback HTTP and real JDBC sessions. Nine independently seeded
+proposal states and fresh booking keys isolate the intended guard: zero votes,
+one own vote, two votes without own participation, eligible nonauthor booker,
+stale revision, closed lifecycle, started interval, existing active booking at
+current revision, and a fresh eligible proposal dedicated to revision types.
+Their intervals do not overlap, preventing an unrelated confirmation guard from
+masking eligibility. Actor→point→proposal locked rechecks remain the existing
+BookingService implementation; no production change is assumed from source review.
+
+The scenario expects distinct VOTE_REQUIRED/INSUFFICIENT_VOTES/STALE_STATE,
+member/auth/gone/closed/started/already-booked errors without changing scoped
+booking/vote/proposal rows, revisions/updated timestamps, SYSTEM/notifications,
+chat sequence or any synthetic actor's idempotency outcomes. Eligible booking
+by a voter different from the proposer must return201 and agree with GET/DB owner.
+The separate eligible revision2 target exercises quoted2, null, boolean, object,
+array, fractional numeric forms, overflow, negative and missing expectedRevision;
+native Long.MAX_VALUE must yield stale without wrapping. confirmOverlap remains
+native false; quoted confirmOverlap belongs to its later task.
+
+Actual execution and its observed type-contract defect are recorded below.
+Public baseline routes were not expanded or deployed; whole T3–T5/T6 and BG-1
+acceptance remain outside this local core task.
+
+First real command: `.\gradlew.bat integrationTest --tests com.example.meetings.BookingGuardsIntegrationTest --offline --no-daemon --max-workers=1`,
+after dot-sourcing the ignored own test-environment recipe for `roy_m4_booking_guards`.
+04.11.2026 BUILD FAILED in57s, exit1; actual JUnit tests=1/skipped=0/failures=1/
+errors=0, timestamp2026-11-04T14:12:47.574Z, suite9.049s. Earlier isolated eligibility
+guards and the eligible nonauthor201/GET/DB-owner assertions completed, then native
+HTTP `{"confirmOverlap":false,"expectedRevision":"2"}` on a fresh count2/revision2
+proposal returned201 instead of422. This is an observed revision type-contract
+defect, not an acceptance PASS. Remaining type-matrix cases were not reached.
+The finding was reported to Lead and the independent contract reviewer before
+any production correction. Post-failure own-fixture users/points/proposals/votes/
+bookings/messages/notifications/outcomes=0/0/0/0/0/0/0/0.
+
+Lead and the independent contract reviewer confirmed this P2 and approved a
+narrow correction before production editing: a private KSerializer<Long> only on
+BookingInput.expectedRevision. It requires an unquoted JsonPrimitive with a valid
+longOrNull; other shapes throw SerializationException and preserve the existing
+422 INVALID_FIELD mapping. DTO Long, encodeLong and the existing negative-revision
+guard are retained. confirmOverlap, CloseProposalInput, global JSON configuration
+and BookingService locking/eligibility logic are unchanged. The matrix additionally
+includes quoted2.0.
+
+Corrected exact command: `.\gradlew.bat integrationTest --tests com.example.meetings.BookingGuardsIntegrationTest --offline --no-daemon --max-workers=1`.
+04.11.2026 BUILD SUCCESSFUL in1m3s, exit0;4 tasks executed,2 up-to-date.
+Actual XML tests=1/skipped=0/failures=0/errors=0, timestamp2026-11-04T14:16:10.432Z,
+suite5.513s/test5.508s. The full eligibility and revision-type matrix executed,
+including safe native Long.MAX_VALUE stale handling, without guard-refusal effects.
+The approved expectedRevision type correction is GREEN; independent repeat task
+review is separate and its APPROVE is not invented.
+
+Targeted pre-run Docker inspection reverified the same owned container ID
+`8b30a5dd02db7ef3a1cdd8bae238b5d7d9af7b7ca163bc10ee2794c0fa5d566b`,
+label m4-t087-t114, running, only127.0.0.1:55484. The local ignored environment
+recipe selected own alias `roy_m4_booking_guards`; no credentials are recorded.
+Post-GREEN exact SQL command:
+
+```powershell
+docker exec codex-m4-disposable psql -U m4_test -d roy_m4_booking_guards -At -c "SELECT current_database(),current_setting('server_version'),postgis_lib_version(); SELECT string_agg(version,',' ORDER BY installed_rank) FROM flyway_schema_history WHERE success AND version IS NOT NULL; SELECT (SELECT count(*) FROM users),(SELECT count(*) FROM points),(SELECT count(*) FROM meeting_proposals),(SELECT count(*) FROM votes),(SELECT count(*) FROM bookings),(SELECT count(*) FROM messages),(SELECT count(*) FROM notification_events),(SELECT count(*) FROM operation_idempotency);"
+```
+
+It confirmed PostgreSQL18.6/PostGIS3.6.4, successful V001–V015 and the same eight
+zero fixture counts as the RED cleanup. No applied migration was changed.
+External statuses updated: T3/B02-booking-guards.md, T3/README.md,
+execution-checklist.md (95/455), M4-T3.md (backend2/5), M4-meetings-booking.md
+(T3 backend2/5; M4 backend11/28), physically outside backend Git.
+Task commit subject: `Enforce booking eligibility guards`. This local core result
+does not expand baseline public routes, deploy, close the parent or establish
+combined T3–T5/T6, client, external-delivery or BG-1 acceptance.
+
+Independent read-only repeat task review: APPROVE before commit.
+
+T097 final task commit: `069c2cb535423b1330361257e2d3413a157801ac`.
+The five external T097 subject references now include actual SHA `069c2cb`.
+
+## Group 5 — T098 / M4.T3.B03 — booking COMMIT and idempotency transaction
+
+Added `BookingTransactionIntegrationTest`, scoped to own disposable
+`roy_m4_booking_transaction`, real JDBC sessions, native loopback HTTP and two WS
+subscribers. No production or migration change was made. The baseline already
+contains public routes and overlap/cancellation hooks; this task neither expands
+exposure nor deploys or describes the baseline as dev-gated. Acceptance remains
+local core; combined T3–T5/T6, external delivery, client and BG-1 stay open. Known
+post-start cancellation policy work belongs to T101/T103, not this transaction test.
+
+A synthetic actor/operation-scoped CONSTRAINT TRIGGER on the final idempotency
+INSERT is AFTER INSERT, DEFERRABLE INITIALLY DEFERRED, with both pg_trigger flags
+asserted true. Its SQLSTATE23514 is deferred until the existing runtime's literal
+connection.commit() after the transaction block. HTTP500 must restore full booking,
+vote, proposal revision/updatedAt, point updatedAt, SYSTEM/chat sequence,
+notification/job and outcome snapshots. GET must remain ready_to_book/bookingnull;
+ordered USER sentinels plus250ms check bounded WS silence. One synthetic recipient
+device makes notification/job rollback nonvacuous; no delivery worker or provider
+is started and opaque synthetic device data is not an encryption/delivery proof.
+
+After dropping fault DDL, the same key and current revision must return201 and
+match GET/DB booking ID/order/owner/revision, one meeting_booked, SUCCESS result_ref
+and saved response snapshot. Both original replay and changed valid
+expectedRevision/confirmOverlap replay must return that same snapshot without WS,
+business writes or sequence allocation. pg_get_serial_sequence resolves the real
+identity sequence for before/after replay comparison. Failed-COMMIT identity gaps
+are valid, not reset and not claimed gapless. Reusing the key on another proposal
+must conflict without effects. Fault DDL, devices and fixture namespace are removed
+in finally. Full vote/unvote/leave races remain T113.
+
+Executed 04.11.2026 after dot-sourcing the ignored local test environment for own
+`roy_m4_booking_transaction`; no environment contents or credentials are recorded.
+Exact command: `.\gradlew.bat integrationTest --tests com.example.meetings.BookingTransactionIntegrationTest --offline --no-daemon --max-workers=1`.
+BUILD SUCCESSFUL in1m36s, exit0;2 tasks executed,4 up-to-date. Actual XML:
+tests=1/skipped=0/failures=0/errors=0, timestamp2026-11-04T14:26:46.734Z,
+suite22.507s/test22.483s. The deferred-COMMIT rollback, same-key retry, actual job,
+saved snapshot, WS absence and unchanged replay identity-sequence assertions all
+executed. No T098 failed run or confirmed production finding was observed.
+
+Before the run, targeted Docker inspection verified the same owned container
+`8b30a5dd02db7ef3a1cdd8bae238b5d7d9af7b7ca163bc10ee2794c0fa5d566b`,
+label m4-t087-t114, running and only127.0.0.1:55484. Post-run exact SQL command:
+
+```powershell
+docker exec codex-m4-disposable psql -U m4_test -d roy_m4_booking_transaction -At -c "SELECT current_database(),current_setting('server_version'),postgis_lib_version(); SELECT string_agg(version,',' ORDER BY installed_rank) FROM flyway_schema_history WHERE success AND version IS NOT NULL; SELECT (SELECT count(*) FROM users),(SELECT count(*) FROM points),(SELECT count(*) FROM meeting_proposals),(SELECT count(*) FROM votes),(SELECT count(*) FROM bookings),(SELECT count(*) FROM messages),(SELECT count(*) FROM notification_events),(SELECT count(*) FROM push_delivery_jobs),(SELECT count(*) FROM operation_idempotency),(SELECT count(*) FROM device_registrations),(SELECT count(*) FROM pg_trigger WHERE tgname LIKE 'm4_booking_commit_fault_%'),(SELECT count(*) FROM pg_proc WHERE proname LIKE 'm4_booking_commit_fault_%');"
+```
+
+It confirmed own alias, PostgreSQL18.6/PostGIS3.6.4, successful V001–V015 and all
+twelve scoped disposable-db row/fault counts zero. Identity sequence values are
+not reset and are outside this zero-row cleanup claim.
+External statuses updated: T3/B03-booking-write.md, T3/README.md,
+execution-checklist.md (96/455), M4-T3.md (backend3/5), M4-meetings-booking.md
+(T3 backend3/5; M4 backend12/28), all physically outside backend Git.
+Task commit subject: `Verify atomic booking commit outcomes`. Independent read-only
+task review: APPROVE before commit. Combined server acceptance remains open.
