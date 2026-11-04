@@ -128,3 +128,106 @@ execution-checklist.md, M4-T1.md and M4-meetings-booking.md, outside backend Git
 Task commit subject: `Verify atomic zero vote proposal creation`.
 Remote recheck before group completion: fetch succeeded, main=origin/main still
 `2f54ac0734004308aaf5e5d2f0b3a8253772c168`.
+
+Independent read-only task review: APPROVE before T089 commit
+`a8302d2d2d1b5be6a050abd72810f47487ae82b3`.
+The independent second-level group reviewer approved all three group 1 task commits
+and their full diff. Group 1 merged into main as
+`82d13a37acc968b10a08cb9c3f4729cebd8d91ea`; push and `ls-remote` verified
+`main=origin/main` at that commit, with a clean accessible main working tree.
+Pool 1 completed before pool 2 began; no implementation groups ran in parallel.
+
+## Group 2 — T090 / M4.T1.B04 — proposal history and current pin
+
+Working branch `feat/proposal-read-events` starts at the verified published group 1
+merge `82d13a37acc968b10a08cb9c3f4729cebd8d91ea`.
+Existing `MeetingProjection`, `ProposalService` read paths and `ChatReadService`
+nearest-future-open selection were retained without a speculative rewrite.
+
+Added `ProposalReadIntegrationTest`, guarded to own disposable `roy_m4_read`.
+The synthetic fixture contains six proposals: future open alternatives including
+an equal-start tie, an earlier explicitly closed proposal, a started active booked
+proposal and a started unbooked proposal. Creation timestamps give a deterministic
+complete three-page history independent of start order.
+
+The scenario checks list/detail and the production personal REST serializer,
+different actor/peer viewerGoing with the same count, nonmember denial including
+closed and booked records, scoped/signed cursor rejection and repeatable pages.
+Chat detail and myChats select the nearest future OPEN pin, breaking equal-start
+ties by proposal ID. Closing candidates advances the pin and finally clears it
+without removing history. The started booking remains booked/ACTIVE with no
+cancellation metadata; the started unbooked record projects closed. Synthetic
+point/user rows are removed in `finally`. WS payload acceptance is a separate T091
+scope; this service/projection test does not claim wire-level event verification.
+
+Executed 04.11.2026 on own `roy_m4_read`, PostgreSQL18.6/PostGIS3.6.4,
+LOCAL bootstrap V001–V015 in the verified disposable container.
+Command: `.\gradlew.bat integrationTest --tests com.example.meetings.ProposalReadIntegrationTest --offline --no-daemon --max-workers=1`.
+BUILD SUCCESSFUL in 1m27s; JUnit tests=1/skipped=0/failures=0/errors=0;
+2 tasks executed, 4 up-to-date (the integration test itself executed).
+Post-run SQL users/points/proposals/bookings=0/0/0/0.
+External accounting updated: T1/B04-proposal-read.md, T1/README.md,
+execution-checklist.md, M4-T1.md and M4-meetings-booking.md, outside backend Git.
+Task commit subject: `Verify proposal history and current pin`.
+
+Independent read-only task review: APPROVE before T090 commit
+`a24e8793309b5ca52d3a96b75f5f8f717217825e`.
+
+## Group 2 — T091 / M4.T1.B05 — committed creation events and public nearby hook
+
+Retained the existing transactional SYSTEM/nearby producer and post-commit route
+publication. Added `ProposalEventsIntegrationTest`, scoped to own disposable
+`roy_m4_events`, with real JDBC sessions, a native loopback Netty server and JDK
+HTTP/WebSocket clients. The three synthetic accounts are author, peer and nearby
+nonmember; all have nearby opt-in/location, so exclusion of author and members is
+observable. Four sockets cover author/peer in the target chat, peer in the adjacent
+topic, and the nearby account whose target-chat subscription is explicitly rejected.
+
+The test uses an own-database SHARE table lock to stop the final outcome INSERT,
+observes its actual waiting RowExclusiveLock through pg_locks within five seconds,
+and checks an independent committed SQL snapshot is empty. Ordered USER sentinels
+verify no proposal/chat event is visible while the producing transaction remains
+blocked. The test runtime has bounded 20-second lock/30-second statement timeouts;
+it verifies the request is still pending before release. After releasing the gate,
+it expects201, matching target-socket event IDs, persisted SYSTEM/proposal IDs and
+revision, chat scope, and common payloads without viewerGoing. Adjacent and rejected
+sockets receive no proposal events through an ordered sentinel plus250ms window.
+
+The public notifications HTTP projection is checked for point-only targeting,
+null chatId/proposalId and absence of private values in its response. The private
+database may retain proposal_id for lifecycle/dedup: exactly one nearby row for
+the eligible outsider uses `nearby:<proposalId>`; author and member get none.
+An exact replay expects the same201 snapshot, unchanged rows and no new WS events.
+
+A temporary trigger, scoped to the synthetic author and create operation, raises
+nonretryable SQLSTATE23514 at the final outcome INSERT. The real HTTP request must
+return500 while proposal/vote/SYSTEM/outcome/nearby counts and chat sequence remain
+unchanged, public invitations stay unchanged and all sockets stay silent through
+ordered markers. After dropping the trigger the same key can create successfully.
+Trigger/function cleanup and fixture deletion target only their own names/IDs.
+
+This is a bounded local server test, not unbounded exactly-once delivery, external
+push delivery, the M5 reminder/nearby acceptance or BG-1. Actual execution evidence
+and its limitations are recorded below; implementing assertions alone is not PASS.
+
+First required command: `.\gradlew.bat integrationTest --tests com.example.meetings.ProposalEventsIntegrationTest --offline --no-daemon --max-workers=1`.
+It actually executed and failed in1m41s: JUnit tests=1,
+skipped=0, failures=1, errors=0. The test expected a top-level `systemType`,
+but the canonical production Message serializer exposes lowercase `type=system`
+and the nested `system.kind`/`system.proposalId` fields. The resulting test
+NullPointerException at assertEvents was an incorrect test expectation, not a
+confirmed backend defect. Independent review requested changes to the test.
+The corrected expectations now compare the exact Message/system/event-envelope
+keys and the complete proposal.updated payload (including status/count/bookingId),
+plus matching event timestamps. No production change was made for this failure.
+Corrected real command: `.\gradlew.bat integrationTest --tests com.example.meetings.ProposalEventsIntegrationTest --offline --no-daemon --max-workers=1`.
+04.11.2026: BUILD SUCCESSFUL in1m52s, JUnit tests=1/skipped=0/failures=0/errors=0;
+the integration task executed (2 tasks executed,4 up-to-date).
+Own `roy_m4_events`, verified disposable container, PostgreSQL18.6/PostGIS3.6.4,
+LOCAL bootstrap V001–V015. Post-run users/points/proposals/messages/outcomes/
+notifications/custom fault triggers/custom fault functions=0/0/0/0/0/0/0/0.
+External accounting updated: T1/B05-proposal-producer.md, T1/README.md,
+execution-checklist.md, M4-T1.md and M4-meetings-booking.md, outside backend Git.
+Task commit subject: `Verify committed proposal events and nearby targets`.
+M4.T1 backend B01–B05 accepted locally; client, M5 external delivery and BG-1
+remain outside this result. B4 as a whole is not accepted by this group alone.
