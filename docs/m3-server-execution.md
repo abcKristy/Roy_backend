@@ -636,3 +636,29 @@ Exactly one finding commit, subject `Reject NUL in chat history search`, contain
 Lead then repeated the complete selected M3 regression on tested snapshot `a21376d48abadab9d3a7314a0b0fd732082b2fcd`: exact29 integration classes/32 tests PASS1m38s and5 unit classes/16 tests PASS33s, each exit0 and0 skipped/failures/errors. Current safe `docs/evidence/m3-final-verification.json` records the post-fix actual XML, command arguments,30 task mappings and stable executable-input Git objects. Only audit/evidence/ledger metadata is amended after this run; those executable objects bind the tested content across amendment of the unpublished finding commit. The original pre-audit summary is retained in Git75f14e3. No broader runtime acceptance is claimed.
 
 Independent final read-only audit_closure approved the complete one-finding branch on a276e2120d66dbfed367a9b0dab7f5e2e27e73b0, with no remaining confirmed findings. Historical RED/GREEN raw XML was overwritten by later Gradle runs; the captured observations remain in the single audit record, while all48 current regression XML and eight executable-input objects were independently verified directly. Only evidence/approval metadata is amended afterward; no additional finding or code change is introduced. Definitive published fix SHA and final accounting follow integration.
+
+## Final full-audit closure and external accounting ledger — 04.11.2026
+
+The single full-review file `docs/m3-t057-t086-review.md` was first committed as `f0c1ecaff4f089fc80bc4efe4f19cbecbce358e0` and pushed to target before creating the separate audit-fix branch. The fresh detailed review covered all30 T057–T086 tasks and found one P2 `AUD-LOW-001` in T060 (NUL search input produced500). Actual required reproduction RED1m11s was followed by GREEN1m14s. Sole finding/fix commit `67a74ce87cf496c22cdd8428098733fe654492d0` includes the minimal correction, regression and corresponding single-file audit closure. Independent targeted review, a new whole-branch reviewer `audit_closure`, and final-amend review all returned APPROVE. Final audit finding count:1 found,1 fixed,0 open confirmed findings; earlier task/group review IDs remain separate and are not added to this count.
+
+Final full regression:29 integration classes/32 tests PASS1m38s, plus5 unit classes/16 tests PASS33s, all0 skipped/failures/errors. Source-bound evidence remained stable for8 objects. These are the executed local server checks, not deployed/mobile/BG-1 or external-provider acceptance.
+
+Lead confirmed fast-forward integration of the separate audit-fix branch and non-force push: local `feat/back-part-3` and `origin/feat/back-part-3` equal `67a74ce87cf496c22cdd8428098733fe654492d0`, clean at the closure gate. Main before/after stayed `2c1de31de2a5481e90e3c84e93a8abdb38f16169`. Audit-file SHA/evidence JSON metadata remain owned by Lead; this accounting step does not modify that single audit file, evidence JSON or code.
+
+Actually updated13 external accounting files:
+
+- `spec/plans/tasks/M3/T1/B04-search-query.md`: T060 final finding/reproduction/fix/independent closure and audit link.
+- `spec/plans/tasks/M3/T1/README.md`: T060 audit closure while preserving client/BG-1 boundaries.
+- `spec/plans/tasks/M3/T6/B03-chat-socket-cases.md`: replaced pending-audit statement with actual completed audit/fix status.
+- `spec/plans/tasks/M3/T6/B04-chat-race-cases.md`: replaced pending-audit statement with actual completed audit/fix status.
+- `spec/plans/tasks/M3/T6/README.md`: completed server audit/fix and final regression summary; clients remain open.
+- `spec/plans/tasks/M3/M3-T1.md`: final server audit closure summary, whole-parent partial.
+- `spec/plans/tasks/M3/M3-T2.md`: final server audit closure summary, whole-parent partial.
+- `spec/plans/tasks/M3/M3-T3.md`: final server audit closure summary, whole-parent partial.
+- `spec/plans/tasks/M3/M3-T4.md`: final server audit closure summary, whole-parent partial.
+- `spec/plans/tasks/M3/M3-T5.md`: final server audit closure summary, whole-parent partial.
+- `spec/plans/tasks/M3/M3-T6.md`: removed pending-audit status and recorded completed audit/fix; whole-parent partial.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: removed pending audit/fix status, retained B30/30 local-server scope and open client/BG-1/overall M3.
+- `spec/plans/roadmap/execution-checklist.md`: T060 final closure annotation and full server audit/fix summary; fresh total84/455 unchanged, all30 server tasks checked. Unrelated statuses preserved with optimistic reread immediately before write.
+
+All13 accounting files remain physically outside backend Git, so their contents are not claimed as files within target/origin history. This versioned ledger records their exact updated paths and scope without moving or duplicating user plans. All versionable server results, the sole full audit and its fix are on the target branch per the checked Git gate; no M3 result was merged or pushed to main. Client tasks, BG-1, external integrations and overall mixed-parent/M3 acceptance remain open.

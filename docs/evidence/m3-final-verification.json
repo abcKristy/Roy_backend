@@ -40,7 +40,8 @@
   "branch": "fix/chat-search-validation",
   "findingCommitResolution": {
     "subject": "Reject NUL in chat history search",
-    "rule": "The sole finding commit on this branch; final exact SHA is recorded after integration without a circular self-reference"
+    "rule": "Exactly one finding commit; exact published SHA added after integration to avoid a circular self-reference",
+    "finalCommit": "67a74ce87cf496c22cdd8428098733fe654492d0"
   },
   "audit": {
     "initialAuditCommit": "f0c1ecaff4f089fc80bc4efe4f19cbecbce358e0",
@@ -48,7 +49,8 @@
     "pointReview": "APPROVE",
     "finalBranchReview": "APPROVE by independent audit_closure",
     "initialVerificationCommit": "75f14e30fbc129d395a449e40f36c463451fe07f",
-    "reviewedCommit": "a276e2120d66dbfed367a9b0dab7f5e2e27e73b0"
+    "reviewedCommit": "a276e2120d66dbfed367a9b0dab7f5e2e27e73b0",
+    "finalAmendReviewedCommit": "67a74ce87cf496c22cdd8428098733fe654492d0"
   },
   "database": {
     "alias": "roy_m3_chat",
@@ -1157,5 +1159,14 @@
     "Build XML is mutable; this safe summary preserves observed names/counts/timestamps without raw logs or credentials",
     "Independent full audit found one P2; corrected code has point APPROVE, full selected regression and independent whole-branch APPROVE",
     "The prior pre-audit summary remains versioned at 75f14e3; this current file records the post-fix run"
-  ]
+  ],
+  "integration": {
+    "targetBranch": "feat/back-part-3",
+    "verifiedPublishedFixCommit": "67a74ce87cf496c22cdd8428098733fe654492d0",
+    "mainSnapshot": "2c1de31de2a5481e90e3c84e93a8abdb38f16169",
+    "taskCommitsInTargetAndOrigin": 30,
+    "taskOrFixCommitsInMain": 0,
+    "auditFileTrackedInOrigin": true,
+    "finalReview": "APPROVE"
+  }
 }
