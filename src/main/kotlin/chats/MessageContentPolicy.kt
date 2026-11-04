@@ -32,7 +32,7 @@ object ApprovedProfanityDetector : ProfanityDetector {
         "asshole", "assholes", "arsehole", "arseholes",
     )
     private val maxFormLength = (russian + english).maxOf(String::length)
-    private val maskedToken = Regex("[\\p{L}\\p{N}]+(?:[*._·-]{1,2}[\\p{L}\\p{N}]+)*")
+    private val maskedToken = Regex("[\\p{L}\\p{N}]+(?:[*._·-]{1,2}[\\p{L}\\p{N}]+)*+")
     private val spacedLetters = Regex("(?<![\\p{L}\\p{N}])(?:[\\p{L}](?: [\\p{L}]){2,})(?![\\p{L}\\p{N}])")
     private val latinLookalikes = mapOf(
         'a' to 'а', 'e' to 'е', 'o' to 'о', 'p' to 'р', 'c' to 'с', 'x' to 'х',
