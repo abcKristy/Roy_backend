@@ -341,3 +341,52 @@ notifications=0/0/0/0/0/0.
 External accounting updated: T2/B02-vote-projection.md, T2/README.md,
 execution-checklist.md, M4-T2.md and M4-meetings-booking.md, outside backend Git.
 Task commit subject: `Verify personal vote snapshots and shared events`.
+
+Independent read-only T093 task review: APPROVE before commit
+`13ba75bdfb2152020d70326b93f73cd892f5abde`.
+The separate group 3 reviewer approved both task commits and the complete branch
+diff after the strict-Boolean correction and actual test evidence. Group 3 merged
+and published as `6cea7c437456ce793afe58dafc08c3c6998922ca`; push, fetch and
+ls-remote verified `main=origin/main` at that commit with a clean accessible main
+checkout. Pool 3 completed before sequential pool 4 began.
+
+## Group 4 — T094 / M4.T2.B03 — bounded public voter pages
+
+Branch `feat/voter-list-transition` starts at published verified main
+`6cea7c437456ce793afe58dafc08c3c6998922ca`.
+Existing service keyset/cursor and transport UserPublic projection were retained.
+Added `VoterPageIntegrationTest`, guarded to own disposable `roy_m4_voters`.
+Its real JDBC session/native loopback HTTP fixture has two chats at one point,
+two proposals in the first chat and one in the second, two authorized viewers,
+five voters and an outsider. Equal vote timestamps deliberately cross a page
+boundary; positive UUID high bits3/2/1 give explicit SQL descending tie order,
+without relying on Java's signed UUID comparator.
+
+The scenario checks three bounded pages for exact order, complete coverage,
+no duplicates and repeatability; default,1 and100 limits are exercised. Every
+Vote has exactly proposalId/user/createdAt and UserPublic has exactly
+id/displayName/avatarUrl. Avatars expose only the public user-avatar URL or null;
+phone, age, password hash and raw object-key data remain absent. URL shape is
+checked, not media fetching or external storage delivery.
+
+Missing authentication and nonmembership return the established401/403 codes.
+Invalid limits return400 INVALID_FIELD; malformed/tampered cursors and changes
+to viewer, page limit, proposal, associated chat or cursor scope return400
+INVALID_CURSOR without voter data. Both resource-context comparison endpoints
+are independently accessible to the viewer, so rejection is attributed to cursor
+context rather than a membership failure. Repeated reads and rejected requests
+leave scoped vote/revision/message/notification/sequence SQL state unchanged.
+The fixture removes only its own point and accounts in finally.
+
+Executed 04.11.2026 with `.\gradlew.bat integrationTest --tests com.example.meetings.VoterPageIntegrationTest --offline --no-daemon --max-workers=1`.
+BUILD SUCCESSFUL in1m39s; JUnit tests=1/skipped=0/failures=0/errors=0.
+Own `roy_m4_voters`, verified disposable PostgreSQL18.6/PostGIS3.6.4,
+LOCAL bootstrap V001–V015; post-run users/points/proposals/votes/messages/
+notifications=0/0/0/0/0/0.
+External accounting updated: T2/B03-voter-page.md, T2/README.md,
+execution-checklist.md (92/455), M4-T2.md (backend3/4), and M4-meetings-booking.md
+(T2 backend3/4; total M4 backend8/28). These five status files remain outside
+backend Git; their physical contents do not enter main through this protocol.
+Task commit subject: `Verify bounded public voter pages`; SHA is not invented
+before creation. Independent read-only task review: APPROVE before commit.
+Client completion, BG-1 and overall M4 acceptance remain open.
