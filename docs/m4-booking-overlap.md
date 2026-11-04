@@ -98,7 +98,7 @@ T107 independent read-only final task review by contracts: APPROVE after approve
 
 # M4.T5.B03 / T108 — fresh confirmation under actual point locks
 
-Дата: 04.11.2026. Локальный backend PASS; база T107 `36ece2a57dd9a0e49fb1088c8fb0b9b4d0b335a7`; subject `Verify fresh booking confirmation checks`.
+Дата: 04.11.2026. Локальный backend PASS; база T107 `36ece2a57dd9a0e49fb1088c8fb0b9b4d0b335a7`; subject `Verify fresh booking confirmation checks`, commit `a395e6b446aa182557fd20bedf3d46446da46710`; final task review contracts APPROVE подтверждён Lead.
 
 Добавлен только `BookingOverlapConfirmIntegrationTest`; production BookingService/MeetingRoutes и миграции не менялись. Сверка исходников показала, что существующий book при каждом новом confirmation transaction после actor-idempotency lock получает point row FOR UPDATE, proposal lock и заново читает membership/revision/lifecycle/database time/active booking/own vote/count/direct overlaps. Старый warning не сохраняет terminal outcome и не является источником доверенного списка.
 
@@ -139,3 +139,35 @@ SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_
 Факт PostgreSQL18.6/PostGIS3.6.4, Flyway15 rows/V001–V015/all success=true. Все12 fixture tables (users,auth_sessions,points,point_topics,chats,chat_memberships,meeting_proposals,votes,bookings,messages,notification_events,operation_idempotency) count0; lock waiters0; identity last_value28/is_called=true, gaps не сбрасывались. Servers/executors закрыты finally, cleanup удаляет свои UUID fixtures. Production finding/изменений нет. Public routes/deploy не менялись; T109/T110/T114, BG-1, delivery/provider/mobile и общий M4 этим PASS не закрыты.
 
 T108 independent read-only task review by contracts: APPROVE before commit; no confirmed findings. Lead synchronized all five external status places: T5 backend3/5, checklist103/455, M4 backend19/28. Updated main integration and independent whole-branch review are separate.
+
+
+# Main integration d5cfce8 — group9 focused regression
+
+04.11.2026. Lead подготовил clean automatic merge опубликованного main `d5cfce8` в ветку с T106 `480b4ec2427b285f14258e999386987b458c3c4b`, T107 `36ece2a57dd9a0e49fb1088c8fb0b9b4d0b335a7`, T108 `a395e6b446aa182557fd20bedf3d46446da46710`. На момент этих checks merge находился pending до Lead commit. Product/tests не редактировались; повторно исполнены только три затронутых focused classes на прежних собственных aliases контейнера codex-m4-overlap/127.0.0.1:55487. Это integration evidence этих checks, не новый общий milestone acceptance или group review.
+
+Каждая последовательность выполнялась с явным workdir `C:\Users\lolut\.codex\worktrees\booking-overlap\backend`; XML каждого успешного run скопирован до следующего Gradle в ignored `build/pool6-main-integration/`:
+
+```powershell
+New-Item -ItemType Directory -Force build/pool6-main-integration | Out-Null
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_overlap_query -DatabasePort 55487
+.\gradlew.bat integrationTest --tests com.example.meetings.BookingOverlapQueryIntegrationTest --offline --no-daemon --max-workers=1
+Copy-Item -LiteralPath build/test-results/integrationTest/TEST-com.example.meetings.BookingOverlapQueryIntegrationTest.xml -Destination build/pool6-main-integration/BookingOverlapQueryIntegrationTest.xml
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_overlap_warning -DatabasePort 55487
+.\gradlew.bat integrationTest --tests com.example.meetings.BookingOverlapWarningIntegrationTest --offline --no-daemon --max-workers=1
+Copy-Item -LiteralPath build/test-results/integrationTest/TEST-com.example.meetings.BookingOverlapWarningIntegrationTest.xml -Destination build/pool6-main-integration/BookingOverlapWarningIntegrationTest.xml
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_overlap_confirm -DatabasePort 55487
+.\gradlew.bat integrationTest --tests com.example.meetings.BookingOverlapConfirmIntegrationTest --offline --no-daemon --max-workers=1
+Copy-Item -LiteralPath build/test-results/integrationTest/TEST-com.example.meetings.BookingOverlapConfirmIntegrationTest.xml -Destination build/pool6-main-integration/BookingOverlapConfirmIntegrationTest.xml
+```
+
+Actual XML: Query tests2/skipped0/failures0/errors0, timestamp `2026-11-04T15:24:36.552Z`, duration2.967s, BUILD SUCCESSFUL18s. Warning tests2/skipped0/failures0/errors0, timestamp `2026-11-04T15:25:08.503Z`, duration4.099s, BUILD SUCCESSFUL17s. Confirm tests4/skipped0/failures0/errors0, timestamp `2026-11-04T15:25:38.377Z`, duration10.071s, BUILD SUCCESSFUL23s. Суммарно8 реально исполненных tests/0skips/failures/errors; старые task-run результаты не подменяют эти XML.
+
+После runs тот же versions/history/12-table-cleanup SQL из T107 и sequence/lock-waiter SQL из T108 выполнен для каждой alias через следующую PowerShell последовательность (с env синтетической ролью без печати credentials):
+
+```powershell
+foreach ($dbAlias in @('roy_m4_overlap_query','roy_m4_overlap_warning','roy_m4_overlap_confirm')) {
+    docker exec codex-m4-overlap psql -U $env:DATABASE_USER -d $dbAlias -Atc "SELECT current_database(),current_setting('server_version'),postgis_lib_version(); SELECT count(*),min(version),max(version),bool_and(success) FROM flyway_schema_history; SELECT 'users',count(*) FROM users UNION ALL SELECT 'auth_sessions',count(*) FROM auth_sessions UNION ALL SELECT 'points',count(*) FROM points UNION ALL SELECT 'point_topics',count(*) FROM point_topics UNION ALL SELECT 'chats',count(*) FROM chats UNION ALL SELECT 'chat_memberships',count(*) FROM chat_memberships UNION ALL SELECT 'meeting_proposals',count(*) FROM meeting_proposals UNION ALL SELECT 'votes',count(*) FROM votes UNION ALL SELECT 'bookings',count(*) FROM bookings UNION ALL SELECT 'messages',count(*) FROM messages UNION ALL SELECT 'notification_events',count(*) FROM notification_events UNION ALL SELECT 'operation_idempotency',count(*) FROM operation_idempotency; SELECT last_value,is_called FROM bookings_booking_order_seq; SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock';"
+}
+```
+
+На всех трёх aliases PostgreSQL18.6/PostGIS3.6.4, Flyway15 rows/min001/max015/bool_and(success)=true; все12 fixture tables0, lock waiters0. Identity last_value/is_called: query18/true, warning13/true, confirm43/true. Gaps сохранены. Production/schema, external statuses, shared/master документы и Git исполнителем не менялись; дополнен только этот протокол фактическими результатами.
