@@ -299,3 +299,45 @@ The P2 strict-Boolean regression and native distinct-voter concurrency are GREEN
 External accounting updated: T2/B01-vote-write.md, T2/README.md,
 execution-checklist.md, M4-T2.md and M4-meetings-booking.md, outside backend Git.
 Task commit subject: `Enforce strict own vote writes`.
+
+Independent read-only repeat task review: APPROVE before T092 commit
+`330983374d555752e1b85b4241bc29d34964cc31`.
+
+## Group 3 — T093 / M4.T2.B02 — shared count and personal going projection
+
+Existing production projection and event paths were retained. Added
+`VoteProjectionIntegrationTest`, guarded to own disposable `roy_m4_vote_projection`.
+The fixture has three active members A/B/C, real JDBC sessions, one future proposal
+without a booking and recipient settings that make the transactional notification
+write observable. The native loopback Netty/HTTP/WS scenario exercises committed
+states0→A-only1→A+B2→B-only1; C never votes.
+
+For every state, all three actors' service list/detail and production HTTP list/detail
+must agree on shared goingCount/status/revision and on their own viewerGoing flag.
+Repeated snapshots leave SQL votes/revision/messages/notifications unchanged.
+The >1 state projects ready_to_book; other states project voting with null booking.
+All three subscribed sockets receive an identical proposal.updated event, including
+the same event ID and exact shared payload, without viewerGoing, and its revision
+matches committed PostgreSQL. The count2 SYSTEM meeting_ready frame is drained
+using canonical Message.system fields; readiness-edge dedup acceptance remains T095.
+
+Before the first vote commits, an own-database SHARE lock on notification_events
+blocks the transaction's actual notification INSERT. Within a five-second bound,
+pg_locks must show the waiting RowExclusiveLock and the HTTP future stays pending.
+Independent SQL and every actor's list/detail continue to show the old0/false/voting
+snapshot. Ordered USER markers plus250ms observations show no premature chat event.
+Only after releasing the gate may HTTP return the new personal snapshot and WS
+publish its shared invalidation. Explicit bounded lock/statement/HTTP timeouts are
+40/50/45 seconds to accommodate those read checks; they are not an unbounded wait.
+
+Sockets/server and the fixture's own point/accounts are cleaned in finally. No
+production rewrite, broad T092 error matrix or exhaustive race acceptance is implied.
+Executed 04.11.2026 with `.\gradlew.bat integrationTest --tests com.example.meetings.VoteProjectionIntegrationTest --offline --no-daemon --max-workers=1`.
+BUILD SUCCESSFUL in1m56s; JUnit tests=1/skipped=0/failures=0/errors=0,
+integration task executed (2 tasks executed,4 up-to-date).
+Own `roy_m4_vote_projection`, verified disposable PostgreSQL18.6/PostGIS3.6.4,
+LOCAL bootstrap V001–V015; post-run users/points/proposals/votes/messages/
+notifications=0/0/0/0/0/0.
+External accounting updated: T2/B02-vote-projection.md, T2/README.md,
+execution-checklist.md, M4-T2.md and M4-meetings-booking.md, outside backend Git.
+Task commit subject: `Verify personal vote snapshots and shared events`.
