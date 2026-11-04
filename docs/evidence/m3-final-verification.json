@@ -1,0 +1,1113 @@
+{
+  "scope": "Final selected local M3 server verification before independent full audit",
+  "generatedAtUtc": "2026-11-04T08:56:12.3665064Z",
+  "sourceCommit": "a5d4edc86f40d38405447cfde787ae266775d803",
+  "branch": "feat/back-part-3",
+  "database": {
+    "alias": "roy_m3_chat",
+    "ownershipLabel": "codex.owner=m3-chat-20261104",
+    "loopbackOnly": true,
+    "disposableRequired": true,
+    "requiredIntegrationTask": true,
+    "postgres": "18.6",
+    "postgis": "3.6.4",
+    "appliedValidatedMigrations": "V001-V015",
+    "provision": "Owned tmpfs container restarted and immutable migrations reapplied before T085 and this run"
+  },
+  "toolchain": {
+    "jdk": "17",
+    "gradle": "9.5.1",
+    "os": "Microsoft Windows NT 10.0.26200.0"
+  },
+  "commands": [
+    {
+      "executable": "./gradlew.bat",
+      "arguments": [
+        "integrationTest",
+        "--tests",
+        "com.example.acceptance.ChatAcceptanceFixtureIntegrationTest",
+        "--tests",
+        "com.example.acceptance.ChatRestAcceptanceIntegrationTest",
+        "--tests",
+        "com.example.acceptance.ChatSendLeaveRaceIntegrationTest",
+        "--tests",
+        "com.example.acceptance.ChatWebSocketAcceptanceIntegrationTest",
+        "--tests",
+        "com.example.api.ChatListPaginationIntegrationTest",
+        "--tests",
+        "com.example.api.ChatSummaryIntegrationTest",
+        "--tests",
+        "com.example.api.HistoryAccessIntegrationTest",
+        "--tests",
+        "com.example.api.HistoryPaginationIntegrationTest",
+        "--tests",
+        "com.example.api.HistorySearchIntegrationTest",
+        "--tests",
+        "com.example.api.LeaveLifecycleIntegrationTest",
+        "--tests",
+        "com.example.api.LongMessageFloodIntegrationTest",
+        "--tests",
+        "com.example.api.MembershipConstraintsIntegrationTest",
+        "--tests",
+        "com.example.api.MuteSendGuardIntegrationTest",
+        "--tests",
+        "com.example.api.MuteThresholdIntegrationTest",
+        "--tests",
+        "com.example.api.PhoneFilterIntegrationTest",
+        "--tests",
+        "com.example.api.ProfanityFilterIntegrationTest",
+        "--tests",
+        "com.example.api.ReadCursorIntegrationTest",
+        "--tests",
+        "com.example.api.ReportContextIntegrationTest",
+        "--tests",
+        "com.example.api.ReportLifetimeIntegrationTest",
+        "--tests",
+        "com.example.api.ReportTransactionIntegrationTest",
+        "--tests",
+        "com.example.api.SendInputIntegrationTest",
+        "--tests",
+        "com.example.api.SendReplayIntegrationTest",
+        "--tests",
+        "com.example.api.ShortMessageFloodIntegrationTest",
+        "--tests",
+        "com.example.api.UnreadCountIntegrationTest",
+        "--tests",
+        "com.example.api.UrlFilterIntegrationTest",
+        "--tests",
+        "com.example.chats.SendTransactionIntegrationTest",
+        "--tests",
+        "com.example.realtime.MessagePublicationIntegrationTest",
+        "--tests",
+        "com.example.realtime.WebSocketLifecycleIntegrationTest",
+        "--tests",
+        "com.example.realtime.WebSocketSubscriptionIntegrationTest",
+        "--offline",
+        "--no-daemon",
+        "--max-workers=1"
+      ],
+      "exitCode": 0,
+      "gradleDuration": "2m8s"
+    },
+    {
+      "executable": "./gradlew.bat",
+      "arguments": [
+        "test",
+        "--tests",
+        "com.example.chats.ContentPolicyVersionTest",
+        "--tests",
+        "com.example.chats.LinkBoundaryTest",
+        "--tests",
+        "com.example.chats.MessageContentPolicyTest",
+        "--tests",
+        "com.example.chats.ProfanityBoundaryTest",
+        "--tests",
+        "com.example.chats.ProfanityPolicyTest",
+        "--offline",
+        "--no-daemon",
+        "--max-workers=1"
+      ],
+      "exitCode": 0,
+      "gradleDuration": "33s"
+    }
+  ],
+  "totals": {
+    "integrationClasses": 29,
+    "integrationTests": 32,
+    "unitClasses": 5,
+    "unitTests": 16,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0
+  },
+  "taskMap": [
+    {
+      "task": "T057",
+      "permanentId": "M3.T1.B01",
+      "taskCommit": "8a78bc1e9500937d7b77d5b6e1fa4bf16a41fd2a",
+      "primaryClass": "com.example.api.MembershipConstraintsIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T058",
+      "permanentId": "M3.T1.B02",
+      "taskCommit": "6c38b074abf480cb3316baa311b05d08bb6dbc60",
+      "primaryClass": "com.example.api.HistoryAccessIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T059",
+      "permanentId": "M3.T1.B03",
+      "taskCommit": "2f3ea9769e9bc432d63f9dd880051f009db64b79",
+      "primaryClass": "com.example.api.HistoryPaginationIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T060",
+      "permanentId": "M3.T1.B04",
+      "taskCommit": "2b7e5a6db31a0c68ef0145c81b93620befbd8482",
+      "primaryClass": "com.example.api.HistorySearchIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T061",
+      "permanentId": "M3.T1.B05",
+      "taskCommit": "1d13f3ce41c4d4c4ebe9b5a49cd3a8d72045ff72",
+      "primaryClass": "com.example.api.LeaveLifecycleIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T062",
+      "permanentId": "M3.T2.B01",
+      "taskCommit": "44892a57baca75afd3fedf199c448c20aadaba45",
+      "primaryClass": "com.example.api.SendInputIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T063",
+      "permanentId": "M3.T2.B02",
+      "taskCommit": "d7408e92bae7b6a932cc3a60d198c3c47bc98c59",
+      "primaryClass": "com.example.chats.SendTransactionIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T064",
+      "permanentId": "M3.T2.B03",
+      "taskCommit": "78352e7dda318b394687e9874e1d3a06f9f44719",
+      "primaryClass": "com.example.api.SendReplayIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T065",
+      "permanentId": "M3.T2.B04",
+      "taskCommit": "7a8a8c480c9d52359c2cc54ce1a2a8be5dba916f",
+      "primaryClass": "com.example.realtime.WebSocketSubscriptionIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T066",
+      "permanentId": "M3.T2.B05",
+      "taskCommit": "f25cfeaf3b288ca475c3c9b2eab80bd04c9c17b8",
+      "primaryClass": "com.example.realtime.MessagePublicationIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T067",
+      "permanentId": "M3.T2.B06",
+      "taskCommit": "42f4b45a661efb765382340b1cbf0d5c0f457f21",
+      "primaryClass": "com.example.realtime.WebSocketLifecycleIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T068",
+      "permanentId": "M3.T3.B01",
+      "taskCommit": "8c135548966ff21f2abe4a90791c994334888719",
+      "primaryClass": "com.example.api.ChatSummaryIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T069",
+      "permanentId": "M3.T3.B02",
+      "taskCommit": "cdf64416900bc3270502c37647aa31fbe100a095",
+      "primaryClass": "com.example.api.UnreadCountIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T070",
+      "permanentId": "M3.T3.B03",
+      "taskCommit": "78b5609942bf53b3fcf714441e21112c64fb01c8",
+      "primaryClass": "com.example.api.ReadCursorIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T071",
+      "permanentId": "M3.T3.B04",
+      "taskCommit": "8199271ba5049e42ef26ad60f57281042f0d93ee",
+      "primaryClass": "com.example.api.ChatListPaginationIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T072",
+      "permanentId": "M3.T4.B01",
+      "taskCommit": "644b8c0ae9a63417462647821e369ab7589dc7d7",
+      "primaryClass": "com.example.api.ReportContextIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T073",
+      "permanentId": "M3.T4.B02",
+      "taskCommit": "575f1a0c82ab944168936758da3d8f96563e06ba",
+      "primaryClass": "com.example.api.ReportLifetimeIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T074",
+      "permanentId": "M3.T4.B03",
+      "taskCommit": "f8b1f6ed5483c8df0d1f0b300ecab7f2e5cd91a5",
+      "primaryClass": "com.example.api.ReportTransactionIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T075",
+      "permanentId": "M3.T4.B04",
+      "taskCommit": "682bfb0abeee2a1425043ceabb1a67a2202b9568",
+      "primaryClass": "com.example.api.MuteThresholdIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T076",
+      "permanentId": "M3.T4.B05",
+      "taskCommit": "936086d7511381ac226cc6b94ff1bb2bdac1bdb0",
+      "primaryClass": "com.example.api.MuteSendGuardIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T077",
+      "permanentId": "M3.T5.B01",
+      "taskCommit": "9b06fa24742d8fd6834aec9366b577acdffde71f",
+      "primaryClass": "com.example.chats.ContentPolicyVersionTest",
+      "supportingClasses": [
+        "com.example.chats.ContentPolicyVersionTest",
+        "com.example.chats.MessageContentPolicyTest"
+      ],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T078",
+      "permanentId": "M3.T5.B02",
+      "taskCommit": "61cac87723c119d4b60a63f02c0a35d42d9005ee",
+      "primaryClass": "com.example.api.PhoneFilterIntegrationTest",
+      "supportingClasses": [
+        "com.example.chats.ContentPolicyVersionTest",
+        "com.example.chats.MessageContentPolicyTest"
+      ],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T079",
+      "permanentId": "M3.T5.B03",
+      "taskCommit": "a897af4818f470e5cdf0c74e74546fb5d91f5168",
+      "primaryClass": "com.example.api.UrlFilterIntegrationTest",
+      "supportingClasses": [
+        "com.example.chats.ContentPolicyVersionTest",
+        "com.example.chats.LinkBoundaryTest",
+        "com.example.chats.MessageContentPolicyTest"
+      ],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T080",
+      "permanentId": "M3.T5.B04",
+      "taskCommit": "93f8e775541c87249103660e8df721628b958ef7",
+      "primaryClass": "com.example.api.ProfanityFilterIntegrationTest",
+      "supportingClasses": [
+        "com.example.chats.ContentPolicyVersionTest",
+        "com.example.chats.MessageContentPolicyTest",
+        "com.example.chats.ProfanityBoundaryTest",
+        "com.example.chats.ProfanityPolicyTest"
+      ],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T081",
+      "permanentId": "M3.T5.B05",
+      "taskCommit": "87d8e29861fcbd6cd658798625128e9f4a1a40b5",
+      "primaryClass": "com.example.api.ShortMessageFloodIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T082",
+      "permanentId": "M3.T5.B06",
+      "taskCommit": "e871c810b659ef8f80ebd5663578bd33e96c804a",
+      "primaryClass": "com.example.api.LongMessageFloodIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T083",
+      "permanentId": "M3.T6.B01",
+      "taskCommit": "e8abbe4b34f80badcb5c00fcbc5c1979c27a34f6",
+      "primaryClass": "com.example.acceptance.ChatAcceptanceFixtureIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T084",
+      "permanentId": "M3.T6.B02",
+      "taskCommit": "51f5095262e45ce13b814f7fa2ff7d26f757d4c1",
+      "primaryClass": "com.example.acceptance.ChatRestAcceptanceIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T085",
+      "permanentId": "M3.T6.B03",
+      "taskCommit": "12115cbd2d9fc7a0c3282f6526c7dd2c3cda9368",
+      "primaryClass": "com.example.acceptance.ChatWebSocketAcceptanceIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    },
+    {
+      "task": "T086",
+      "permanentId": "M3.T6.B04",
+      "taskCommit": "67939ebb321c968f95423857a4d25805ec75f9d0",
+      "primaryClass": "com.example.acceptance.ChatSendLeaveRaceIntegrationTest",
+      "supportingClasses": [],
+      "result": "PASS for executed local server assertions; full audit follows"
+    }
+  ],
+  "suites": [
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.acceptance.ChatAcceptanceFixtureIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:01.653Z",
+      "seconds": "8.876",
+      "testCases": [
+        {
+          "name": "synthetic namespace reproduces access and sixteen reports and cleans only owned data",
+          "className": "com.example.acceptance.ChatAcceptanceFixtureIntegrationTest",
+          "seconds": "8.868",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.acceptance.ChatRestAcceptanceIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:10.544Z",
+      "seconds": "3.696",
+      "testCases": [
+        {
+          "name": "joined actor completes persisted chat lifecycle with authoritative reads",
+          "className": "com.example.acceptance.ChatRestAcceptanceIntegrationTest",
+          "seconds": "3.696",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.acceptance.ChatSendLeaveRaceIntegrationTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:14.247Z",
+      "seconds": "2.484",
+      "testCases": [
+        {
+          "name": "last member leave deletes chat before overlapping send",
+          "className": "com.example.acceptance.ChatSendLeaveRaceIntegrationTest",
+          "seconds": "0.778",
+          "result": "PASS"
+        },
+        {
+          "name": "send holding actor commits before overlapping leave",
+          "className": "com.example.acceptance.ChatSendLeaveRaceIntegrationTest",
+          "seconds": "1.035",
+          "result": "PASS"
+        },
+        {
+          "name": "leave holding actor revokes overlapping send",
+          "className": "com.example.acceptance.ChatSendLeaveRaceIntegrationTest",
+          "seconds": "0.67",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.acceptance.ChatWebSocketAcceptanceIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:16.738Z",
+      "seconds": "6.24",
+      "testCases": [
+        {
+          "name": "socket isolation missed delta and concrete session revoke match persisted chat",
+          "className": "com.example.acceptance.ChatWebSocketAcceptanceIntegrationTest",
+          "seconds": "6.24",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.ChatListPaginationIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:22.983Z",
+      "seconds": "0.739",
+      "testCases": [
+        {
+          "name": "chat list uses scoped signed keyset cursors and stable created ordering",
+          "className": "com.example.api.ChatListPaginationIntegrationTest",
+          "seconds": "0.738",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.ChatSummaryIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:23.724Z",
+      "seconds": "0.323",
+      "testCases": [
+        {
+          "name": "my chats projects only active membership and safe text system empty summaries",
+          "className": "com.example.api.ChatSummaryIntegrationTest",
+          "seconds": "0.323",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.HistoryAccessIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:24.050Z",
+      "seconds": "0.508",
+      "testCases": [
+        {
+          "name": "history ACL applies to detail history search and revoked access",
+          "className": "com.example.api.HistoryAccessIntegrationTest",
+          "seconds": "0.506",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.HistoryPaginationIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:24.562Z",
+      "seconds": "0.425",
+      "testCases": [
+        {
+          "name": "sequence pages remain disjoint across inserts and invalid input preserves cursor",
+          "className": "com.example.api.HistoryPaginationIntegrationTest",
+          "seconds": "0.425",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.HistorySearchIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:24.992Z",
+      "seconds": "0.473",
+      "testCases": [
+        {
+          "name": "search binds cursor and snapshot while escaping patterns without advancing read",
+          "className": "com.example.api.HistorySearchIntegrationTest",
+          "seconds": "0.473",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.LeaveLifecycleIntegrationTest",
+      "tests": 2,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:25.469Z",
+      "seconds": "0.953",
+      "testCases": [
+        {
+          "name": "concurrent join and last leave serialize to a valid point state",
+          "className": "com.example.api.LeaveLifecycleIntegrationTest",
+          "seconds": "0.33",
+          "result": "PASS"
+        },
+        {
+          "name": "muted member can leave and release vote and booking exactly once",
+          "className": "com.example.api.LeaveLifecycleIntegrationTest",
+          "seconds": "0.623",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.LongMessageFloodIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:26.425Z",
+      "seconds": "2.516",
+      "testCases": [
+        {
+          "name": "rolling five minute ledger enforces thirty successful sends across devices and chats",
+          "className": "com.example.api.LongMessageFloodIntegrationTest",
+          "seconds": "2.516",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.MembershipConstraintsIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:28.946Z",
+      "seconds": "0.472",
+      "testCases": [
+        {
+          "name": "join returns canonical membership and repeat does not add member or message",
+          "className": "com.example.api.MembershipConstraintsIntegrationTest",
+          "seconds": "0.472",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.MuteSendGuardIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:29.422Z",
+      "seconds": "0.995",
+      "testCases": [
+        {
+          "name": "persisted mute blocks both authenticated devices without send side effects",
+          "className": "com.example.api.MuteSendGuardIntegrationTest",
+          "seconds": "0.995",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.MuteThresholdIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:30.421Z",
+      "seconds": "1.323",
+      "testCases": [
+        {
+          "name": "lifetime threshold crosses once under concurrent distinct reporters",
+          "className": "com.example.api.MuteThresholdIntegrationTest",
+          "seconds": "1.323",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.PhoneFilterIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:31.747Z",
+      "seconds": "2.529",
+      "testCases": [
+        {
+          "name": "approved phone forms are rejected without persistence or logging",
+          "className": "com.example.api.PhoneFilterIntegrationTest",
+          "seconds": "2.529",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.ProfanityFilterIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:34.280Z",
+      "seconds": "9.548",
+      "testCases": [
+        {
+          "name": "approved profanity is rejected without persistence or logging",
+          "className": "com.example.api.ProfanityFilterIntegrationTest",
+          "seconds": "9.547",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.ReadCursorIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:43.830Z",
+      "seconds": "0.644",
+      "testCases": [
+        {
+          "name": "read cursor rejects invalid input and advances monotonically under concurrent requests",
+          "className": "com.example.api.ReadCursorIntegrationTest",
+          "seconds": "0.643",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.ReportContextIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:44.476Z",
+      "seconds": "1.422",
+      "testCases": [
+        {
+          "name": "report context and input validation reject without persisted side effects",
+          "className": "com.example.api.ReportContextIntegrationTest",
+          "seconds": "1.422",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.ReportLifetimeIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:45.901Z",
+      "seconds": "0.62",
+      "testCases": [
+        {
+          "name": "lifetime report pair survives context deletion and concurrent duplicates",
+          "className": "com.example.api.ReportLifetimeIntegrationTest",
+          "seconds": "0.62",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.ReportTransactionIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:46.523Z",
+      "seconds": "0.536",
+      "testCases": [
+        {
+          "name": "report target mute and outcome roll back on deferred commit failure",
+          "className": "com.example.api.ReportTransactionIntegrationTest",
+          "seconds": "0.536",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.SendInputIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:47.064Z",
+      "seconds": "0.648",
+      "testCases": [
+        {
+          "name": "strict send input has no side effects before accepted canonical command",
+          "className": "com.example.api.SendInputIntegrationTest",
+          "seconds": "0.648",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.SendReplayIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:47.714Z",
+      "seconds": "0.597",
+      "testCases": [
+        {
+          "name": "concurrent canonical replay preserves original snapshot across mutable state",
+          "className": "com.example.api.SendReplayIntegrationTest",
+          "seconds": "0.597",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.ShortMessageFloodIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:48.313Z",
+      "seconds": "1.069",
+      "testCases": [
+        {
+          "name": "short actor window respects exact clock boundaries across chats and devices",
+          "className": "com.example.api.ShortMessageFloodIntegrationTest",
+          "seconds": "1.069",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.UnreadCountIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:49.387Z",
+      "seconds": "0.662",
+      "testCases": [
+        {
+          "name": "unread counts actual text and system rows across sequence holes and own send",
+          "className": "com.example.api.UnreadCountIntegrationTest",
+          "seconds": "0.662",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.api.UrlFilterIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:50.052Z",
+      "seconds": "6.853",
+      "testCases": [
+        {
+          "name": "approved links are rejected locally without persistence or logging",
+          "className": "com.example.api.UrlFilterIntegrationTest",
+          "seconds": "6.853",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.chats.SendTransactionIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:56.908Z",
+      "seconds": "0.583",
+      "testCases": [
+        {
+          "name": "concurrent sends allocate distinct sequence and outcome failure rolls back every write",
+          "className": "com.example.chats.SendTransactionIntegrationTest",
+          "seconds": "0.583",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.realtime.MessagePublicationIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:51:57.498Z",
+      "seconds": "2.671",
+      "testCases": [
+        {
+          "name": "committed message envelope is shared while replay and rollback publish no success",
+          "className": "com.example.realtime.MessagePublicationIntegrationTest",
+          "seconds": "2.67",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.realtime.WebSocketLifecycleIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:52:00.172Z",
+      "seconds": "31.047",
+      "testCases": [
+        {
+          "name": "real heartbeat expiry logout and abrupt transport loss retain session boundaries",
+          "className": "com.example.realtime.WebSocketLifecycleIntegrationTest",
+          "seconds": "31.047",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "integrationTest",
+      "className": "com.example.realtime.WebSocketSubscriptionIntegrationTest",
+      "tests": 1,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:52:31.222Z",
+      "seconds": "1.079",
+      "testCases": [
+        {
+          "name": "real database sessions scope subscriptions leave and individual revocation",
+          "className": "com.example.realtime.WebSocketSubscriptionIntegrationTest",
+          "seconds": "1.079",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "test",
+      "className": "com.example.chats.ContentPolicyVersionTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:53:28.881Z",
+      "seconds": "0.419",
+      "testCases": [
+        {
+          "name": "approved minimum corpus normalization and deliberate exceptions remain deterministic",
+          "className": "com.example.chats.ContentPolicyVersionTest",
+          "seconds": "0.393",
+          "result": "PASS"
+        },
+        {
+          "name": "phone and URL gates remain independent of the injected profanity detector",
+          "className": "com.example.chats.ContentPolicyVersionTest",
+          "seconds": "0.008",
+          "result": "PASS"
+        },
+        {
+          "name": "implementation normalization and exceptions share the approved fixture version",
+          "className": "com.example.chats.ContentPolicyVersionTest",
+          "seconds": "0.004",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "test",
+      "className": "com.example.chats.LinkBoundaryTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:53:29.308Z",
+      "seconds": "0.139",
+      "testCases": [
+        {
+          "name": "many domain labels retain the approved bare suffix distinction",
+          "className": "com.example.chats.LinkBoundaryTest",
+          "seconds": "0.055",
+          "result": "PASS"
+        },
+        {
+          "name": "bounded explicit host retains label and split label distinction",
+          "className": "com.example.chats.LinkBoundaryTest",
+          "seconds": "0.067",
+          "result": "PASS"
+        },
+        {
+          "name": "maximum length ordinary label is allowed",
+          "className": "com.example.chats.LinkBoundaryTest",
+          "seconds": "0.014",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "test",
+      "className": "com.example.chats.MessageContentPolicyTest",
+      "tests": 4,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:53:29.463Z",
+      "seconds": "0.055",
+      "testCases": [
+        {
+          "name": "ordinary words and nonapproved variants stay allowed",
+          "className": "com.example.chats.MessageContentPolicyTest",
+          "seconds": "0.008",
+          "result": "PASS"
+        },
+        {
+          "name": "only approved phone shapes and contact context are blocked",
+          "className": "com.example.chats.MessageContentPolicyTest",
+          "seconds": "0.003",
+          "result": "PASS"
+        },
+        {
+          "name": "approved domain and IP forms are blocked without broad substring matching",
+          "className": "com.example.chats.MessageContentPolicyTest",
+          "seconds": "0.012",
+          "result": "PASS"
+        },
+        {
+          "name": "all approved profanity forms are blocked as whole words",
+          "className": "com.example.chats.MessageContentPolicyTest",
+          "seconds": "0.029",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "test",
+      "className": "com.example.chats.ProfanityBoundaryTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:53:29.529Z",
+      "seconds": "0.188",
+      "testCases": [
+        {
+          "name": "maximum bounded masked token remains allowed",
+          "className": "com.example.chats.ProfanityBoundaryTest",
+          "seconds": "0.01",
+          "result": "PASS"
+        },
+        {
+          "name": "maximum ordinary word remains allowed",
+          "className": "com.example.chats.ProfanityBoundaryTest",
+          "seconds": "0.007",
+          "result": "PASS"
+        },
+        {
+          "name": "maximum spaced letters retain exact word distinction",
+          "className": "com.example.chats.ProfanityBoundaryTest",
+          "seconds": "0.17",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "gradleTask": "test",
+      "className": "com.example.chats.ProfanityPolicyTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "timestampUtc": "2026-11-04T08:53:29.725Z",
+      "seconds": "0.034",
+      "testCases": [
+        {
+          "name": "approved exceptions and unconfirmed patterns remain allowed",
+          "className": "com.example.chats.ProfanityPolicyTest",
+          "seconds": "0.021",
+          "result": "PASS"
+        },
+        {
+          "name": "each exact single word requires whole word boundaries",
+          "className": "com.example.chats.ProfanityPolicyTest",
+          "seconds": "0.006",
+          "result": "PASS"
+        },
+        {
+          "name": "approved exact forms and normalization reject deterministically",
+          "className": "com.example.chats.ProfanityPolicyTest",
+          "seconds": "0.005",
+          "result": "PASS"
+        }
+      ]
+    }
+  ],
+  "historicalTraceArtifacts": [
+    {
+      "path": "docs/evidence/m3-rest-chain.json",
+      "sha256": "8678c5df7027d43e4c5fd461e6f8c2ce5b26b33cb313d6f9cae26a84eef6ad7a",
+      "scope": "Dated task-specific actual run; subsequent same-code runs create new random fixture UUIDs in build copies"
+    },
+    {
+      "path": "docs/evidence/m3-send-leave-last-member.json",
+      "sha256": "0601d35a3fd654253e0f31324207ef4d788c993738d186555512878deb79881a",
+      "scope": "Dated task-specific actual run; subsequent same-code runs create new random fixture UUIDs in build copies"
+    },
+    {
+      "path": "docs/evidence/m3-send-leave-leave-first.json",
+      "sha256": "862ccd3eddea7fd910fd06659c608cb74676f657174700de77a5fec563282be8",
+      "scope": "Dated task-specific actual run; subsequent same-code runs create new random fixture UUIDs in build copies"
+    },
+    {
+      "path": "docs/evidence/m3-send-leave-send-first.json",
+      "sha256": "e261e35f4a72f976a9c0b57bcc364399045eb453444dcede391dcb9d88a6a45d",
+      "scope": "Dated task-specific actual run; subsequent same-code runs create new random fixture UUIDs in build copies"
+    },
+    {
+      "path": "docs/evidence/m3-ws-isolation.json",
+      "sha256": "c0e1a9521e4656428d434e4fa72cce1a77f8ef891e59f9fe99d966effa605e20",
+      "scope": "Dated task-specific actual run; subsequent same-code runs create new random fixture UUIDs in build copies"
+    }
+  ],
+  "limits": [
+    "Selected M3 classes only, not all repository test aliases",
+    "Exact flood boundaries use controlled transaction clocks with real HTTP/PostgreSQL locks; production DB clock has separate regressions",
+    "Bounded WS sentinels and observed lock schedules are not every fault/interleaving",
+    "No Android/iOS, BG-1, deployed/external integration, load or whole M3 acceptance",
+    "Build XML is mutable; this safe summary preserves observed names/counts/timestamps without raw logs or credentials",
+    "Full independent audit and subsequent audit-fix stage remain separate gates"
+  ]
+}
