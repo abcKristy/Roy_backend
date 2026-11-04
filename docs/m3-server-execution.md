@@ -344,3 +344,17 @@ Actually updated external accounting paths:
 - `spec/plans/roadmap/M3/M3-chat-moderation.md`: corresponding partial M3.T4 server summary.
 
 The owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat` remains at V001–V015, with actual JdbcSessionRepository sessions. All seven accounting files remain outside backend Git and are not physically versioned by target/origin; the versioned ledger records the exact updated paths and topology limitation without moving or duplicating plans. The executed two-request race does not prove every interleaving, and T074's sixteenth-report atomic update does not replace T075 full threshold acceptance. Mobile, BG-1, overall parent/M3 and external integration acceptance remain open.
+
+## T075 — M3.T4.B04 lifetime threshold and mute deadline — 04.11.2026
+
+Base `d33297fa1833f6a36949dcfffea5ecb0257093bf`, working branch `feat/chat-mute-enforcement`; disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, migrations V001–V015 unchanged. Production ModerationService already implements the accepted contract; this task adds a separate real HTTP/JDBC acceptance fixture with JdbcSessionRepository-backed sessions.
+
+`com.example.api.MuteThresholdIntegrationTest` submits fifteen distinct successful reports and independently observes no change to target mute, trigger or updated timestamp. Deleting their original chat leaves all fifteen lifetime reports with null context links. Two distinct reporters then start together behind a coroutine readiness/start barrier in another accessible context: both return201, the count becomes17, and one persisted trigger/updatedAt equals the earlier server reportedAt. Both report times lie between independent database clock samples; message_muted_until is exactly trigger+604800 seconds (7×24 hours), establishing server UTC arithmetic rather than device time.
+
+Replaying either successful key preserves original201 bodies and complete fixture report/outcome/user snapshots. A fresh duplicate pair returns409 DUPLICATE_REPORT without changes. An eighteenth unique report does not alter mute/trigger/updatedAt. The fixture then sets the deadline into the past while retaining the original trigger; a nineteenth unique report leaves that persisted state unchanged. Lifetime counts remain19, including fifteen reports whose context was deleted. This proves the one-time trigger policy for later reports after expiry; it does not simulate waiting seven days. A manually populated longer deadline with a null lifetime trigger has no specified policy in the accepted contract and is not claimed as verified or changed; no maximum-deadline rule was invented.
+
+Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.MuteThresholdIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in1m2s.
+
+Inspected `build/test-results/integrationTest/TEST-com.example.api.MuteThresholdIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T00:45:23.487Z, suite seconds=3.315. Local T075 server PASS for the stated threshold/deadline assertions. The barrier case observes one concurrent execution, not all schedules. Send enforcement, read/leave under mute belong to T076; mobile, BG-1 and overall M3 remain open.
+
+Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
