@@ -1,8 +1,55 @@
 {
-  "scope": "Final selected local M3 server verification before independent full audit",
-  "generatedAtUtc": "2026-11-04T08:56:12.3665064Z",
-  "sourceCommit": "a5d4edc86f40d38405447cfde787ae266775d803",
-  "branch": "feat/back-part-3",
+  "scope": "Final selected local M3 server regression and independent audit-fix closure",
+  "generatedAtUtc": "2026-11-04T09:29:15.6883746Z",
+  "sourceCommit": "a21376d48abadab9d3a7314a0b0fd732082b2fcd",
+  "sourceCommitScope": "Unpublished tested snapshot; evidence-only amendments may change its commit ID while executable input Git objects remain identical",
+  "sourceInputGitObjects": [
+    {
+      "path": "src",
+      "gitObject": "0aea1945085bbcf9a6b99a4b9822cbff037a85ff"
+    },
+    {
+      "path": "gradle",
+      "gitObject": "a80bae5bec6574aedfa4c8872e6d4f3de272db3d"
+    },
+    {
+      "path": "build.gradle.kts",
+      "gitObject": "c04407a4a69fe9ac803bae3a8937ef2fa1f4d6db"
+    },
+    {
+      "path": "settings.gradle.kts",
+      "gitObject": "8ba47a3f5cccf4213e217be802fe9f3bc5f866b4"
+    },
+    {
+      "path": "gradle.properties",
+      "gitObject": "a3293d9a81196aa7143026dfeb900ab393a88b65"
+    },
+    {
+      "path": "gradlew",
+      "gitObject": "249efbb032ce46a80c687c0723eb172e85f6a136"
+    },
+    {
+      "path": "gradlew.bat",
+      "gitObject": "a51ec4f5886d3bb106b26724ee4507addbbe3fa8"
+    },
+    {
+      "path": "docs/privacy-policy-draft.md",
+      "gitObject": "c4e8a6ce6d48ef2051ad99ab09d0ad4822e7531a"
+    }
+  ],
+  "branch": "fix/chat-search-validation",
+  "findingCommitResolution": {
+    "subject": "Reject NUL in chat history search",
+    "rule": "The sole finding commit on this branch; final exact SHA is recorded after integration without a circular self-reference"
+  },
+  "audit": {
+    "initialAuditCommit": "f0c1ecaff4f089fc80bc4efe4f19cbecbce358e0",
+    "findingId": "AUD-LOW-001",
+    "pointReview": "APPROVE",
+    "finalBranchReview": "APPROVE by independent audit_closure",
+    "initialVerificationCommit": "75f14e30fbc129d395a449e40f36c463451fe07f",
+    "reviewedCommit": "a276e2120d66dbfed367a9b0dab7f5e2e27e73b0"
+  },
   "database": {
     "alias": "roy_m3_chat",
     "ownershipLabel": "codex.owner=m3-chat-20261104",
@@ -87,7 +134,7 @@
         "--max-workers=1"
       ],
       "exitCode": 0,
-      "gradleDuration": "2m8s"
+      "gradleDuration": "1m38s"
     },
     {
       "executable": "./gradlew.bat",
@@ -385,13 +432,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:01.653Z",
-      "seconds": "8.876",
+      "timestampUtc": "2026-11-04T09:24:14.285Z",
+      "seconds": "3.54",
       "testCases": [
         {
           "name": "synthetic namespace reproduces access and sixteen reports and cleans only owned data",
           "className": "com.example.acceptance.ChatAcceptanceFixtureIntegrationTest",
-          "seconds": "8.868",
+          "seconds": "3.537",
           "result": "PASS"
         }
       ]
@@ -403,13 +450,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:10.544Z",
-      "seconds": "3.696",
+      "timestampUtc": "2026-11-04T09:24:17.828Z",
+      "seconds": "1.94",
       "testCases": [
         {
           "name": "joined actor completes persisted chat lifecycle with authoritative reads",
           "className": "com.example.acceptance.ChatRestAcceptanceIntegrationTest",
-          "seconds": "3.696",
+          "seconds": "1.94",
           "result": "PASS"
         }
       ]
@@ -421,25 +468,25 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:14.247Z",
-      "seconds": "2.484",
+      "timestampUtc": "2026-11-04T09:24:19.772Z",
+      "seconds": "1.337",
       "testCases": [
         {
           "name": "last member leave deletes chat before overlapping send",
           "className": "com.example.acceptance.ChatSendLeaveRaceIntegrationTest",
-          "seconds": "0.778",
+          "seconds": "0.442",
           "result": "PASS"
         },
         {
           "name": "send holding actor commits before overlapping leave",
           "className": "com.example.acceptance.ChatSendLeaveRaceIntegrationTest",
-          "seconds": "1.035",
+          "seconds": "0.466",
           "result": "PASS"
         },
         {
           "name": "leave holding actor revokes overlapping send",
           "className": "com.example.acceptance.ChatSendLeaveRaceIntegrationTest",
-          "seconds": "0.67",
+          "seconds": "0.429",
           "result": "PASS"
         }
       ]
@@ -451,13 +498,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:16.738Z",
-      "seconds": "6.24",
+      "timestampUtc": "2026-11-04T09:24:21.111Z",
+      "seconds": "3.831",
       "testCases": [
         {
           "name": "socket isolation missed delta and concrete session revoke match persisted chat",
           "className": "com.example.acceptance.ChatWebSocketAcceptanceIntegrationTest",
-          "seconds": "6.24",
+          "seconds": "3.831",
           "result": "PASS"
         }
       ]
@@ -469,13 +516,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:22.983Z",
-      "seconds": "0.739",
+      "timestampUtc": "2026-11-04T09:24:24.944Z",
+      "seconds": "0.498",
       "testCases": [
         {
           "name": "chat list uses scoped signed keyset cursors and stable created ordering",
           "className": "com.example.api.ChatListPaginationIntegrationTest",
-          "seconds": "0.738",
+          "seconds": "0.498",
           "result": "PASS"
         }
       ]
@@ -487,13 +534,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:23.724Z",
-      "seconds": "0.323",
+      "timestampUtc": "2026-11-04T09:24:25.444Z",
+      "seconds": "0.242",
       "testCases": [
         {
           "name": "my chats projects only active membership and safe text system empty summaries",
           "className": "com.example.api.ChatSummaryIntegrationTest",
-          "seconds": "0.323",
+          "seconds": "0.241",
           "result": "PASS"
         }
       ]
@@ -505,13 +552,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:24.050Z",
-      "seconds": "0.508",
+      "timestampUtc": "2026-11-04T09:24:25.687Z",
+      "seconds": "0.391",
       "testCases": [
         {
           "name": "history ACL applies to detail history search and revoked access",
           "className": "com.example.api.HistoryAccessIntegrationTest",
-          "seconds": "0.506",
+          "seconds": "0.391",
           "result": "PASS"
         }
       ]
@@ -523,13 +570,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:24.562Z",
-      "seconds": "0.425",
+      "timestampUtc": "2026-11-04T09:24:26.081Z",
+      "seconds": "0.299",
       "testCases": [
         {
           "name": "sequence pages remain disjoint across inserts and invalid input preserves cursor",
           "className": "com.example.api.HistoryPaginationIntegrationTest",
-          "seconds": "0.425",
+          "seconds": "0.299",
           "result": "PASS"
         }
       ]
@@ -541,13 +588,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:24.992Z",
-      "seconds": "0.473",
+      "timestampUtc": "2026-11-04T09:24:26.382Z",
+      "seconds": "0.313",
       "testCases": [
         {
           "name": "search binds cursor and snapshot while escaping patterns without advancing read",
           "className": "com.example.api.HistorySearchIntegrationTest",
-          "seconds": "0.473",
+          "seconds": "0.313",
           "result": "PASS"
         }
       ]
@@ -559,19 +606,19 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:25.469Z",
-      "seconds": "0.953",
+      "timestampUtc": "2026-11-04T09:24:26.698Z",
+      "seconds": "0.753",
       "testCases": [
         {
           "name": "concurrent join and last leave serialize to a valid point state",
           "className": "com.example.api.LeaveLifecycleIntegrationTest",
-          "seconds": "0.33",
+          "seconds": "0.242",
           "result": "PASS"
         },
         {
           "name": "muted member can leave and release vote and booking exactly once",
           "className": "com.example.api.LeaveLifecycleIntegrationTest",
-          "seconds": "0.623",
+          "seconds": "0.511",
           "result": "PASS"
         }
       ]
@@ -583,13 +630,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:26.425Z",
-      "seconds": "2.516",
+      "timestampUtc": "2026-11-04T09:24:27.455Z",
+      "seconds": "1.971",
       "testCases": [
         {
           "name": "rolling five minute ledger enforces thirty successful sends across devices and chats",
           "className": "com.example.api.LongMessageFloodIntegrationTest",
-          "seconds": "2.516",
+          "seconds": "1.971",
           "result": "PASS"
         }
       ]
@@ -601,13 +648,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:28.946Z",
-      "seconds": "0.472",
+      "timestampUtc": "2026-11-04T09:24:29.43Z",
+      "seconds": "0.37",
       "testCases": [
         {
           "name": "join returns canonical membership and repeat does not add member or message",
           "className": "com.example.api.MembershipConstraintsIntegrationTest",
-          "seconds": "0.472",
+          "seconds": "0.37",
           "result": "PASS"
         }
       ]
@@ -619,13 +666,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:29.422Z",
-      "seconds": "0.995",
+      "timestampUtc": "2026-11-04T09:24:29.803Z",
+      "seconds": "0.825",
       "testCases": [
         {
           "name": "persisted mute blocks both authenticated devices without send side effects",
           "className": "com.example.api.MuteSendGuardIntegrationTest",
-          "seconds": "0.995",
+          "seconds": "0.825",
           "result": "PASS"
         }
       ]
@@ -637,13 +684,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:30.421Z",
-      "seconds": "1.323",
+      "timestampUtc": "2026-11-04T09:24:30.631Z",
+      "seconds": "1.014",
       "testCases": [
         {
           "name": "lifetime threshold crosses once under concurrent distinct reporters",
           "className": "com.example.api.MuteThresholdIntegrationTest",
-          "seconds": "1.323",
+          "seconds": "1.014",
           "result": "PASS"
         }
       ]
@@ -655,13 +702,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:31.747Z",
-      "seconds": "2.529",
+      "timestampUtc": "2026-11-04T09:24:31.646Z",
+      "seconds": "1.937",
       "testCases": [
         {
           "name": "approved phone forms are rejected without persistence or logging",
           "className": "com.example.api.PhoneFilterIntegrationTest",
-          "seconds": "2.529",
+          "seconds": "1.937",
           "result": "PASS"
         }
       ]
@@ -673,13 +720,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:34.280Z",
-      "seconds": "9.548",
+      "timestampUtc": "2026-11-04T09:24:33.585Z",
+      "seconds": "11.373",
       "testCases": [
         {
           "name": "approved profanity is rejected without persistence or logging",
           "className": "com.example.api.ProfanityFilterIntegrationTest",
-          "seconds": "9.547",
+          "seconds": "11.373",
           "result": "PASS"
         }
       ]
@@ -691,13 +738,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:43.830Z",
-      "seconds": "0.644",
+      "timestampUtc": "2026-11-04T09:24:44.96Z",
+      "seconds": "0.776",
       "testCases": [
         {
           "name": "read cursor rejects invalid input and advances monotonically under concurrent requests",
           "className": "com.example.api.ReadCursorIntegrationTest",
-          "seconds": "0.643",
+          "seconds": "0.776",
           "result": "PASS"
         }
       ]
@@ -709,13 +756,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:44.476Z",
-      "seconds": "1.422",
+      "timestampUtc": "2026-11-04T09:24:45.743Z",
+      "seconds": "1.834",
       "testCases": [
         {
           "name": "report context and input validation reject without persisted side effects",
           "className": "com.example.api.ReportContextIntegrationTest",
-          "seconds": "1.422",
+          "seconds": "1.834",
           "result": "PASS"
         }
       ]
@@ -727,13 +774,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:45.901Z",
-      "seconds": "0.62",
+      "timestampUtc": "2026-11-04T09:24:47.579Z",
+      "seconds": "0.78",
       "testCases": [
         {
           "name": "lifetime report pair survives context deletion and concurrent duplicates",
           "className": "com.example.api.ReportLifetimeIntegrationTest",
-          "seconds": "0.62",
+          "seconds": "0.78",
           "result": "PASS"
         }
       ]
@@ -745,13 +792,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:46.523Z",
-      "seconds": "0.536",
+      "timestampUtc": "2026-11-04T09:24:48.362Z",
+      "seconds": "0.852",
       "testCases": [
         {
           "name": "report target mute and outcome roll back on deferred commit failure",
           "className": "com.example.api.ReportTransactionIntegrationTest",
-          "seconds": "0.536",
+          "seconds": "0.852",
           "result": "PASS"
         }
       ]
@@ -763,13 +810,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:47.064Z",
-      "seconds": "0.648",
+      "timestampUtc": "2026-11-04T09:24:49.218Z",
+      "seconds": "0.86",
       "testCases": [
         {
           "name": "strict send input has no side effects before accepted canonical command",
           "className": "com.example.api.SendInputIntegrationTest",
-          "seconds": "0.648",
+          "seconds": "0.86",
           "result": "PASS"
         }
       ]
@@ -781,13 +828,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:47.714Z",
-      "seconds": "0.597",
+      "timestampUtc": "2026-11-04T09:24:50.085Z",
+      "seconds": "0.791",
       "testCases": [
         {
           "name": "concurrent canonical replay preserves original snapshot across mutable state",
           "className": "com.example.api.SendReplayIntegrationTest",
-          "seconds": "0.597",
+          "seconds": "0.791",
           "result": "PASS"
         }
       ]
@@ -799,13 +846,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:48.313Z",
-      "seconds": "1.069",
+      "timestampUtc": "2026-11-04T09:24:50.881Z",
+      "seconds": "1.429",
       "testCases": [
         {
           "name": "short actor window respects exact clock boundaries across chats and devices",
           "className": "com.example.api.ShortMessageFloodIntegrationTest",
-          "seconds": "1.069",
+          "seconds": "1.428",
           "result": "PASS"
         }
       ]
@@ -817,13 +864,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:49.387Z",
-      "seconds": "0.662",
+      "timestampUtc": "2026-11-04T09:24:52.313Z",
+      "seconds": "0.84",
       "testCases": [
         {
           "name": "unread counts actual text and system rows across sequence holes and own send",
           "className": "com.example.api.UnreadCountIntegrationTest",
-          "seconds": "0.662",
+          "seconds": "0.84",
           "result": "PASS"
         }
       ]
@@ -835,13 +882,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:50.052Z",
-      "seconds": "6.853",
+      "timestampUtc": "2026-11-04T09:24:53.157Z",
+      "seconds": "8.918",
       "testCases": [
         {
           "name": "approved links are rejected locally without persistence or logging",
           "className": "com.example.api.UrlFilterIntegrationTest",
-          "seconds": "6.853",
+          "seconds": "8.918",
           "result": "PASS"
         }
       ]
@@ -853,13 +900,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:56.908Z",
-      "seconds": "0.583",
+      "timestampUtc": "2026-11-04T09:25:02.078Z",
+      "seconds": "0.808",
       "testCases": [
         {
           "name": "concurrent sends allocate distinct sequence and outcome failure rolls back every write",
           "className": "com.example.chats.SendTransactionIntegrationTest",
-          "seconds": "0.583",
+          "seconds": "0.808",
           "result": "PASS"
         }
       ]
@@ -871,13 +918,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:51:57.498Z",
-      "seconds": "2.671",
+      "timestampUtc": "2026-11-04T09:25:02.893Z",
+      "seconds": "3.065",
       "testCases": [
         {
           "name": "committed message envelope is shared while replay and rollback publish no success",
           "className": "com.example.realtime.MessagePublicationIntegrationTest",
-          "seconds": "2.67",
+          "seconds": "3.065",
           "result": "PASS"
         }
       ]
@@ -889,13 +936,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:52:00.172Z",
-      "seconds": "31.047",
+      "timestampUtc": "2026-11-04T09:25:05.959Z",
+      "seconds": "31.08",
       "testCases": [
         {
           "name": "real heartbeat expiry logout and abrupt transport loss retain session boundaries",
           "className": "com.example.realtime.WebSocketLifecycleIntegrationTest",
-          "seconds": "31.047",
+          "seconds": "31.079",
           "result": "PASS"
         }
       ]
@@ -907,13 +954,13 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:52:31.222Z",
-      "seconds": "1.079",
+      "timestampUtc": "2026-11-04T09:25:37.043Z",
+      "seconds": "1.13",
       "testCases": [
         {
           "name": "real database sessions scope subscriptions leave and individual revocation",
           "className": "com.example.realtime.WebSocketSubscriptionIntegrationTest",
-          "seconds": "1.079",
+          "seconds": "1.13",
           "result": "PASS"
         }
       ]
@@ -925,25 +972,25 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:53:28.881Z",
-      "seconds": "0.419",
+      "timestampUtc": "2026-11-04T09:27:11.744Z",
+      "seconds": "0.433",
       "testCases": [
         {
           "name": "approved minimum corpus normalization and deliberate exceptions remain deterministic",
           "className": "com.example.chats.ContentPolicyVersionTest",
-          "seconds": "0.393",
+          "seconds": "0.407",
           "result": "PASS"
         },
         {
           "name": "phone and URL gates remain independent of the injected profanity detector",
           "className": "com.example.chats.ContentPolicyVersionTest",
-          "seconds": "0.008",
+          "seconds": "0.007",
           "result": "PASS"
         },
         {
           "name": "implementation normalization and exceptions share the approved fixture version",
           "className": "com.example.chats.ContentPolicyVersionTest",
-          "seconds": "0.004",
+          "seconds": "0.003",
           "result": "PASS"
         }
       ]
@@ -955,25 +1002,25 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:53:29.308Z",
-      "seconds": "0.139",
+      "timestampUtc": "2026-11-04T09:27:12.187Z",
+      "seconds": "0.116",
       "testCases": [
         {
           "name": "many domain labels retain the approved bare suffix distinction",
           "className": "com.example.chats.LinkBoundaryTest",
-          "seconds": "0.055",
+          "seconds": "0.044",
           "result": "PASS"
         },
         {
           "name": "bounded explicit host retains label and split label distinction",
           "className": "com.example.chats.LinkBoundaryTest",
-          "seconds": "0.067",
+          "seconds": "0.068",
           "result": "PASS"
         },
         {
           "name": "maximum length ordinary label is allowed",
           "className": "com.example.chats.LinkBoundaryTest",
-          "seconds": "0.014",
+          "seconds": "0.003",
           "result": "PASS"
         }
       ]
@@ -985,31 +1032,31 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:53:29.463Z",
-      "seconds": "0.055",
+      "timestampUtc": "2026-11-04T09:27:12.315Z",
+      "seconds": "0.069",
       "testCases": [
         {
           "name": "ordinary words and nonapproved variants stay allowed",
           "className": "com.example.chats.MessageContentPolicyTest",
-          "seconds": "0.008",
+          "seconds": "0.01",
           "result": "PASS"
         },
         {
           "name": "only approved phone shapes and contact context are blocked",
           "className": "com.example.chats.MessageContentPolicyTest",
-          "seconds": "0.003",
+          "seconds": "0.01",
           "result": "PASS"
         },
         {
           "name": "approved domain and IP forms are blocked without broad substring matching",
           "className": "com.example.chats.MessageContentPolicyTest",
-          "seconds": "0.012",
+          "seconds": "0.015",
           "result": "PASS"
         },
         {
           "name": "all approved profanity forms are blocked as whole words",
           "className": "com.example.chats.MessageContentPolicyTest",
-          "seconds": "0.029",
+          "seconds": "0.032",
           "result": "PASS"
         }
       ]
@@ -1021,25 +1068,25 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:53:29.529Z",
-      "seconds": "0.188",
+      "timestampUtc": "2026-11-04T09:27:12.396Z",
+      "seconds": "0.215",
       "testCases": [
         {
           "name": "maximum bounded masked token remains allowed",
           "className": "com.example.chats.ProfanityBoundaryTest",
-          "seconds": "0.01",
+          "seconds": "0.008",
           "result": "PASS"
         },
         {
           "name": "maximum ordinary word remains allowed",
           "className": "com.example.chats.ProfanityBoundaryTest",
-          "seconds": "0.007",
+          "seconds": "0.005",
           "result": "PASS"
         },
         {
           "name": "maximum spaced letters retain exact word distinction",
           "className": "com.example.chats.ProfanityBoundaryTest",
-          "seconds": "0.17",
+          "seconds": "0.2",
           "result": "PASS"
         }
       ]
@@ -1051,25 +1098,25 @@
       "skipped": 0,
       "failures": 0,
       "errors": 0,
-      "timestampUtc": "2026-11-04T08:53:29.725Z",
-      "seconds": "0.034",
+      "timestampUtc": "2026-11-04T09:27:12.633Z",
+      "seconds": "0.05",
       "testCases": [
         {
           "name": "approved exceptions and unconfirmed patterns remain allowed",
           "className": "com.example.chats.ProfanityPolicyTest",
-          "seconds": "0.021",
+          "seconds": "0.033",
           "result": "PASS"
         },
         {
           "name": "each exact single word requires whole word boundaries",
           "className": "com.example.chats.ProfanityPolicyTest",
-          "seconds": "0.006",
+          "seconds": "0.009",
           "result": "PASS"
         },
         {
           "name": "approved exact forms and normalization reject deterministically",
           "className": "com.example.chats.ProfanityPolicyTest",
-          "seconds": "0.005",
+          "seconds": "0.008",
           "result": "PASS"
         }
       ]
@@ -1108,6 +1155,7 @@
     "Bounded WS sentinels and observed lock schedules are not every fault/interleaving",
     "No Android/iOS, BG-1, deployed/external integration, load or whole M3 acceptance",
     "Build XML is mutable; this safe summary preserves observed names/counts/timestamps without raw logs or credentials",
-    "Full independent audit and subsequent audit-fix stage remain separate gates"
+    "Independent full audit found one P2; corrected code has point APPROVE, full selected regression and independent whole-branch APPROVE",
+    "The prior pre-audit summary remains versioned at 75f14e3; this current file records the post-fix run"
   ]
 }

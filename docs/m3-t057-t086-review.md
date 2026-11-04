@@ -2,7 +2,7 @@
 
 Дата: 04.11.2026. Проверенный срез: `feat/back-part-3` = `origin/feat/back-part-3` = `75f14e30fbc129d395a449e40f36c463451fe07f`.
 
-**Первичный итог: REQUEST CHANGES. Найдено 1 подтверждённое замечание P2; исправлено 0; открыто 1.** Это итог отдельного полного аудита после интеграции всех двенадцати групп. Этап исправлений этого аудита ещё не начат: он должен идти на отдельной ветке от коммита с данным файлом.
+**Первичный итог: REQUEST CHANGES. Найдено 1 подтверждённое замечание P2; исправлено 0; открыто 1.** Это итог отдельного полного аудита после интеграции всех двенадцати групп. Этап исправления начат на отдельной `fix/chat-search-validation` от опубликованного audit-коммита `f0c1eca`. **Текущее состояние после point review: найдено1, исправлено1, открыто0.** Точечное независимое ревью APPROVE; повторные регрессии48 PASS; независимый audit_closure повторно проверил единственный finding и всю fix-ветку: APPROVE.
 
 Независимые read-only аудиторы `audit_membership_send` (T057–T071) и `audit_moderation_acceptance` (T072–T086) ранее не реализовывали и не утверждали эти задачи. Они независимо прочитали каждую карточку, родителей, применимые M0-контракты, текущий код, SQL, assertions, результаты, историю и статусы. Lead интегрировал их выводы в этот единственный файл. Аудиторы не меняли файлы/БД, не запускали тесты и не заменяли проверку ссылкой на прежние APPROVE.
 
@@ -53,14 +53,14 @@
 
 ## T060 — M3.T1.B04 — поиск истории
 
-Коммит `2b7e5a6`. Одно открытое замечание ниже; прежний primary PASS не доказывает NUL edge case.
+Коммит `2b7e5a6`. Одно замечание AUD-LOW-001 обнаружено и исправлено отдельным finding-коммитом ниже; прежний primary PASS не доказывал NUL edge case.
 
 - К1: изолированная fixture: `test/api/HistorySearchIntegrationTest.kt:24–31`.
 - К2: длина q, actor/chat/limit/query fingerprint, HMAC cursor, membership, parameterized literal substring и верхняя seq snapshot: `main/chats/ChatReadService.kt:84–125`, `main/chats/ChatCursorCodec.kt:19–35`.
 - К3: только TEXT своего чата, страницы, literal `%`/`_`/`\` и Unicode: тест `:100–122`.
-- К4: query/limit/actor/chat mismatch и испорченный cursor дают INVALID_CURSOR без snippets, outsider/left — NOT_MEMBER: `:126–141`. Валидация U+0000 недостаточна.
+- К4: query/limit/actor/chat mismatch и испорченный cursor дают INVALID_CURSOR без snippets, outsider/left — NOT_MEMBER: `:126–141`. На исходном срезе валидация U+0000 была недостаточна; исправление принято point review ниже.
 - К5: repeat cursor совпадает, новые сообщения не попадают в старую snapshot, read cursor не двигается: `:113–118,143–146`.
-- К6: execution T060 и primary XML1/0/0/0 подтверждают существующие assertions. Локальные статусы согласованы с прежним запуском; полный аудит оставляет finding OPEN.
+- К6: execution T060 и primary XML1/0/0/0 подтверждают существующие assertions. Локальные статусы согласованы с прежним запуском; выявленный полным аудитом finding закрыт последующим point review.
 
 ### AUD-LOW-001
 
@@ -70,8 +70,12 @@
 - **Обоснование:** `main/api/ChatRoutes.kt:47–52` проверяет только длину3–256 и перехватывает IllegalArgumentException; `main/chats/ChatReadService.kt:86–100` не отвергает NUL и строит pattern, `:105–112` передаёт его через setString в ILIKE. SQLException становится500 INTERNAL_ERROR в `main/api/ErrorMapper.kt:40–42`. Пример пути: активный участник запрашивает `GET /api/v1/chats/{chatId}/messages/search?q=a%00b`; decoded q имеет три codepoint и проходит длину. Это нарушает валидацию поиска родителя M3-T1 и стабильные безопасные field errors M0.T5 §1.1. Идентичное ограничение PostgreSQL text/U+0000 уже фактически воспроизведено для send и записано в execution protocol, T062-INPUT-NUL. Search assertions `test/api/HistorySearchIntegrationTest.kt:123–124` проверяют длину/пустоту, но не NUL. Срез дефекта — `75f14e3`, task commit `2b7e5a6`.
 - **Совет к исправлению:** отвергать U+0000 до SQL с400 INVALID_FIELD; согласовать route и application validation, сохранив текущую границу3–256. Не позволять application guard ошибочно превращаться в INVALID_CURSOR.
 - **Критерий приёмки:** authenticated member запрос с q=a%00b возвращает400 INVALID_FIELD поля q, без items/snippets/эха запроса; read cursor и persisted state не меняются. Обычный Unicode-поиск, literal escaping, cursor scope и отрицательный ACL продолжают проходить. Сначала воспроизвести дефект фактическим required HTTP/DB regression на изолированной БД, затем выполнить исправленный targeted test и независимое point review.
-- **Статус:** ОТКРЫТО.
+- **Статус:** ИСПРАВЛЕНО.
 - **Граница доказательства на момент выявления:** подтверждён статический текущий путь; новый HTTP/DB reproducer аудитор не запускал. Первичный полный suite48 не включает этот новый edge case. Это не утверждение о выполненном red-test.
+- **Фактическое воспроизведение после публикации аудита:** на ветке `fix/chat-search-validation` от опубликованного audit-коммита `f0c1ecaff4f089fc80bc4efe4f19cbecbce358e0` сначала изменён только regression test, production оставлен исходным. Lead выполнил `./gradlew.bat integrationTest --tests com.example.api.HistorySearchIntegrationTest --offline --no-daemon --max-workers=1`: RED, exit1,1м11с. XML1 test/0 skipped/1 failure/0 errors, timestamp2026-11-04T09:16:09.700Z, suite7.215s. Новый member-запрос q=a%00b дал500 InternalServerError вместо ожидаемого400 BadRequest; assertion остановился в helper на строке95. Это фактическое HTTP/DB подтверждение finding, отдельное от первоначального статического вывода.
+- **Минимальное исправление, принятое point review:** `main/api/ChatRoutes.kt:48` отвергает NUL существующим invalidChatField():400 INVALID_FIELD и безопасное сообщение «Некорректные параметры», без новых обязательных details. `main/chats/ChatReadService.kt:88` проверяет тот же запрет через require до fingerprint/SQL. Граница3–256 codepoint, Unicode-поиск и прочая обработка ошибок не менялись. `test/api/HistorySearchIntegrationTest.kt:127–151` проверяет отсутствие items/nextCursor/snippets/эха q, неизменность chat/membership/message snapshot и rate/outcome, а также прямой application вызов с IllegalArgumentException без изменения состояния.
+- **Фактическая проверка исправления:** та же required integration-команда на изолированной `roy_m3_chat`, loopback32795, PostgreSQL18.6/PostGIS3.6.4, V001–V015: GREEN, exit0,1м14с. Текущий XML1 test/0 skipped/0 failures/0 errors, timestamp2026-11-04T09:19:34.143Z, suite7.021s/test7.009s. Выполнены новый NUL regression и прежние Unicode/literal escaping/cursor scope/ACL/read-cursor assertions. Независимый read-only schema_review проверил код, контракт, regression и текущий XML: APPROVE, 04.11.2026. Finding закрыт по его критерию; полное повторное ревью ветки отдельно завершено audit_closure: APPROVE.
+- **Коммит исправления:** этот отдельный finding-коммит с уникальным subject `Reject NUL in chat history search`, база `f0c1ecaff4f089fc80bc4efe4f19cbecbce358e0`. Это Git-идентификация текущего коммита без невозможной самоссылки на собственный SHA; точный hash добавляется последующим closure-свидетельством.
 
 ## T061 — M3.T1.B05 — leave и пересчёт точки
 
@@ -358,10 +362,18 @@
 
 Lead независимо подтвердил по Git: все30 task commits достижимы из target и origin; ни один не достижим из main. Все двенадцать рабочих branch heads сохранены. На срезе main и origin/main — `2c1de31de2a5481e90e3c84e93a8abdb38f16169`; наши merge/push меняли только target. Первоначальный согласованный M3 base — `e12ec3302ae9cb74fedc59a6b7ab555742fa8e77`; main ранее двигался отдельной соседней работой, поэтому аудит не приписывает нам его чужие изменения.
 
-Карточки/README/родители/roadmap и checklist независимо сверены; пересчитано84 checked rows из455. T057–T086 отмечены как локально принятые серверные B-компоненты, родители остаются частичными, C/BG-1/общая M3 не закрыты. Новое AUD-LOW-001 требует отдельного исправления до итогового завершения данного запроса; прежний локальный статус не считается доказательством отсутствия этого edge case.
+Карточки/README/родители/roadmap и checklist независимо сверены; пересчитано84 checked rows из455. T057–T086 отмечены как локально принятые серверные B-компоненты, родители остаются частичными, C/BG-1/общая M3 не закрыты. AUD-LOW-001 исправлен отдельным finding-коммитом с независимым point APPROVE; итоговое независимое повторное ревью ветки audit_closure завершено APPROVE. Прежний локальный статус не считался доказательством отсутствия этого edge case.
 
 `spec/plans/` физически находится вне backend Git. Его содержимое не включено в feat/back-part-3; точный перечень внешних обновлений для каждой группы сохранён в versioned execution ledger. Планы не переносились и не дублировались. Этот единственный audit-файл находится внутри backend Git по прямому требованию пользователя; второй копии под other/reports нет.
 
-Выполнены: независимое чтение всех30 карточек/родителей/контрактов, code/SQL/test/commit/status mapping; сверка34 XML/48test names/UTC instants; сверка5 historical trace hashes; чтение production boundaries и межгрупповых связей. Runtime48 выполнен Lead до аудита; аудиторы его не перезапускали. Новый NUL reproducer ещё не выполнялся и не назван PASS/FAIL.
+Выполнены: независимое чтение всех30 карточек/родителей/контрактов, code/SQL/test/commit/status mapping; сверка34 XML/48test names/UTC instants; сверка5 historical trace hashes; чтение production boundaries и межгрупповых связей. Runtime48 выполнен Lead до аудита; аудиторы его не перезапускали. На момент исходного аудиторского вывода новый NUL reproducer не выполнялся. После публикации audit-файла Lead фактически подтвердил RED500 и GREEN400; результаты и point APPROVE указаны в единственной записи AUD-LOW-001 выше.
 
 Не выполнялись: Android/iOS, общий BG-1, deployment/external providers, load/stress, exhaustive schedules, real7-day wait, process-restart acceptance. Bounded WS observation не означает неограниченное exactly-once. Установка/disposable guard failure/пропуск теста не засчитаны PASS; прежние initialization/DB preparation failures T085 имеют отдельную атрибуцию. Эти ограничения не подменены успешной общей M3-приёмкой.
+
+## Повторная регрессия после AUD-LOW-001
+
+После point APPROVE Lead повторно выполнил весь тот же выбранный M3 набор на исправленных исходниках:29 integration-классов,32 теста, PASS1м38с/exit0; затем5 policy unit-классов,16 тестов, PASS33с/exit0. Все48 executed tests имеют0 skipped/failures/errors. Новый NUL regression входит в HistorySearchIntegrationTest; фактические suite headers/имена/времена сохранены в текущем `docs/evidence/m3-final-verification.json`.
+
+Запуск относится к unpublished tested snapshot `a21376d48abadab9d3a7314a0b0fd732082b2fcd`. Единственный finding-коммит затем дополняется только audit/evidence/ledger metadata через amend, поэтому собственный commit SHA не используется как невозможная самоссылка. Сводка связывает фактически проверенный код с неизменными Git object IDs восьми executable inputs: src, gradle, build/settings/properties/wrappers и включаемый privacy resource. Эти объекты должны совпасть с окончательным finding-коммитом и целевой веткой. Предаудитная сводка отдельно доступна в Git `75f14e3:docs/evidence/m3-final-verification.json`; исторические task traces остаются датированными наблюдениями, а не подменяются свежими UUID.
+
+Это повторные фактические регрессии после исправления, не новый запуск аудиторами. Полное независимое re-review одного finding по критерию приёмки и всей fix-ветки выполнено новым audit_closure: APPROVE на a276e2120d66dbfed367a9b0dab7f5e2e27e73b0. После этого только фиксация вердикта в metadata дополняется через amend; executable inputs не меняются. Ограничения локального сервера/BG-1/mobile/external/load/расписаний сохраняются.

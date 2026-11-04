@@ -80,7 +80,8 @@ class HistorySearchIntegrationTest {
                     if (identity in active) UserSelf(identity.userId.toString(), "Test", null, "+79990000000", 20, null, now.toString()) else null
                 override suspend fun revoke(identity: SessionIdentity, now: Instant) = active.remove(identity)
             })
-            application { configureTransport(); routing { chatReadRoutes(ChatReadService(db, secret), sessions) } }
+            val read = ChatReadService(db, secret)
+            application { configureTransport(); routing { chatReadRoutes(read, sessions) } }
             val now = Instant.now()
             fun bearer(id: UUID): String {
                 val identity = identities.getValue(id)
@@ -123,6 +124,31 @@ class HistorySearchIntegrationTest {
             for (q in listOf("", "  ", "ab", "🦊🦊", "x".repeat(257))) {
                 assertEquals("INVALID_FIELD", search(q, status=HttpStatusCode.BadRequest).getValue("error").jsonObject.getValue("code").jsonPrimitive.content)
             }
+            suspend fun searchState() = db.withReadOnlyJdbcTransaction { c ->
+                val statements = listOf(
+                    "SELECT to_jsonb(x)::text FROM chats x WHERE id=?" to chat,
+                    "SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.user_id),'[]')::text FROM chat_memberships x WHERE chat_id=?" to chat,
+                    "SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.message_seq),'[]')::text FROM messages x WHERE chat_id=?" to chat,
+                    "SELECT count(*)::text FROM message_rate_events WHERE user_id=?" to member,
+                    "SELECT count(*)::text FROM operation_idempotency WHERE actor_user_id=?" to member,
+                )
+                statements.map { (sql, id) -> c.prepareStatement(sql).use { statement ->
+                    statement.setObject(1, id)
+                    statement.executeQuery().use { rows -> assertTrue(rows.next()); rows.getString(1) }
+                } }
+            }
+            val nulQuery = "a\u0000b"
+            val beforeNul = searchState()
+            val nulResponse = search(nulQuery, status=HttpStatusCode.BadRequest)
+            val nulError = nulResponse.getValue("error").jsonObject
+            assertEquals("INVALID_FIELD", nulError.getValue("code").jsonPrimitive.content)
+            assertFalse(nulResponse.containsKey("items"))
+            assertFalse(nulResponse.containsKey("nextCursor"))
+            assertFalse(nulResponse.toString().contains("\"snippet", ignoreCase=true))
+            assertFalse(nulResponse.toString().contains("a\\u0000b", ignoreCase=true))
+            assertEquals(beforeNul, searchState())
+            assertFailsWith<IllegalArgumentException> { read.search(member, chat, nulQuery) }
+            assertEquals(beforeNul, searchState())
             val badCursors = listOf(
                 search("ordinary", cursor, status=HttpStatusCode.BadRequest),
                 search("needle", cursor, limit=2, status=HttpStatusCode.BadRequest),

@@ -85,6 +85,7 @@ class ChatReadService(private val database: DatabaseRuntime, cursorSecret: Strin
                        limit: Int = 30): MessageSearchView? {
         val query = q.trim()
         require(query.codePointCount(0, query.length) in 3..256) { "Search query must have 3..256 characters" }
+        require('\u0000' !in query) { "Search query contains an unsupported character" }
         require(limit in 1..100)
         val fingerprint = digest("search:$userId:$chatId:$limit:$query")
         val after = cursor?.let { cursors.decode("search", fingerprint, it) }
