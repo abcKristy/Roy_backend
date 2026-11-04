@@ -100,3 +100,126 @@ Task subject: `Verify committed booking cancellation events`.
 Independent group_review task approval and contracts branch review are separate;
 no unreceived APPROVE or T105/whole-parent/BG-1 acceptance is claimed.
 T104 independent read-only task review by group_review: APPROVE before commit, zero confirmed findings. Lead synchronized all five external status places: T4 backend4/5, checklist107/455, M4 backend23/28 at this checkpoint.
+
+T104 task review by group_review: APPROVE before Lead commit
+ef4e0aa357a6ddc87e9dcbc04ec1b10e1c6723a9. Lead stamped actual SHA in the five
+external accounting references. T105 starts after that task commit.
+
+## T105 / M4.T4.B05 — durable reminder invalidation
+
+Own alias roy_m4_cancel_jobs was checked absent, then created before testing using
+`docker exec codex-m4-response createdb -U m4_test roy_m4_cancel_jobs`.
+The same reused container/historical group6 label and only127.0.0.1:55485 were
+verified. The ignored absolute recipe selected this own alias and port.
+
+Added jobs/BookingReminderCancellationIntegrationTest. Four actual PostgreSQL
+cases cover: (1) durable PENDING/PROCESSING cancellation for unvote, leave, account
+deletion and author close; (2) scheduler candidate selected by real committed SQL,
+then application cancellation before scheduler's locked recheck; (3) worker after
+real authenticated token decrypt but before provider; (4) provider already entered,
+then cancel and late Delivered/Retryable completion. Each fixture registers two
+installations through real DeviceService using ephemeral AES/GCM key material and
+production token encryption/decryption. Provider adapters are local controlled
+fakes; no real delivery, provider validation or BG-1 is claimed. Historical in-app
+reminders may remain; no second visible reminder is allowed for remaining recipients.
+
+First exact command, own explicit workdir:
+`.\gradlew.bat integrationTest --tests com.example.jobs.BookingReminderCancellationIntegrationTest --offline --no-daemon --max-workers=1`
+04.11.2026 BUILD FAILED in21s, exit1; XML4 tests/0 skipped/1 failure/0 errors,
+timestamp2026-11-04T16:06:17.464Z, suite6.816s. The scheduler selected-candidate,
+all-four-caller durable state and already-entered Delivered/Retryable cases passed.
+The pre-send race failed: after real unvote cancelled the booking and cleared its
+PROCESSING claim during the real-decrypt gate, releasing before sender invocation
+still called the fake provider once (expected0, actual1). This is a concrete
+point-in-time pre-send validation defect; it does not imply that an already called
+provider can be unsent. Lead and group_review were notified before production editing.
+Post-RED own users/points/proposals/votes/bookings/notifications/jobs/devices/
+outcomes/sessions=0/0/0/0/0/0/0/0/0/0.
+Raw actual RED XML was preserved at ignored .local/t105-evidence/t105-red.xml;
+no test token plaintext is printed by the new assertions or protocol.
+Lead and group_review independently confirmed the concrete P2 and approved the
+exact production correction before editing. Only PushDeliveryWorker.processOne
+changed: after decrypt and before starting provider I/O, a fresh short read-only
+loadValidCandidate rechecks current claim/lease, booking/resource, recipient and
+device eligibility. An invalid candidate takes the existing guarded CANCELLED
+finish/return path. Provider I/O remains outside JDBC transactions/locks. This is
+a point-in-time recheck; it does not atomically close the final external DB->provider
+TOCTOU window and cannot recall an already entered provider call. Its late completion
+must still fail the old claim-token/status CAS, as the actual tests verify.
+
+Corrected exact command was unchanged:
+`.\gradlew.bat integrationTest --tests com.example.jobs.BookingReminderCancellationIntegrationTest --offline --no-daemon --max-workers=1`
+04.11.2026 BUILD SUCCESSFUL in20s, exit0;3 tasks executed,3 up-to-date.
+Actual XML4 tests/0 skipped/0 failures/0 errors, timestamp2026-11-04T16:10:59.874Z,
+suite5.862s. The previously failing pre-send race now made0 provider calls. The
+four-caller durable matrix, selected-candidate scheduler race and both late provider
+completion branches also executed successfully. Own successful V001–V015 remained
+unchanged; post-GREEN users/points/proposals/votes/bookings/notifications/jobs/
+devices/outcomes/sessions were ten zeros. GREEN XML was archived before the next run
+as ignored .local/t105-evidence/t105-green.xml.
+
+### Existing worker regressions on own strict-alias databases
+
+The two exact legacy aliases were checked absent inside codex-m4-response and
+created only there from the verified empty own V001–V015 schema:
+
+```powershell
+docker exec codex-m4-response createdb -U m4_test -T roy_m4_cancel_jobs roy_m1t2_step7jobs
+docker exec codex-m4-response createdb -U m4_test -T roy_m4_cancel_jobs roy_m1t2_step8delete
+```
+
+They are unrelated to any original M1 database outside this own container. Lead
+explicitly permitted setting only these strict-alias loopback URLs after loading
+the own ignored recipe; no recipe/security/production.env file was changed.
+All commands used the explicit group8 worktree working directory documented above.
+Exact Jobs command:
+
+```powershell
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_cancel_jobs -DatabasePort 55485
+$env:TEST_DATABASE_URL='jdbc:postgresql://127.0.0.1:55485/roy_m1t2_step7jobs'
+.\gradlew.bat integrationTest --tests com.example.jobs.JobsIntegrationTest --offline --no-daemon --max-workers=1
+```
+
+BUILD SUCCESSFUL in13s, exit0;1 task executed,5 up-to-date. Actual XML3/0 skipped/
+0 failures/0 errors, timestamp2026-11-04T16:12:42.850Z, suite1.985s. Reminder dedup/
+time expiry, push claim/rebind and media lease cases ran. Raw XML was archived as
+.local/t105-evidence/legacy-jobs.xml. These legacy tests retain synthetic fixtures:
+users/points/proposals/bookings/events/pushjobs/mediajobs/devices before cleanup
+were3/2/2/1/3/2/1/1. Explicit cleanup ONLY in this worker-created exclusive alias
+used BEGIN; DELETE FROM points; DELETE FROM users; DELETE FROM media_deletion_jobs;
+COMMIT; all eight subsequent counts were zero. Schema and Flyway history were kept.
+
+Exact DeviceRebind command:
+
+```powershell
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_cancel_jobs -DatabasePort 55485
+$env:TEST_DATABASE_URL='jdbc:postgresql://127.0.0.1:55485/roy_m1t2_step8delete'
+.\gradlew.bat integrationTest --tests com.example.devices.DeviceRebindDeliveryConcurrencyIntegrationTest --offline --no-daemon --max-workers=1
+```
+
+BUILD SUCCESSFUL in12s, exit0;1 task executed,5 up-to-date. Actual XML1/0 skipped/
+0 failures/0 errors, timestamp2026-11-04T16:13:49.349Z, suite1.349s. Real concurrent
+in-flight rebind retained the old claim cancellation and did not resurrect it.
+Raw XML was archived as .local/t105-evidence/legacy-device-rebind.xml.
+Legacy retained users/points/events/jobs/devices were2/1/1/1/1; explicit own-alias
+BEGIN; DELETE FROM points; DELETE FROM users; COMMIT; made all five counts zero.
+Both aliases reported PostgreSQL18.6/PostGIS3.6.4; successful V001–V015 were confirmed
+from the template and the device test's actual schema validation. Legacy provider/
+decoder stubs remain regression boundaries, not real delivery or encryption proof;
+the new T105 fixture separately used real DeviceService/AES-GCM encryption/decryption.
+
+Total corrected acceptance: eight executed JUnit tests across the new4 + existing3
++ existing1, all with0 skips/failures/errors. Four actual XML archives (RED and three
+GREEN runs) live only in ignored .local/t105-evidence; this protocol preserves safe
+versioned commands, metrics and scope, not credentials/tokens. The tested branch
+was not automatically updated to later main80dcb6f; Lead owns subsequent integration
+and affected reruns, not an unperformed claim that these runs tested that merge.
+
+Only worker-owned external T4/B05-cancel-jobs.md, T4/README.md and M4-T4.md statuses
+were updated (backend5/5 locally), physically outside backend Git. Shared checklist,
+roadmap and master protocol belong to Lead and were not edited by this worker.
+Task subject: `Verify durable reminder invalidation on cancellation`.
+Finding-level approval above is not full task/branch approval; those independent
+reviews and the task commit remain separate. Real external delivery, M5 provider,
+client, complete race schedules, combined T3–T5/T6 and BG-1 remain outside acceptance.
+T105 independent read-only final task review by group_review: APPROVE after the approved pre-send recheck, real RED-to-GREEN and both existing worker regressions. Lead synchronized all five external status places: T4 backend5/5, checklist108/455, M4 backend24/28. Current main integration and independent whole-branch review remain separate.
