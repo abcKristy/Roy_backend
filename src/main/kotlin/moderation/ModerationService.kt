@@ -37,7 +37,7 @@ class ModerationService(
     suspend fun report(command: ReportCommand): ReportResult {
         require(command.reporterId != command.targetUserId) { "A user cannot report themselves" }
         val reason = command.reasonText.trim()
-        require(reason.codePointCount(0, reason.length) in 1..1000) { "Invalid report reason" }
+        require('\u0000' !in reason && reason.codePointCount(0, reason.length) in 1..1000) { "Invalid report reason" }
         val hash = JdbcIdempotencyOperations.requestHash("report", emptyList(), buildJsonObject {
             put("contextChatId", command.contextChatId.toString())
             put("targetUserId", command.targetUserId.toString())

@@ -25,7 +25,7 @@ internal fun Route.reportRoutes(service: ModerationService, sessions: SessionAcc
         val input = call.receiveStrictJson(ReportInput.serializer())
         val target = reportUuid(input.targetUserId, HttpStatusCode.UnprocessableEntity)
         val reason = input.reasonText.trim()
-        if (actor == target || reason.codePointCount(0, reason.length) !in 1..1000) {
+        if (actor == target || '\u0000' in reason || reason.codePointCount(0, reason.length) !in 1..1000) {
             throw ApiException(HttpStatusCode.UnprocessableEntity, "INVALID_FIELD", "Некорректная жалоба")
         }
         val result = service.report(ReportCommand(actor, key,

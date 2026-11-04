@@ -284,3 +284,19 @@ Actually updated external accounting paths:
 - `spec/plans/roadmap/M3/M3-chat-moderation.md`: corresponding M3.T3 backend 4/4, partial whole-parent summary.
 
 Runtime remains the owned disposable PostgreSQL18.6/PostGIS3.6.4 with V001–V015 and real JdbcSessionRepository sessions. The observed concurrent cursor advance establishes the exercised ordering, not all interleavings; chat pagination promises no frozen membership snapshot. All six accounting files remain outside backend Git and their physical contents are not versioned by target/origin. This ledger records the exact paths and topology limitation; no user plans were moved or duplicated. Mobile, BG-1, overall parent/M3 and external integrations remain open.
+
+## T072 — M3.T4.B01
+
+Group 7 branch `feat/chat-report-transactions`, accepted clean target/origin base `8decc3f4107f2fdc66319d6da08cdc578ca833cd`. Existing context/target guards retained. ReportRoutes rejects NUL reason as 422 INVALID_FIELD, and ModerationService rejects NUL before its transaction. This input gap was confirmed from code and PostgreSQL text representability; no pre-fix HTTP500 reproduction is claimed. No migration changed; environment remains the owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015.
+
+Evidence `com.example.api.ReportContextIntegrationTest` uses actual HTTP, JdbcSessionRepository and persisted refresh-capable sessions. Reporter must be an active context member; outsider and left reporters are denied. Active target and a left target author of a visible text message are accepted. A target related only to another chat, left target without history, deleted target, nonexistent target, self-report, inaccessible/nonexistent/deleted context are refused without report/outcome or fixture-user state changes. Repeated refusals preserve snapshots scoped to every fixture actor, including target mute/profile state. Error bodies do not reveal the fixture message.
+
+Strict JSON failures, invalid/missing key, missing authentication, blank/overlong/NUL reason are covered. A direct service NUL command fails before database writes. Trimmed 1000 supplementary-codepoint reason and 1000 U+0001 controls are accepted; persisted reasons, original replay DTO and bounded report outcome snapshots are checked. Report response exposes only id/reportedAt.
+
+The first required run failed in 1m35s before HTTP execution: the synthetic deleted target set deleted_at without clearing profile fields, violating users_active_profile_check. The fixture was corrected to the existing deleted-profile invariant; this was a test-fixture failure, not a product defect.
+
+Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.ReportContextIntegrationTest --offline --no-daemon --max-workers=1`; corrected run exit 0, BUILD SUCCESSFUL in 45s.
+
+Inspected `build/test-results/integrationTest/TEST-com.example.api.ReportContextIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T00:19:29.599Z, suite seconds=3.302. Local T072 server PASS for the stated assertions. Mobile, BG-1 and overall M3 remain open.
+
+Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
