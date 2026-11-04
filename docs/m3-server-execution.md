@@ -563,3 +563,20 @@ Minimal T083 correction: seed lastseq1, lock owned point, append fixed-ID seq2 w
 Lead reran `./gradlew.bat integrationTest --tests com.example.acceptance.ChatRestAcceptanceIntegrationTest --tests com.example.acceptance.ChatAcceptanceFixtureIntegrationTest --offline --no-daemon --max-workers=1`: PASS1m3s, exit0. Inspected corrected XML fixture1/0/0/0 timestamp2026-11-04T03:35:56.127Z suite3.053s; REST1/0/0/0 timestamp2026-11-04T03:35:59.183Z suite2.968s. Environment remains JDK17/Gradle9.5.1, PostgreSQL18.6/PostGIS3.6.4 roy_m3_chat, V001–V015. Independent targeted schema re-review APPROVE on04.11.2026 closes G11-FIXTURE-SYSTEM-SCHEMA; no final-audit finding count is implied.
 
 Task review: APPROVE, 04.11.2026. External accounting pending group acceptance.
+
+## Group 11 accepted integration, final identities and accounting ledger — 04.11.2026
+
+Working branch `tests/chat-server-acceptance`, accepted clean target/origin base `7a2a7baeea424307d4173575724d6e15d0bae7f4`. Definitive published task commits: T083 `e8abbe4b34f80badcb5c00fcbc5c1979c27a34f6`, T084 `51f5095262e45ce13b814f7fa2ff7d26f757d4c1`. Earlier references `77c55d7`, `ac8cb3b`, `f299b07` are historical unpublished snapshots, superseded by these final identities; earlier execution observations retain their expressly recorded scope. Lead confirmed independent whole-group APPROVE, successful fast-forward integration/non-force target push, local and origin `feat/back-part-3` equality at `51f5095262e45ce13b814f7fa2ff7d26f757d4c1`, and clean working tree. Main before/after remained `2c1de31de2a5481e90e3c84e93a8abdb38f16169`.
+
+Internal P2 `G11-FIXTURE-SYSTEM-SCHEMA` is closed after canonical seed/production join/leave SYSTEM assertions, regenerated 39-step REST trace, actual combined fixture+REST PASS1m3s and independent targeted plus whole-group APPROVE. This is a fixture/evidence task/group finding, distinct from later full-block audit IDs/counts. The original narrower PASS observations do not retroactively claim canonical schema coverage.
+
+Actually updated external accounting paths:
+
+- `spec/plans/tasks/M3/T6/B01-chat-fixture.md`: T083 local server ГОТОВО, checked criteria, corrected canonical fixture/ACL/threshold/scoped cleanup evidence and final commit.
+- `spec/plans/tasks/M3/T6/B02-chat-rest-cases.md`: T084 local server ГОТОВО, checked criteria, corrected REST/DB/SYSTEM/39-step trace evidence and final commit.
+- `spec/plans/tasks/M3/T6/README.md`: B01–B02 checked with date and final task commits.
+- `spec/plans/roadmap/execution-checklist.md`: T083–T084 checked; M3.T6 partial backend 2/4 and client open; fresh total 82/455 checked tasks, unrelated statuses preserved with optimistic reread.
+- `spec/plans/tasks/M3/M3-T6.md`: B01–B02 complete locally, B03–B04/C and overall parent acceptance open.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: corresponding partial M3.T6 server summary.
+
+The same owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat` remains V001–V015 with actual JdbcSessionRepository sessions. Fixture/REST sequential acceptance is not WS, concurrent send/leave, deployed transport, load or process-restart acceptance. All six accounting files remain outside backend Git and their physical contents are not versioned by target/origin. This ledger records exact updated paths and topology limitation; user plans were not moved or duplicated. No stalled backlog files were created or retrospectively added. Mobile, BG-1, overall parent/M3 and external integrations remain open.
