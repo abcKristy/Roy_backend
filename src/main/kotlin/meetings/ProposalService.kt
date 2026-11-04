@@ -21,9 +21,11 @@ import kotlinx.serialization.json.put
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.sql.Connection
+import java.time.Clock
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /** Proposal and vote operations use actor -> point -> proposal -> chat -> recipient locks. */
@@ -35,6 +37,8 @@ class ProposalService(
     private val systemMessages: JdbcSystemMessageWriter = JdbcSystemMessageWriter(),
     private val recipients: JdbcNotificationRecipients = JdbcNotificationRecipients(),
     private val notifications: JdbcNotificationWriter = JdbcNotificationWriter(),
+    // Testable creation time, sampled after locks; production retains PostgreSQL wall time.
+    private val clock: Clock? = null,
 ) {
     private val cursors = ChatCursorCodec(cursorSecret)
 
@@ -109,6 +113,9 @@ class ProposalService(
     suspend fun create(command: CreateProposalCommand,
                        successBody: (Connection, ProposalView) -> JsonObject): CreateProposalResult {
         if (!command.endsAt.isAfter(command.startsAt)) return CreateProposalResult.InvalidInterval
+        // Validate persisted resolution, retaining the existing raw-Instant replay hash.
+        val startsAt = command.startsAt.truncatedTo(ChronoUnit.MICROS)
+        val endsAt = command.endsAt.truncatedTo(ChronoUnit.MICROS)
         val hash = JdbcIdempotencyOperations.requestHash("create_proposal", listOf(command.chatId),
             buildJsonObject {
                 put("startsAt", command.startsAt.toString())
@@ -123,6 +130,8 @@ class ProposalService(
                     return@withRetryingJdbcTransaction CreateProposalResult.KeyReused
                 JdbcIdempotencyOperations.Decision.New -> Unit
             }
+            // Existing successful requests must replay before applying stricter storage bounds.
+            if (!endsAt.isAfter(startsAt)) return@withRetryingJdbcTransaction CreateProposalResult.InvalidInterval
             val pointId = pointForChat(connection, command.chatId)
                 ?: return@withRetryingJdbcTransaction CreateProposalResult.ChatGone
             if (!lockPoint(connection, pointId) || !lockChat(connection, command.chatId)) {
@@ -131,8 +140,8 @@ class ProposalService(
             if (!isActiveMember(connection, command.chatId, command.actorId)) {
                 return@withRetryingJdbcTransaction CreateProposalResult.NotMember
             }
-            val now = databaseNow(connection)
-            if (!command.startsAt.isAfter(now)) return@withRetryingJdbcTransaction CreateProposalResult.InvalidInterval
+            val now = clock?.instant() ?: databaseNow(connection)
+            if (!startsAt.isAfter(now)) return@withRetryingJdbcTransaction CreateProposalResult.InvalidInterval
             val id = UUID.randomUUID()
             connection.prepareStatement(
                 """INSERT INTO meeting_proposals
@@ -142,14 +151,14 @@ class ProposalService(
                 statement.setObject(1, id)
                 statement.setObject(2, command.chatId)
                 statement.setObject(3, command.actorId)
-                statement.setObject(4, command.startsAt.atOffset(ZoneOffset.UTC))
-                statement.setObject(5, command.endsAt.atOffset(ZoneOffset.UTC))
+                statement.setObject(4, startsAt.atOffset(ZoneOffset.UTC))
+                statement.setObject(5, endsAt.atOffset(ZoneOffset.UTC))
                 statement.setObject(6, now.atOffset(ZoneOffset.UTC))
                 statement.setObject(7, now.atOffset(ZoneOffset.UTC))
                 check(statement.executeUpdate() == 1)
             }
             val draft = SystemMessageDraft(SystemMessageKind.MEETING_PROPOSED, command.actorId,
-                pointId, command.chatId, proposalId = id, startsAt = command.startsAt, endsAt = command.endsAt)
+                pointId, command.chatId, proposalId = id, startsAt = startsAt, endsAt = endsAt)
             val emission = MeetingEmission(systemMessages.append(connection, UUID.randomUUID(), draft), draft)
             val nearbyIds = recipients.nearbyForProposal(connection, id)
             val barrier = RecipientBarrier.acquire(connection, nearbyIds.map { RecipientLockClaim(it, RecipientLockMode.SHARED) })
