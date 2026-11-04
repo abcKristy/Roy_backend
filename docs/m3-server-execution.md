@@ -314,3 +314,17 @@ Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest 
 Inspected `build/test-results/integrationTest/TEST-com.example.api.ReportLifetimeIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T00:24:52.820Z, suite seconds=2.54. Local T073 server PASS for the stated assertions. Mobile, BG-1 and overall M3 remain open.
 
 Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
+
+## T074 — M3.T4.B03
+
+Preceding accepted task commit `575f1a0c82ab944168936758da3d8f96563e06ba` (T073), branch `feat/chat-report-transactions`. Existing production report transaction retained unchanged. Environment remains owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015, actual HTTP/JdbcSessionRepository sessions.
+
+Evidence `com.example.api.ReportTransactionIntegrationTest` seeds fifteen unique prior reporters against one target, then installs a key-specific PostgreSQL constraint trigger on outcome insertion, DEFERRABLE INITIALLY DEFERRED. The trigger raises at COMMIT after the service's report, target-mute and outcome work, causing HTTP500. Exact snapshots of every fixture actor's reports/outcomes/user rows remain unchanged; independent SQL confirms fifteen reports and null target mute/trigger fields. Trigger/function cleanup runs in finally. This is a deferred commit-failure test, not merely a pre-insert statement refusal.
+
+The same key succeeds after cleanup with one canonical201 id/reportedAt; the time falls between separate database clock samples. Independent JDBC checks correlate persisted reporter/target/context/trimmed reason/server timestamp, target trigger timestamp, seven-day deadline, outcome reference and saved201 body, with exactly sixteen target reports. Repeats return the original201 and preserve committed snapshots. Changed reason, target or context with the key returns409 IDEMPOTENCY_KEY_REUSED without changes. The sixteenth-report setup establishes atomic target updates in this transaction case; full threshold/concurrent-boundary acceptance remains T075.
+
+Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.ReportTransactionIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in50s.
+
+Inspected `build/test-results/integrationTest/TEST-com.example.api.ReportTransactionIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T00:29:49.716Z, suite seconds=2.589. Local T074 server PASS for the stated assertions. Mobile, BG-1 and overall M3 remain open.
+
+Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
