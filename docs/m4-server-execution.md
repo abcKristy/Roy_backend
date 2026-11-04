@@ -390,3 +390,67 @@ backend Git; their physical contents do not enter main through this protocol.
 Task commit subject: `Verify bounded public voter pages`; SHA is not invented
 before creation. Independent read-only task review: APPROVE before commit.
 Client completion, BG-1 and overall M4 acceptance remain open.
+
+T094 task commit: `fa48db960ded93ad184cb85f447fd7f10ee5f06e`; task APPROVE
+preceded that commit. All five external T094 status references now carry its
+actual short SHA. The obsolete pending-task-review sentence in the card was
+corrected to that confirmed approval; group 4 branch review remains separate.
+
+## Group 4 — T095 / M4.T2.B04 — atomic readiness edges
+
+Existing production vote/threshold transaction and publication behavior were retained.
+Added `VoteReadinessIntegrationTest`, guarded to own disposable `roy_m4_ready`,
+with three real JDBC sessions, native loopback HTTP and three subscribed WS clients.
+The first proposal exercises0→1→2→3→2→1→2: readiness is expected only at revisions2/6,
+with no extra SYSTEM/notification/revision effect from repeated reads or desired
+states. Each logical ready edge has one stored meeting_ready and revision-scoped
+`proposal_ready:<proposalId>:<revision>` notification keys for two eligible peers.
+
+The second proposal starts at one vote. Two actual worker threads synchronize
+through ready/start latches, then send distinct B/C HTTP votes concurrently.
+Both rows must persist, final count/revision must be3/3, and there must be exactly
+one ready edge at revision2. WS update revisions2/3 are compared as event-ID/content
+maps between subscribers, allowing post-commit reordering rather than requiring
+a fixed frame sequence. Canonical Message.system and exact shared proposal payloads
+are checked without viewerGoing and against committed SYSTEM rows.
+
+For the third proposal, a proposal-scoped temporary notification INSERT trigger
+raises nonretryable SQLSTATE23514 after the ready SYSTEM append. A real HTTP500
+must leave vote/revision/SYSTEM/notification/sequence state unchanged and no WS
+effect through ordered USER markers plus250ms observations. Dropping the trigger
+allows retrying the desired vote to create the edge exactly once; its repeat is
+effect-free. All workers, sockets, server, fault DDL and own fixture IDs are bounded
+or cleaned in finally. This does not establish exhaustive schedules, external
+delivery, client behavior, BG-1 or overall M4 acceptance.
+
+Executed 04.11.2026 after dot-sourcing the ignored local test-environment recipe
+with alias `roy_m4_ready` (its contents/credentials are not reproduced here).
+Exact test command: `.\gradlew.bat integrationTest --tests com.example.meetings.VoteReadinessIntegrationTest --offline --no-daemon --max-workers=1`.
+BUILD SUCCESSFUL in1m28s, exit0;2 tasks executed,4 up-to-date. Actual JUnit XML:
+tests=1/skipped=0/failures=0/errors=0; timestamp2026-11-04T13:53:56.166Z,
+suite20.334s/test20.331s. This is actual execution, not an assumption skip.
+
+Before execution, read-only `docker inspect codex-m4-disposable` selected only
+container ID, ownership label, running state and published ports. It verified
+`8b30a5dd02db7ef3a1cdd8bae238b5d7d9af7b7ca163bc10ee2794c0fa5d566b`,
+`codex.task=m4-t087-t114`, running, exclusively127.0.0.1:55484 for PostgreSQL.
+The sandbox Docker inspection was denied; the authorized read-only retry and the
+Gradle run used escalation for the Docker pipe/Gradle cache, with no environment dump.
+The exact post-run read-only SQL command was:
+
+```powershell
+docker exec codex-m4-disposable psql -U m4_test -d roy_m4_ready -At -c "SELECT current_database(),current_setting('server_version'),postgis_lib_version(); SELECT string_agg(version,',' ORDER BY installed_rank) FROM flyway_schema_history WHERE success AND version IS NOT NULL; SELECT (SELECT count(*) FROM users),(SELECT count(*) FROM points),(SELECT count(*) FROM meeting_proposals),(SELECT count(*) FROM votes),(SELECT count(*) FROM messages),(SELECT count(*) FROM notification_events),(SELECT count(*) FROM operation_idempotency),(SELECT count(*) FROM pg_trigger WHERE tgname LIKE 'm4_ready_fault_%'),(SELECT count(*) FROM pg_proc WHERE proname LIKE 'm4_ready_fault_%');"
+```
+
+It verified database alias, PostgreSQL18.6/PostGIS3.6.4 and all successful V001–V015.
+SQL counts users/points/proposals/votes/messages/notifications/outcomes/custom
+ready fault triggers/custom ready fault functions=0/0/0/0/0/0/0/0/0.
+No production code was changed; no failed T095 test or confirmed production
+finding was observed in this run.
+
+External accounting updated: T2/B04-vote-transition.md, T2/README.md,
+execution-checklist.md (93/455), M4-T2.md (backend4/4) and M4-meetings-booking.md
+(T2 backend4/4; M4 backend9/28). These five external status files are physically
+outside backend Git. Task commit subject: `Verify atomic readiness transitions`;
+the future SHA is not fabricated. Independent read-only task review: APPROVE before commit.
+Group review remains separate; client, BG-1 and overall M4 completion are open.
