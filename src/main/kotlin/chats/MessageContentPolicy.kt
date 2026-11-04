@@ -94,16 +94,28 @@ private object PhoneDetector {
 }
 
 private object LinkDetector {
+    private val explicitPrefix = Regex("(?iu)(?<![\\p{L}\\p{N}])(?:h ?t ?t ?p(?: ?s)? ?: ?/ ?/ ?|f ?t ?p ?: ?/ ?/ ?|www ?\\. ?)")
+    private val explicitHost = Regex("[\\p{L}\\p{N}-]+(?: ?\\. ?[\\p{L}\\p{N}-]*)*+")
+    private val hostLabel = Regex("[\\p{L}\\p{N}](?:[\\p{L}\\p{N}-]*[\\p{L}\\p{N}])?")
     private val suffixes = setOf(
         "ru", "рф", "su", "com", "net", "org", "info", "biz", "io", "app", "dev", "me", "tv", "ua",
         "by", "kz", "de", "fr", "uk", "us", "edu", "gov", "site", "online", "xyz", "club", "pro", "shop",
     )
-    private val host = Regex("(?iu)(?<![\\p{L}\\p{N}-])[\\p{L}\\p{N}]+(?:-[\\p{L}\\p{N}]+)*(?: ?\\. ?[\\p{L}\\p{N}]+(?:-[\\p{L}\\p{N}]+)*)+(?![\\p{L}\\p{N}-])")
+    private val host = Regex("(?iu)(?<![\\p{L}\\p{N}-])${hostLabel.pattern}(?: ?\\. ?${hostLabel.pattern})++(?![\\p{L}\\p{N}-])")
     private val ipv4 = Regex("(?<![\\p{L}\\p{N}.])(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?![\\p{L}\\p{N}.])")
     private val ipv6 = Regex("(?i)(?<![\\p{L}\\p{N}:])\\[?([0-9a-f:]*:[0-9a-f:]+)\\]?(?![\\p{L}\\p{N}:])")
 
     fun contains(text: String): Boolean {
         val normalized = Normalizer.normalize(text, Normalizer.Form.NFC).lowercase(Locale.ROOT)
+        if (explicitPrefix.findAll(normalized).any { prefix ->
+                val match = explicitHost.matchAt(normalized, prefix.range.last + 1) ?: return@any false
+                if (normalized.getOrNull(match.range.last + 1) == '_') return@any false
+                val candidate = match.value
+                val labels = candidate.replace(" ", "").split('.')
+                val numericIpv4 = labels.size == 4 && labels.all { label -> label.all { it in '0'..'9' } }
+                labels.size >= 2 && labels.all { hostLabel.matches(it) } &&
+                    (!numericIpv4 || labels.all { it.length <= 3 && it.toIntOrNull()?.let { part -> part in 0..255 } == true })
+            }) return true
         if (host.findAll(normalized).any { match ->
                 if (normalized.substring(0, match.range.first).endsWith("ex ") && match.value == "ample.com") {
                     return@any false // Explicit v1.0 allowed split-label fixture: ex ample.com.
@@ -117,6 +129,8 @@ private object LinkDetector {
     }
 
     private fun validIpv6(value: String): Boolean {
+        if (value.startsWith(':') && !value.startsWith("::")) return false
+        if (value.endsWith(':') && !value.endsWith("::")) return false
         if (value.count { it == ':' } < 2 || value.count { it == ':' } > 7 + 1) return false
         val compressed = value.contains("::")
         if (compressed && value.indexOf("::") != value.lastIndexOf("::")) return false
