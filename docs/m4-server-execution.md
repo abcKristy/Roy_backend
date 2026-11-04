@@ -513,3 +513,83 @@ execution-checklist.md (94/455), M4-T3.md (backend1/5), M4-meetings-booking.md
 Task commit subject: `Verify active booking schema invariants`.
 Independent read-only task review: APPROVE before commit. Whole-T3 acceptance
 is not inferred from this schema run.
+
+T096 task APPROVE preceded commit `67ab9a370eeec5813d68c2c2dbd7e11ac440d9ff`.
+The five external T096 references now carry actual SHA `67ab9a3` and the unique
+subject, without temporary future-SHA suffixes.
+
+## Group 5 — T097 / M4.T3.B02 — booking eligibility guards
+
+Added `BookingGuardsIntegrationTest`, guarded to own `roy_m4_booking_guards`,
+using native loopback HTTP and real JDBC sessions. Nine independently seeded
+proposal states and fresh booking keys isolate the intended guard: zero votes,
+one own vote, two votes without own participation, eligible nonauthor booker,
+stale revision, closed lifecycle, started interval, existing active booking at
+current revision, and a fresh eligible proposal dedicated to revision types.
+Their intervals do not overlap, preventing an unrelated confirmation guard from
+masking eligibility. Actor→point→proposal locked rechecks remain the existing
+BookingService implementation; no production change is assumed from source review.
+
+The scenario expects distinct VOTE_REQUIRED/INSUFFICIENT_VOTES/STALE_STATE,
+member/auth/gone/closed/started/already-booked errors without changing scoped
+booking/vote/proposal rows, revisions/updated timestamps, SYSTEM/notifications,
+chat sequence or any synthetic actor's idempotency outcomes. Eligible booking
+by a voter different from the proposer must return201 and agree with GET/DB owner.
+The separate eligible revision2 target exercises quoted2, null, boolean, object,
+array, fractional numeric forms, overflow, negative and missing expectedRevision;
+native Long.MAX_VALUE must yield stale without wrapping. confirmOverlap remains
+native false; quoted confirmOverlap belongs to its later task.
+
+Actual execution and its observed type-contract defect are recorded below.
+Public baseline routes were not expanded or deployed; whole T3–T5/T6 and BG-1
+acceptance remain outside this local core task.
+
+First real command: `.\gradlew.bat integrationTest --tests com.example.meetings.BookingGuardsIntegrationTest --offline --no-daemon --max-workers=1`,
+after dot-sourcing the ignored own test-environment recipe for `roy_m4_booking_guards`.
+04.11.2026 BUILD FAILED in57s, exit1; actual JUnit tests=1/skipped=0/failures=1/
+errors=0, timestamp2026-11-04T14:12:47.574Z, suite9.049s. Earlier isolated eligibility
+guards and the eligible nonauthor201/GET/DB-owner assertions completed, then native
+HTTP `{"confirmOverlap":false,"expectedRevision":"2"}` on a fresh count2/revision2
+proposal returned201 instead of422. This is an observed revision type-contract
+defect, not an acceptance PASS. Remaining type-matrix cases were not reached.
+The finding was reported to Lead and the independent contract reviewer before
+any production correction. Post-failure own-fixture users/points/proposals/votes/
+bookings/messages/notifications/outcomes=0/0/0/0/0/0/0/0.
+
+Lead and the independent contract reviewer confirmed this P2 and approved a
+narrow correction before production editing: a private KSerializer<Long> only on
+BookingInput.expectedRevision. It requires an unquoted JsonPrimitive with a valid
+longOrNull; other shapes throw SerializationException and preserve the existing
+422 INVALID_FIELD mapping. DTO Long, encodeLong and the existing negative-revision
+guard are retained. confirmOverlap, CloseProposalInput, global JSON configuration
+and BookingService locking/eligibility logic are unchanged. The matrix additionally
+includes quoted2.0.
+
+Corrected exact command: `.\gradlew.bat integrationTest --tests com.example.meetings.BookingGuardsIntegrationTest --offline --no-daemon --max-workers=1`.
+04.11.2026 BUILD SUCCESSFUL in1m3s, exit0;4 tasks executed,2 up-to-date.
+Actual XML tests=1/skipped=0/failures=0/errors=0, timestamp2026-11-04T14:16:10.432Z,
+suite5.513s/test5.508s. The full eligibility and revision-type matrix executed,
+including safe native Long.MAX_VALUE stale handling, without guard-refusal effects.
+The approved expectedRevision type correction is GREEN; independent repeat task
+review is separate and its APPROVE is not invented.
+
+Targeted pre-run Docker inspection reverified the same owned container ID
+`8b30a5dd02db7ef3a1cdd8bae238b5d7d9af7b7ca163bc10ee2794c0fa5d566b`,
+label m4-t087-t114, running, only127.0.0.1:55484. The local ignored environment
+recipe selected own alias `roy_m4_booking_guards`; no credentials are recorded.
+Post-GREEN exact SQL command:
+
+```powershell
+docker exec codex-m4-disposable psql -U m4_test -d roy_m4_booking_guards -At -c "SELECT current_database(),current_setting('server_version'),postgis_lib_version(); SELECT string_agg(version,',' ORDER BY installed_rank) FROM flyway_schema_history WHERE success AND version IS NOT NULL; SELECT (SELECT count(*) FROM users),(SELECT count(*) FROM points),(SELECT count(*) FROM meeting_proposals),(SELECT count(*) FROM votes),(SELECT count(*) FROM bookings),(SELECT count(*) FROM messages),(SELECT count(*) FROM notification_events),(SELECT count(*) FROM operation_idempotency);"
+```
+
+It confirmed PostgreSQL18.6/PostGIS3.6.4, successful V001–V015 and the same eight
+zero fixture counts as the RED cleanup. No applied migration was changed.
+External statuses updated: T3/B02-booking-guards.md, T3/README.md,
+execution-checklist.md (95/455), M4-T3.md (backend2/5), M4-meetings-booking.md
+(T3 backend2/5; M4 backend11/28), physically outside backend Git.
+Task commit subject: `Enforce booking eligibility guards`. This local core result
+does not expand baseline public routes, deploy, close the parent or establish
+combined T3–T5/T6, client, external-delivery or BG-1 acceptance.
+
+Independent read-only repeat task review: APPROVE before commit.

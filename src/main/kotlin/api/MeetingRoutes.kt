@@ -48,6 +48,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import java.time.Instant
 import java.time.format.DateTimeParseException
@@ -71,7 +72,24 @@ private object StrictVoteBooleanSerializer : KSerializer<Boolean> {
 
     override fun serialize(encoder: Encoder, value: Boolean) = encoder.encodeBoolean(value)
 }
-@Serializable private data class BookingInput(val confirmOverlap: Boolean, val expectedRevision: Long)
+@Serializable private data class BookingInput(
+    val confirmOverlap: Boolean,
+    @Serializable(with = StrictBookingRevisionSerializer::class) val expectedRevision: Long,
+)
+
+/** Booking revisions are native JSON integers, never quoted numeric text. */
+private object StrictBookingRevisionSerializer : KSerializer<Long> {
+    override val descriptor = PrimitiveSerialDescriptor("StrictBookingRevision", PrimitiveKind.LONG)
+
+    override fun deserialize(decoder: Decoder): Long {
+        val value = (decoder as? JsonDecoder)?.decodeJsonElement() as? JsonPrimitive
+            ?: throw SerializationException("Expected JSON Long")
+        if (value.isString) throw SerializationException("Expected JSON Long")
+        return value.longOrNull ?: throw SerializationException("Expected JSON Long")
+    }
+
+    override fun serialize(encoder: Encoder, value: Long) = encoder.encodeLong(value)
+}
 @Serializable private data class CloseProposalInput(val expectedRevision: Long)
 
 internal fun Route.meetingRoutes(
