@@ -387,3 +387,17 @@ Actually updated external accounting paths:
 - `spec/plans/roadmap/M3/M3-chat-moderation.md`: matching M3.T4 backend 5/5, partial parent summary.
 
 Environment remains the owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015, with real JdbcSessionRepository sessions. The cases exercise one concurrent threshold ordering and an already reached database deadline, not every schedule or a real seven-day wait. No policy for a manually prepopulated longer deadline with a null trigger was invented. All six accounting files remain outside backend Git and their physical contents are not in target/origin history. This ledger records exact updated paths and topology limitation without moving or duplicating plans. Mobile, BG-1, overall parent/M3 and external integrations remain open.
+
+## T077 — M3.T5.B01 approved content policy version — 04.11.2026
+
+Group 9 branch `feat/chat-content-policy`, accepted clean target/origin base `b41e5ee3e2155d79a9bc9849e91066b325ccf403`. Existing MessageContentPolicy.VERSION `chat-content-v1.0` and separate Phone/Link/Profanity detectors retained unchanged. The read-only approved source is `spec/for dev/artifacts/chat-message-content-policy.md`, revision 1.0 dated 01.11.2026; its inspected raw-file SHA256 is `85e1bd739f5dda5cea14048d527b6f756a93be4c2d84d59c14198218997179c0`. The existing approve-message-content-filter backlog records author approval completed on 02.11.2026; that decision was not reopened or marked blocked.
+
+Self-contained backend test resource `src/test/resources/chats/chat-content-v1.0.json` pins the source identity, approval date, policy/normalization/exception-set versions, minimum approved section-8 corpus and selected explicit normalization/false-positive boundaries. It is a test fixture and attribution manifest, not a copy of user plans or the complete external specification. The hash records the inspected source bytes; portable tests do not read or re-hash the external workspace source.
+
+Evidence `com.example.chats.ContentPolicyVersionTest` has three unit tests: the implementation and fixture share the explicitly pinned approved version; repeated evaluation matches approved blocked/allowed, NFC/yo/format/lookalike/masking and deliberate exceptions; injecting a different profanity detector leaves phone and URL gates independently active. No dictionary, normalization rule or exception was changed. Phone/URL persistence and HTTP rejection evidence remain separate T078/T079 tasks.
+
+Lead executed on 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat test --tests com.example.chats.ContentPolicyVersionTest --offline --no-daemon --max-workers=1`, exit 0, BUILD SUCCESSFUL in 1m1s.
+
+Inspected `build/test-results/test/TEST-com.example.chats.ContentPolicyVersionTest.xml`: tests=3, skipped=0, failures=0, errors=0, timestamp=2026-11-04T01:08:35.725Z, suite seconds=0.122. Local T077 policy unit PASS for these assertions. No database was required or claimed by this pure policy test; the separate disposable environment remains V001–V015. Mobile, BG-1 and overall M3 remain open.
+
+Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
