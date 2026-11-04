@@ -486,3 +486,18 @@ ProfanityFilterIntegrationTest uses real HTTP, actual JdbcSessionRepository auth
 Lead executed `./gradlew.bat integrationTest --tests com.example.api.ProfanityFilterIntegrationTest --offline --no-daemon --max-workers=1`: required HTTP PASS in1m43s, exit0. Inspected XML tests=1/skipped=0/failures=0/errors=0, timestamp2026-11-04T02:29:42.280Z, suite seconds9.294. Local evidence covers these server assertions; mobile, BG-1, external integrations and overall M3 remain open.
 
 Task review: APPROVE, 04.11.2026. External accounting pending group acceptance.
+## T081 — M3.T5.B05
+
+Working branch `feat/chat-content-rate-limits`, preceding accepted task T080 `93f8e775541c87249103660e8df721628b958ef7`. Added the last defaulted ChatSendService transaction-clock constructor dependency and a named two-second constant. Production defaults to the same PostgreSQL clock_timestamp query. Clock reads retain their positions: rate checking after actor lock and membership validation, message/rate timestamp after point/chat locks. No migration changes; schema V001–V015.
+
+`ShortMessageFloodIntegrationTest` uses a controlled server transaction clock with real PostgreSQL transactions, persistent sessions, two authenticated devices/HTTP clients and two chats. At100ms,1.5s and2s-minus1microsecond new sends receive429 MESSAGE_FLOOD with ceil Retry-After2/1/1 and unchanged message/sequence/cursor/rate/outcome/notification/job snapshots. Exact2s and just-after2s sends succeed. An actual PostgreSQL actor-row lock is held until pg_blocking_pids confirms the pending send waits; clock advancement past the boundary before release demonstrates clock sampling after that lock. At one free actor-wide position two readiness/start-barrier requests across devices/chats yield exactly one201 and one429. Same-key replay in the full window preserves the original201 DTO and all snapshots. Content rejection at a free position does not consume it; a valid send at that same clock succeeds. The final ledger contains exactly six accepted sends with checked earliest/latest timestamps.
+
+The controlled clock belongs only to this test setup. Default PostgreSQL-clock regressions were executed separately. These executed barriers do not prove every scheduler/database interleaving, and the HTTP two-device test does not assert a WebSocket business-send path (send remains REST).
+
+Actual Lead commands on04.11.2026, JDK17/Gradle9.5.1, owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`:
+
+- `./gradlew.bat integrationTest --tests com.example.api.ShortMessageFloodIntegrationTest --offline --no-daemon --max-workers=1`: PASS1m25s. Inspected XML tests1/skipped0/failures0/errors0, timestamp `2026-11-04T02:44:27.440Z`, suite3.084s.
+- `./gradlew.bat integrationTest --tests com.example.chats.SendTransactionIntegrationTest --tests com.example.api.SendReplayIntegrationTest --tests com.example.api.MutedSendIntegrationTest --offline --no-daemon --max-workers=1`: PASS1m18s for the two actual matching classes only. SendReplay XML1/0/0/0, timestamp `2026-11-04T02:46:02.724Z`,2.401s; SendTransaction XML1/0/0/0, timestamp `2026-11-04T02:46:05.127Z`,0.485s. The MutedSend filter matched no class and is not mute-guard PASS evidence.
+- `./gradlew.bat integrationTest --tests com.example.api.MuteSendGuardIntegrationTest --offline --no-daemon --max-workers=1`: actual guard regression PASS47s, exit0. Current XML inspected tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-04T02:47:15.475Z`, suite2.789s.
+
+Local T081 server PASS for the stated cases. Independent task review APPROVE on04.11.2026; external accounting pending group acceptance. No mobile, BG-1 or overall M3 acceptance is claimed.
