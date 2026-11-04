@@ -269,3 +269,18 @@ Lead executed 04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --te
 Inspected `build/test-results/integrationTest/TEST-com.example.api.ChatListPaginationIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-03T23:58:31.726Z, suite seconds=2.577. Local T071 server PASS for these assertions. Mobile, BG-1 and overall M3 remain open.
 
 Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
+
+## Group 6 accepted integration and accounting ledger — 04.11.2026
+
+Working branch `feat/chat-read-pagination`, accepted clean target/origin base `4ff36e21ed40f83356a6c58fec75cdcf76936cf3`. Task commits: T070 `78b5609942bf53b3fcf714441e21112c64fb01c8`, T071 `8199271ba5049e42ef26ad60f57281042f0d93ee`. Independent task and whole-branch read-only reviews: APPROVE, no findings. This explicitly closes the historical pending-review/accounting state in the earlier T070 execution paragraph: its final task review is APPROVE, no findings, 04.11.2026, and accounting completed as listed here. Lead confirmed fast-forward integration and non-force push only to target; local `feat/back-part-3` and `origin/feat/back-part-3` both resolved to `8199271ba5049e42ef26ad60f57281042f0d93ee`, clean at the group gate. Main before/after remained `2c1de31de2a5481e90e3c84e93a8abdb38f16169`.
+
+Actually updated external accounting paths:
+
+- `spec/plans/tasks/M3/T3/B03-read-cursor.md`: T070 local server ГОТОВО, checked criteria, runtime/concurrency/error evidence and task commit.
+- `spec/plans/tasks/M3/T3/B04-chat-list-cursor.md`: T071 local server ГОТОВО, checked criteria, ordering/scoped cursor/runtime evidence and task commit.
+- `spec/plans/tasks/M3/T3/README.md`: B03–B04 checked with date and task commits.
+- `spec/plans/roadmap/execution-checklist.md`: T070–T071 checked; M3.T3 backend 4/4 locally complete, C open; fresh total 69/455 checked tasks, unrelated accounting preserved with optimistic reread.
+- `spec/plans/tasks/M3/M3-T3.md`: backend B01–B04 complete locally, C and whole-parent acceptance open.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: corresponding M3.T3 backend 4/4, partial whole-parent summary.
+
+Runtime remains the owned disposable PostgreSQL18.6/PostGIS3.6.4 with V001–V015 and real JdbcSessionRepository sessions. The observed concurrent cursor advance establishes the exercised ordering, not all interleavings; chat pagination promises no frozen membership snapshot. All six accounting files remain outside backend Git and their physical contents are not versioned by target/origin. This ledger records the exact paths and topology limitation; no user plans were moved or duplicated. Mobile, BG-1, overall parent/M3 and external integrations remain open.
