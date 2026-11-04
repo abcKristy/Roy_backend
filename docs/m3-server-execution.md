@@ -358,3 +358,17 @@ Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest 
 Inspected `build/test-results/integrationTest/TEST-com.example.api.MuteThresholdIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T00:45:23.487Z, suite seconds=3.315. Local T075 server PASS for the stated threshold/deadline assertions. The barrier case observes one concurrent execution, not all schedules. Send enforcement, read/leave under mute belong to T076; mobile, BG-1 and overall M3 remain open.
 
 Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
+
+## T076 — M3.T4.B05 authoritative send mute guard — 04.11.2026
+
+Preceding accepted task `682bfb0abeee2a1425043ceabb1a67a2202b9568`, working branch `feat/chat-mute-enforcement`; owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, migrations V001–V015 unchanged. Production ChatSendService already checks authoritative persisted mute before rate evaluation; only a separate acceptance fixture was added.
+
+`com.example.api.MuteSendGuardIntegrationTest` uses two different persisted auth_sessions and JWT session IDs for the same actor through actual JdbcSessionRepository authentication. After a successful send and recipient reply, the fixture directly persists a future mute deadline and trigger. This isolates send enforcement; report threshold creation is independently demonstrated by T075. Both devices receive403 MESSAGE_MUTED for new keys, with only mutedUntil in error details matching the database UTC deadline. Exact snapshots of messages, chat sequence, point, membership/read cursor, actor, rate events, idempotency outcomes, notification events and related push jobs remain unchanged. Replays of the earlier successful key from either device return the original201 body with no new effects.
+
+While muted, HTTP chat list, detail, history and search still return200 without mutation; HTTP read-cursor advances successfully and independent SQL confirms the persisted value. To isolate expiry from flood limits, the fixture sets message_muted_until to database clock_timestamp() and ages its existing rate event ten seconds. A subsequent request from the second device returns201/messageSeq3; SQL confirms three total messages and two actor rate events/success outcomes. This verifies an already reached server deadline, not equality at a frozen instant. After restoring a future mute, HTTP leave returns204 and SQL confirms left_at while the other participant preserves the chat. The fixture does not claim a report/send race or exhaustive scheduling coverage.
+
+Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.MuteSendGuardIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in54s.
+
+Inspected `build/test-results/integrationTest/TEST-com.example.api.MuteSendGuardIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T00:52:57.940Z, suite seconds=2.92. Local T076 server PASS for the stated assertions; mobile, BG-1, external integration and overall M3 acceptance remain open.
+
+Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
