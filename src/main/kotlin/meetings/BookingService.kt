@@ -76,6 +76,7 @@ class BookingService(
     private val recipients: JdbcNotificationRecipients = JdbcNotificationRecipients(),
     private val notifications: JdbcNotificationWriter = JdbcNotificationWriter(),
     private val closeClock: java.time.Clock? = null,
+    private val bookClock: java.time.Clock? = null,
 ) {
     private val projection = MeetingProjection()
     suspend fun book(
@@ -103,7 +104,7 @@ class BookingService(
             }
             if (command.expectedRevision != proposal.revision) return@withRetryingJdbcTransaction BookMeetingResult.Stale
             if (proposal.lifecycle != "OPEN") return@withRetryingJdbcTransaction BookMeetingResult.ProposalClosed
-            val now = databaseNow(connection)
+            val now = bookClock?.instant() ?: databaseNow(connection)
             if (!now.isBefore(proposal.startsAt)) return@withRetryingJdbcTransaction BookMeetingResult.AlreadyStarted
             if (activeBooking(connection, command.proposalId) != null) {
                 return@withRetryingJdbcTransaction BookMeetingResult.AlreadyBooked

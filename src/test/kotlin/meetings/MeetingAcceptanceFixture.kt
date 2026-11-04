@@ -44,8 +44,10 @@ internal class MeetingAcceptanceFixture(
     val clock = ControlledUtcClock(anchor.minusSeconds(86400))
 
     // The normal chain keeps PostgreSQL wall time. Boundary tests opt in explicitly.
-    fun proposals(controlledTime: Boolean = false) = ProposalService(runtime, secret, clock = if (controlledTime) clock else null)
-    fun bookings(controlledCloseTime: Boolean = false) = BookingService(runtime, closeClock = if (controlledCloseTime) clock else null)
+    fun proposals(controlledTime: Boolean = false, controlledVoteTime: Boolean = false) = ProposalService(runtime, secret,
+        clock = if (controlledTime) clock else null, voteClock = if (controlledVoteTime) clock else null)
+    fun bookings(controlledCloseTime: Boolean = false, controlledBookTime: Boolean = false) = BookingService(runtime,
+        closeClock = if (controlledCloseTime) clock else null, bookClock = if (controlledBookTime) clock else null)
 
     init {
         try {
