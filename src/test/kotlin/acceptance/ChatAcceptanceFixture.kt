@@ -81,7 +81,7 @@ class ChatAcceptanceFixture(val url: String, val user: String, private val passw
     }
     override fun close() = transaction { c ->
         // Reports have RESTRICT user FKs; all other dependent fixture records cascade.
-        val pairs = listOf("DELETE FROM reports WHERE reporter_user_id=ANY(?)" to reporters,
+        val pairs = listOf("DELETE FROM reports WHERE reporter_user_id=ANY(?)" to people,
             "DELETE FROM points WHERE id=ANY(?)" to points,
             "DELETE FROM users WHERE id=ANY(?)" to people)
         for ((sql, ids) in pairs) {
