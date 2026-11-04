@@ -401,3 +401,17 @@ Lead executed on 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat test --tests 
 Inspected `build/test-results/test/TEST-com.example.chats.ContentPolicyVersionTest.xml`: tests=3, skipped=0, failures=0, errors=0, timestamp=2026-11-04T01:08:35.725Z, suite seconds=0.122. Local T077 policy unit PASS for these assertions. No database was required or claimed by this pure policy test; the separate disposable environment remains V001–V015. Mobile, BG-1 and overall M3 remain open.
 
 Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
+
+## T078 — M3.T5.B02 approved phone filter — 04.11.2026
+
+Preceding accepted task commit `9b06fa2` (T077), branch `feat/chat-content-policy`. Existing production phone detector retained unchanged under approved `chat-content-v1.0`; the generic external category remains `phone_or_url_or_profanity` exactly as specified by the approved v1.0 policy. The owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat` remains V001–V015; actual JdbcSessionRepository validates persisted sessions.
+
+Evidence `com.example.api.PhoneFilterIntegrationTest` executes fourteen blocked synthetic phone forms twice each through HTTP: approved 10–15 digit international plus forms, domestic 7/8/9 prefixes, parentheses/dots/hyphens/spaces and NBSP, and 7–9 digit candidates with approved immediate contact markers. Every refusal is422 MESSAGE_REJECTED_PATTERN with only the safe generic category in details. Message/rate/outcome/notification counts, chat sequence and sender read cursor remain unchanged. Responses contain no rejected full text or match/pattern fields. A temporary root Logback ListAppender captures formatted messages and throwable text during these refusals and verifies absence of the complete rejected synthetic strings, then detaches/stops in finally. This is evidence for the captured application logging scope, not a claim about every external log sink or every possible fragment.
+
+Fourteen allowed synthetic date/time/house/amount/coordinate/order-number and deliberately unsupported disguise/boundary forms return201 with their exact text persisted in sequence order. The first accepted edit reuses a previously rejected key, proving the refusal did not save a successful outcome. Every accepted key replay returns the same DTO without additional counts/sequence/read changes. Existing successful rate events are explicitly aged ten seconds between allowed requests to isolate content rules from the separate flood gate; this fixture manipulation is not flood-boundary acceptance.
+
+Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.PhoneFilterIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in54s.
+
+Inspected `build/test-results/integrationTest/TEST-com.example.api.PhoneFilterIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T01:15:16.365Z, suite seconds=3.934. Local T078 server PASS for these assertions. No dictionary/source policy was changed. Mobile, BG-1 and overall M3 remain open.
+
+Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
