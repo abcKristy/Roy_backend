@@ -593,3 +593,62 @@ does not expand baseline public routes, deploy, close the parent or establish
 combined T3–T5/T6, client, external-delivery or BG-1 acceptance.
 
 Independent read-only repeat task review: APPROVE before commit.
+
+T097 final task commit: `069c2cb535423b1330361257e2d3413a157801ac`.
+The five external T097 subject references now include actual SHA `069c2cb`.
+
+## Group 5 — T098 / M4.T3.B03 — booking COMMIT and idempotency transaction
+
+Added `BookingTransactionIntegrationTest`, scoped to own disposable
+`roy_m4_booking_transaction`, real JDBC sessions, native loopback HTTP and two WS
+subscribers. No production or migration change was made. The baseline already
+contains public routes and overlap/cancellation hooks; this task neither expands
+exposure nor deploys or describes the baseline as dev-gated. Acceptance remains
+local core; combined T3–T5/T6, external delivery, client and BG-1 stay open. Known
+post-start cancellation policy work belongs to T101/T103, not this transaction test.
+
+A synthetic actor/operation-scoped CONSTRAINT TRIGGER on the final idempotency
+INSERT is AFTER INSERT, DEFERRABLE INITIALLY DEFERRED, with both pg_trigger flags
+asserted true. Its SQLSTATE23514 is deferred until the existing runtime's literal
+connection.commit() after the transaction block. HTTP500 must restore full booking,
+vote, proposal revision/updatedAt, point updatedAt, SYSTEM/chat sequence,
+notification/job and outcome snapshots. GET must remain ready_to_book/bookingnull;
+ordered USER sentinels plus250ms check bounded WS silence. One synthetic recipient
+device makes notification/job rollback nonvacuous; no delivery worker or provider
+is started and opaque synthetic device data is not an encryption/delivery proof.
+
+After dropping fault DDL, the same key and current revision must return201 and
+match GET/DB booking ID/order/owner/revision, one meeting_booked, SUCCESS result_ref
+and saved response snapshot. Both original replay and changed valid
+expectedRevision/confirmOverlap replay must return that same snapshot without WS,
+business writes or sequence allocation. pg_get_serial_sequence resolves the real
+identity sequence for before/after replay comparison. Failed-COMMIT identity gaps
+are valid, not reset and not claimed gapless. Reusing the key on another proposal
+must conflict without effects. Fault DDL, devices and fixture namespace are removed
+in finally. Full vote/unvote/leave races remain T113.
+
+Executed 04.11.2026 after dot-sourcing the ignored local test environment for own
+`roy_m4_booking_transaction`; no environment contents or credentials are recorded.
+Exact command: `.\gradlew.bat integrationTest --tests com.example.meetings.BookingTransactionIntegrationTest --offline --no-daemon --max-workers=1`.
+BUILD SUCCESSFUL in1m36s, exit0;2 tasks executed,4 up-to-date. Actual XML:
+tests=1/skipped=0/failures=0/errors=0, timestamp2026-11-04T14:26:46.734Z,
+suite22.507s/test22.483s. The deferred-COMMIT rollback, same-key retry, actual job,
+saved snapshot, WS absence and unchanged replay identity-sequence assertions all
+executed. No T098 failed run or confirmed production finding was observed.
+
+Before the run, targeted Docker inspection verified the same owned container
+`8b30a5dd02db7ef3a1cdd8bae238b5d7d9af7b7ca163bc10ee2794c0fa5d566b`,
+label m4-t087-t114, running and only127.0.0.1:55484. Post-run exact SQL command:
+
+```powershell
+docker exec codex-m4-disposable psql -U m4_test -d roy_m4_booking_transaction -At -c "SELECT current_database(),current_setting('server_version'),postgis_lib_version(); SELECT string_agg(version,',' ORDER BY installed_rank) FROM flyway_schema_history WHERE success AND version IS NOT NULL; SELECT (SELECT count(*) FROM users),(SELECT count(*) FROM points),(SELECT count(*) FROM meeting_proposals),(SELECT count(*) FROM votes),(SELECT count(*) FROM bookings),(SELECT count(*) FROM messages),(SELECT count(*) FROM notification_events),(SELECT count(*) FROM push_delivery_jobs),(SELECT count(*) FROM operation_idempotency),(SELECT count(*) FROM device_registrations),(SELECT count(*) FROM pg_trigger WHERE tgname LIKE 'm4_booking_commit_fault_%'),(SELECT count(*) FROM pg_proc WHERE proname LIKE 'm4_booking_commit_fault_%');"
+```
+
+It confirmed own alias, PostgreSQL18.6/PostGIS3.6.4, successful V001–V015 and all
+twelve scoped disposable-db row/fault counts zero. Identity sequence values are
+not reset and are outside this zero-row cleanup claim.
+External statuses updated: T3/B03-booking-write.md, T3/README.md,
+execution-checklist.md (96/455), M4-T3.md (backend3/5), M4-meetings-booking.md
+(T3 backend3/5; M4 backend12/28), all physically outside backend Git.
+Task commit subject: `Verify atomic booking commit outcomes`. Independent read-only
+task review: APPROVE before commit. Combined server acceptance remains open.
