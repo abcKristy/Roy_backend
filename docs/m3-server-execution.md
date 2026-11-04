@@ -452,3 +452,21 @@ Final affected-unit command on04.11.2026: `./gradlew.bat test --tests com.exampl
 The previously closed task-review T079-IPV6-EDGE and group-review T079-SCHEME-HOST, T079-HOST-LABEL, T079-LINK-STACK retain their separate provenance and reproduction records; none is a final-block audit ID or counted as that later audit. The approved source, suffix set, policy version chat-content-v1.0 and email semantics remain unchanged. Final targeted task re-review and renewed independent group review APPROVE on 04.11.2026; all four findings are closed in the integrated corrections.
 
 Task review: APPROVE, 04.11.2026. External accounting pending group acceptance.
+
+## Group 9 accepted integration and accounting ledger — 04.11.2026
+
+Working branch `feat/chat-content-policy`, accepted clean target/origin base `b41e5ee3e2155d79a9bc9849e91066b325ccf403`. Task commits: T077 `9b06fa24742d8fd6834aec9366b577acdffde71f`, T078 `61cac87723c119d4b60a63f02c0a35d42d9005ee`, T079 `a897af4818f470e5cdf0c74e74546fb5d91f5168`. Independent task and renewed whole-branch reviews: APPROVE, no remaining confirmed findings. Lead confirmed fast-forward integration, successful non-force push and ls-remote verification; local `feat/back-part-3` and `origin/feat/back-part-3` resolved to `a897af4818f470e5cdf0c74e74546fb5d91f5168`, clean at the gate. Main before/after remained `2c1de31de2a5481e90e3c84e93a8abdb38f16169`.
+
+Four internal T079 findings are closed by the integrated corrections and independent re-review: task-review `T079-IPV6-EDGE`; group-review `T079-SCHEME-HOST`, `T079-HOST-LABEL`, `T079-LINK-STACK`. Their separate reproductions/fixes/checks remain in the execution record above. These four IDs belong to task/group review, not to the later full-block audit and its finding counts. The approved source, dictionary, suffix set, email semantics and `chat-content-v1.0` version remain unchanged.
+
+Actually updated external accounting paths:
+
+- `spec/plans/tasks/M3/T5/B01-policy-version.md`: T077 local policy ГОТОВО, checked criteria, unit evidence/source version and task commit; no DB claim for pure units.
+- `spec/plans/tasks/M3/T5/B02-phone-filter.md`: T078 local server ГОТОВО, checked criteria, HTTP/persistence/captured-log evidence and task commit.
+- `spec/plans/tasks/M3/T5/B03-url-filter.md`: T079 local server ГОТОВО, checked criteria, final URL/edge regressions and task commit.
+- `spec/plans/tasks/M3/T5/README.md`: B01–B03 checked with date and task commits.
+- `spec/plans/roadmap/execution-checklist.md`: T077–T079 checked; M3.T5 partial backend 3/6 and client open; fresh checked total 77/455, unrelated accounting preserved with optimistic reread.
+- `spec/plans/tasks/M3/M3-T5.md`: B01–B03 locally complete; B04–B06/C and whole-parent acceptance open.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: matching partial M3.T5 server summary.
+
+HTTP evidence uses the owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015 and actual JdbcSessionRepository sessions. Captured logging and bounded policy regressions do not establish every external sink, every text fragment or all maximum-size HTTP behavior. All seven accounting files remain outside backend Git and their physical contents are not included in target/origin history. This versioned ledger records exact paths and topology limitation without moving or duplicating user plans. Mobile, BG-1, overall parents/M3 and external integration acceptance remain open.
