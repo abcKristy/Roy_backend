@@ -231,3 +231,71 @@ execution-checklist.md, M4-T1.md and M4-meetings-booking.md, outside backend Git
 Task commit subject: `Verify committed proposal events and nearby targets`.
 M4.T1 backend B01–B05 accepted locally; client, M5 external delivery and BG-1
 remain outside this result. B4 as a whole is not accepted by this group alone.
+
+Independent read-only T091 repeat task review: APPROVE before commit
+`569a8a84be98d977d4bf81189ce3036bc4d9a2e8`.
+The separate second-level group reviewer approved T090/T091 commits and their full
+diff against current main. Group 2 merged and published as
+`fa43431df668208128adcba9ccadedadf4fc6ffa`. Push, fetch and ls-remote verified
+`main=origin/main` at that commit and the accessible main working tree was clean.
+Pool 2 finished before pool 3 began; groups remained sequential.
+
+## Group 3 — T092 / M4.T2.B01 — own desired-state vote writes
+
+Branch `feat/meeting-votes` starts from verified published main
+`fa43431df668208128adcba9ccadedadf4fc6ffa`.
+Existing production PUT/service desired-Boolean behavior, actor locks and unique
+vote key were retained. Added `VoteWriteIntegrationTest` with own guarded
+`roy_m4_vote`, real JDBC sessions and native loopback HTTP against Netty.
+
+The first scenario checks PUT without expectedRevision; initial false and repeated
+true/false leave canonical snapshots and scoped DB effects unchanged. A peer's
+false request cannot remove the author's vote. A direct duplicate insert verifies
+SQLSTATE23505 for (proposal,user). The response uses the production Proposal fields
+and equals subsequent GET. Strict unknown userId/expectedRevision/missing/wrong-type
+payloads return422 INVALID_FIELD; malformed JSON returns400 INVALID_JSON. Missing
+authentication, nonmembership, started/closed proposals and missing resources use
+the existing401/403/409/404 stable codes without changing votes, revisions, SYSTEM
+messages, notifications or chat sequence. Started/closed true and false are checked.
+
+The second scenario releases two distinct native HTTP voters from a shared
+ready/start latch on two worker threads. It checks both successful responses,
+revisions1/2 and counts1/2, both unique persisted actors and final count2/revision2,
+then verifies a repeated true produces no additional effects. Futures, HTTP calls,
+barriers and worker shutdown are bounded. This is a concurrent two-request case,
+not exhaustive vote/booking race acceptance. Both fixtures delete only their own
+point and account namespaces in finally.
+The later confirmed transport-only correction is recorded below; the existing
+vote transaction/storage implementation remains unchanged.
+
+The initial implementation required the corrections and real executions recorded below.
+
+The first command `.\gradlew.bat integrationTest --tests com.example.meetings.VoteWriteIntegrationTest --offline --no-daemon --max-workers=1`
+failed during test compilation in1m27s, before any integration scenario executed:
+the fixture initializer called suspend `resolvedConnectors()` from a non-suspend
+context at line171. This is a test-compilation error, not integration acceptance
+or a confirmed backend defect. The approved correction wraps connector resolution
+in `runBlocking`; HTTP/race semantics and production code are unchanged.
+The next real run using the same command executed both tests and failed in1m27s:
+JUnit tests=2, skipped=0, failures=1, errors=0; the invalid-type loop expected422
+but quoted `going` received200. The separate concurrent-voter test executed.
+Independent review confirmed a P2 contract defect: the default Boolean JSON
+decoder accepted quoted boolean text despite the required native Boolean DTO.
+
+The approved narrow correction adds a private serializer solely to VoteInput.going.
+It accepts only an unquoted JsonPrimitive whose booleanOrNull is nonnull, throwing
+SerializationException for other shapes so the existing strict request handling
+returns422 INVALID_FIELD. It retains Boolean as the DTO type and serializes with
+encodeBoolean; no global parser or other DTO was changed. The rejected-type matrix
+now includes quoted true/false, null, numbers, object and array, with synthetic-body
+diagnostics on status failures and unchanged scoped DB effects. Native true/false
+remain covered by the desired-state and concurrent tests. The corrected required
+run: `.\gradlew.bat integrationTest --tests com.example.meetings.VoteWriteIntegrationTest --offline --no-daemon --max-workers=1`.
+04.11.2026 BUILD SUCCESSFUL in1m40s, JUnit tests=2/skipped=0/failures=0/errors=0;
+4 tasks executed,2 up-to-date. Both real native HTTP scenarios executed.
+Own `roy_m4_vote` in verified disposable PostgreSQL18.6/PostGIS3.6.4, V001–V015.
+Post-run users/points/proposals/votes/messages/notifications=0/0/0/0/0/0.
+The P2 strict-Boolean regression and native distinct-voter concurrency are GREEN.
+External accounting updated: T2/B01-vote-write.md, T2/README.md,
+execution-checklist.md, M4-T2.md and M4-meetings-booking.md, outside backend Git.
+Task commit subject: `Enforce strict own vote writes`.
