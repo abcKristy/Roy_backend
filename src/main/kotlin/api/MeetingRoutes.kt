@@ -33,10 +33,18 @@ import io.ktor.server.routing.put
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
@@ -46,7 +54,23 @@ import java.time.format.DateTimeParseException
 import java.util.UUID
 
 @Serializable private data class ProposalInput(val startsAt: String, val endsAt: String)
-@Serializable private data class VoteInput(val going: Boolean)
+@Serializable private data class VoteInput(
+    @Serializable(with = StrictVoteBooleanSerializer::class) val going: Boolean,
+)
+
+/** JSON Boolean only: the standard decoder also accepts quoted boolean text. */
+private object StrictVoteBooleanSerializer : KSerializer<Boolean> {
+    override val descriptor = PrimitiveSerialDescriptor("StrictVoteBoolean", PrimitiveKind.BOOLEAN)
+
+    override fun deserialize(decoder: Decoder): Boolean {
+        val value = (decoder as? JsonDecoder)?.decodeJsonElement() as? JsonPrimitive
+            ?: throw SerializationException("Expected JSON Boolean")
+        if (value.isString) throw SerializationException("Expected JSON Boolean")
+        return value.booleanOrNull ?: throw SerializationException("Expected JSON Boolean")
+    }
+
+    override fun serialize(encoder: Encoder, value: Boolean) = encoder.encodeBoolean(value)
+}
 @Serializable private data class BookingInput(val confirmOverlap: Boolean, val expectedRevision: Long)
 @Serializable private data class CloseProposalInput(val expectedRevision: Long)
 
