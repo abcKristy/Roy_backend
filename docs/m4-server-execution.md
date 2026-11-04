@@ -7,6 +7,12 @@ The task cards and status registers under `spec/plans/` are outside backend Git.
 Updating those registers does not version their physical contents in backend `main`.
 Client tasks, BG-1, M5 nearby/reminder delivery and overall M4 acceptance are separate scopes.
 
+Preparation found registered worktrees `backend-chat` and `pool-1` through `pool-4`
+under `project/worktrees`, but read-only status checks confirmed those paths are absent
+in this checkout. Their registrations were left untouched (no prune or deletion).
+The main checkout is the only currently accessible registered working tree; no claim
+is made that every registered tree is clean. This does not block the sequential first pool.
+
 ## Group 1 — T087 / M4.T1.B01 — proposal schema
 
 Base: verified `main=origin/main` at `2f54ac0734004308aaf5e5d2f0b3a8253772c168`.
@@ -87,3 +93,38 @@ LOCAL bootstrap V001–V015. Post-run users/points/proposals/messages/outcomes=0
 External accounting updated: T1/B02-proposal-time.md, T1/README.md,
 execution-checklist.md, M4-T1.md and M4-meetings-booking.md, all outside backend Git.
 Task commit subject: `Validate proposal time at storage precision`.
+
+Independent read-only repeat task review: APPROVE before commit.
+Task commit: `bd0e71d275b6beefcbf09b560c80938e340941e2`.
+
+## Group 1 — T089 / M4.T1.B03 — zero-vote creation and transaction
+
+Existing production creation/member checks and idempotency were retained without
+rewriting implemented behavior. Added `ProposalCreateIntegrationTest`, guarded to
+the own `roy_m4_create` disposable database. Its private fixture creates two chats
+on separate topics of one synthetic point, a member and an outsider, and removes
+only that namespace in `finally`.
+
+The first scenario checks outsider refusal with no writes; member creation with
+goingCount=0, viewerGoing=false, voting status, null booking and revision zero;
+exact status201/production `proposalJson` snapshot; one `meeting_proposed` SYSTEM
+message and one outcome; replay without callback or duplication; and changed
+chat/start/end hash conflicts. A newer persisted revision is preserved by replay.
+
+The second scenario deliberately throws from the success-body callback after
+observing the uncommitted proposal, SYSTEM message and chat sequence increment.
+It verifies rollback of scoped proposal/vote/message/outcome counts and chat
+sequence, followed by successful reuse of the same previously unconsumed key
+and effect-free exact replay. There are no nearby recipients in this fixture;
+M5 delivery acceptance is not inferred from these transaction checks.
+
+Executed 04.11.2026 on own `roy_m4_create` in the same verified disposable
+PostgreSQL18.6/PostGIS3.6.4 container; LOCAL bootstrap V001–V015.
+Command: `.\gradlew.bat integrationTest --tests com.example.meetings.ProposalCreateIntegrationTest --offline --no-daemon --max-workers=1 --rerun-tasks`.
+BUILD SUCCESSFUL in 3m9s; JUnit tests=2/skipped=0/failures=0/errors=0.
+SQL post-run users/points/proposals/messages/outcomes=0/0/0/0/0.
+External accounting updated: T1/B03-proposal-create.md, T1/README.md,
+execution-checklist.md, M4-T1.md and M4-meetings-booking.md, outside backend Git.
+Task commit subject: `Verify atomic zero vote proposal creation`.
+Remote recheck before group completion: fetch succeeded, main=origin/main still
+`2f54ac0734004308aaf5e5d2f0b3a8253772c168`.
