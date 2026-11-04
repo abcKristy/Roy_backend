@@ -600,3 +600,20 @@ Lead executed `./gradlew.bat integrationTest --tests com.example.acceptance.Chat
 No WS transport exists in this test application, so runtime non-publication is not claimed. Code inspection establishes Created-only chat.message.created publication; the exercised NotMember branch returns403. Separate T085 has its own bounded WS evidence. These deterministic lock schedules are not every scheduler/stress case, mobile, BG-1, deployed transport or overall M3 acceptance.
 
 Task review: APPROVE, 04.11.2026. External accounting pending group acceptance.
+
+## Group 12 accepted integration and accounting ledger — 04.11.2026
+
+Working branch `tests/chat-realtime-races`, accepted clean target/origin base `e2e3ca1cfc4d30b01334def7bd6e403ccbbd46e8`. Task commits: T085 `12115cbd2d9fc7a0c3282f6526c7dd2c3cda9368`, T086 `67939ebb321c968f95423857a4d25805ec75f9d0`. Independent task and whole-group read-only reviews: APPROVE, no findings. Lead confirmed fast-forward integration, successful non-force push, local/origin `feat/back-part-3` equality at `67939ebb321c968f95423857a4d25805ec75f9d0` and clean working tree. Main before/after remained `2c1de31de2a5481e90e3c84e93a8abdb38f16169`.
+
+T085's actual safe WS trace has22 rows (not23), with required PASS48s and XML1/0/0/0. It uses the restarted owned container and fresh restored tmpfs database, loopback32795, with all15 migrations applied/validated. T086 required PASS1m13s/XML3/0/0/0 covers three true overlapping PostgreSQL lock schedules. These are bounded WS observations and deterministic executed race schedules, not every fault/interleaving. T086 has no WS transport, so it does not claim runtime WS event absence. No production or applied migration change was made by this group.
+
+Actually updated external accounting paths:
+
+- `spec/plans/tasks/M3/T6/B03-chat-socket-cases.md`: T085 local server ГОТОВО, checked criteria, real WS/REST resync/specific-session isolation evidence and task commit.
+- `spec/plans/tasks/M3/T6/B04-chat-race-cases.md`: T086 local server ГОТОВО, checked criteria, actual lock-chain/three-race/DB evidence and task commit.
+- `spec/plans/tasks/M3/T6/README.md`: B03–B04 checked with date and commits.
+- `spec/plans/roadmap/execution-checklist.md`: T085–T086 checked, M3.T6 backend4/4 locally complete, C open; fresh total84/455 checked tasks, unrelated statuses preserved with optimistic reread.
+- `spec/plans/tasks/M3/M3-T6.md`: backend B01–B04 locally complete, C/whole-parent/BG-1 open; full audit/fix stage pending.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: matching T6 backend4/4 and explicit B30/30 local server progress; full audit/fix stage, C/BG-1/overall M3 remain open.
+
+Runtime: owned disposable PostgreSQL18.6/PostGIS3.6.4 roy_m3_chat loopback32795, V001–V015 and real JdbcSessionRepository sessions. All six accounting files remain outside backend Git; their physical contents are not versioned by target/origin. This ledger records the exact updates/topology boundary without moving or duplicating user plans. All30 backend task components have local grouped acceptance, but the separately required full detailed audit and subsequent audit-fix stage have not yet been completed. No final-audit file is created by this accounting step, and overall M3/mobile/BG-1/external integration acceptance is not claimed.
