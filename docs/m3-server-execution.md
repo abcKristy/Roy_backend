@@ -255,3 +255,17 @@ Two actual HTTP advances (6/9) start after both coroutine readiness barriers and
 Lead executed 04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.ReadCursorIntegrationTest --offline --no-daemon --max-workers=1`, exit 0, BUILD SUCCESSFUL in 47s.
 
 Inspected `build/test-results/integrationTest/TEST-com.example.api.ReadCursorIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-03T23:53:19.747Z, suite seconds=2.585. Local T070 server PASS for these assertions; final independent review and external accounting pending. Mobile, BG-1 and overall M3 remain open.
+
+## T071 — M3.T3.B04
+
+Preceding task commit `78b5609942bf53b3fcf714441e21112c64fb01c8` (T070), branch `feat/chat-read-pagination`. Existing production signed keyset cursor retained unchanged. Same owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015; actual JdbcSessionRepository validates persisted sessions.
+
+Evidence `com.example.api.ChatListPaginationIntegrationTest`: seven synthetic chats distinguish five active memberships from foreign and left membership. Real GET /me/chats asserts created_at DESC with distinct timestamps and id DESC for ties; pages2/2/1 yield the exact expected IDs without duplicates, repeated continuation yields the same IDs. Inserting new activity in a lower-created chat does not reorder the created_at/id list. Exact-limit end pages (limit5 and final limit1) and an empty account have null nextCursor. A signed search cursor used in list scope, tampered/truncated cursors, changed actor and changed limit return400 INVALID_CURSOR without items. Limits0/101/negative/non-numeric/overflow return400 INVALID_FIELD. Read cursors remain unchanged.
+
+This is stable keyset continuation under the exercised membership set. The implementation/evidence does not promise a frozen membership snapshot while memberships change; later joins/leaves can change what subsequent pages contain.
+
+Lead executed 04.11.2026, JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.ChatListPaginationIntegrationTest --offline --no-daemon --max-workers=1`, exit 0, BUILD SUCCESSFUL in 48s.
+
+Inspected `build/test-results/integrationTest/TEST-com.example.api.ChatListPaginationIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-03T23:58:31.726Z, suite seconds=2.577. Local T071 server PASS for these assertions. Mobile, BG-1 and overall M3 remain open.
+
+Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
