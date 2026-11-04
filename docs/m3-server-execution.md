@@ -501,3 +501,17 @@ Actual Lead commands on04.11.2026, JDK17/Gradle9.5.1, owned disposable PostgreSQ
 - `./gradlew.bat integrationTest --tests com.example.api.MuteSendGuardIntegrationTest --offline --no-daemon --max-workers=1`: actual guard regression PASS47s, exit0. Current XML inspected tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-04T02:47:15.475Z`, suite2.789s.
 
 Local T081 server PASS for the stated cases. Independent task review APPROVE on04.11.2026; external accounting pending group acceptance. No mobile, BG-1 or overall M3 acceptance is claimed.
+
+## T082 — M3.T5.B06
+
+Working branch `feat/chat-content-rate-limits`, preceding accepted T081 `87d8e29861fcbd6cd658798625128e9f4a1a40b5`. Added named 300-second and 30-event constants without changing production query semantics: successful events satisfy accepted_at > now minus300seconds, so the exact oldest edge is excluded. Transaction-clock injection remains the T081 port; production defaults to PostgreSQL time. Schema V001–V015 is unchanged.
+
+`LongMessageFloodIntegrationTest` uses real HTTP, JDBC-backed sessions, two devices/clients, two chats and real PostgreSQL actor locks. All accepted rate events come from successful HTTP sends, not bulk ledger insertion. After29 sends spaced by two controlled-clock seconds, a unique fixture-key outcome trigger forces one send failure; unchanged message/chat/point/membership/rate/outcome/notification/job snapshots prove that rollback leaves the30th position free. Trigger/function cleanup runs in finally. Two readiness/shared-start-barrier requests then compete for that position: exactly one201 and one429, with Retry-After242=max(short2,long242). Same-key replay in the full window returns the original201 DTO without new writes. New31st requests are refused, including Retry-After240 at base+60seconds.
+
+A fresh ChatSendService instance reads the same persisted full ledger and returns Flood240 without mutation. This proves service-instance independence, not process-restart/network acceptance. Content rejection before the accepted sequence leaves snapshots unchanged and consumes no frequency position.
+
+Controlled UTC base `2030-01-01T00:00:00Z`: at299.999999seconds refusal has Retry-After1; at exactly300seconds the oldest event is excluded and a send succeeds. At300.000001seconds refusal rounds to2; at301.2 it rounds to1; at302 a second oldest event ages out and a send succeeds; at304.000001 another succeeds. Active-window counts remain30, demonstrating rolling releases rather than a fixed bucket reset. Final persisted counts are33 messages/rate events/outcomes after those additional successful sends. No five-minute wall-clock sleep or fake successful ledger rows are used. Executed barrier cases do not claim all database/scheduler interleavings.
+
+Lead executed04.11.2026 with JDK17/Gradle9.5.1 in the owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`: `./gradlew.bat integrationTest --tests com.example.api.LongMessageFloodIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in59s. Current XML inspected `build/test-results/integrationTest/TEST-com.example.api.LongMessageFloodIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-04T02:54:34.114Z`, suite3.711s.
+
+Local T082 server PASS for these assertions. Task review: APPROVE, 04.11.2026. External accounting pending group acceptance. Mobile, BG-1 and overall M3 remain open.

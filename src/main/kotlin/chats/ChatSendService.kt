@@ -173,14 +173,14 @@ class ChatSendService(
            WHERE user_id=? AND accepted_at>?"""
     ).use { statement ->
         statement.setObject(1, userId)
-        statement.setObject(2, now.minusSeconds(300).atOffset(ZoneOffset.UTC))
+        statement.setObject(2, now.minusSeconds(LONG_MESSAGE_WINDOW_SECONDS).atOffset(ZoneOffset.UTC))
         statement.executeQuery().use { rows ->
             check(rows.next())
             val latest = rows.getObject(1, OffsetDateTime::class.java)?.toInstant()
             val count = rows.getLong(2)
             val oldest = rows.getObject(3, OffsetDateTime::class.java)?.toInstant()
             val twoSeconds = latest?.plusSeconds(SHORT_MESSAGE_WINDOW_SECONDS)?.let { Duration.between(now, it).toNanos() } ?: 0
-            val fiveMinutes = if (count >= 30) oldest?.plusSeconds(300)?.let { Duration.between(now, it).toNanos() } ?: 0 else 0
+            val fiveMinutes = if (count >= LONG_MESSAGE_WINDOW_CAPACITY) oldest?.plusSeconds(LONG_MESSAGE_WINDOW_SECONDS)?.let { Duration.between(now, it).toNanos() } ?: 0 else 0
             val remaining = maxOf(twoSeconds, fiveMinutes)
             if (remaining > 0) ((remaining + 999_999_999L) / 1_000_000_000L).toInt().coerceAtLeast(1) else null
         }
@@ -188,6 +188,8 @@ class ChatSendService(
 }
 
 private const val SHORT_MESSAGE_WINDOW_SECONDS = 2L
+private const val LONG_MESSAGE_WINDOW_SECONDS = 300L
+private const val LONG_MESSAGE_WINDOW_CAPACITY = 30L
 
 private fun messageDatabaseTime(connection: Connection): Instant = connection.createStatement().use { statement ->
         statement.executeQuery("SELECT clock_timestamp()").use { rows ->
