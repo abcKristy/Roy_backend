@@ -143,6 +143,14 @@ class PushDeliveryWorker(
             if (finish(claim, "FAILED", PushFailureCode.INVALID_TOKEN)) failed.incrementAndGet()
             return
         }
+        // Decryption can outlive cancellation; recheck immediately before provider I/O.
+        val stillValid = database.withReadOnlyJdbcTransaction { connection ->
+            loadValidCandidate(connection, claim) != null
+        }
+        if (!stillValid) {
+            if (finish(claim, "CANCELLED", null)) cancelled.incrementAndGet()
+            return
+        }
         val result = try {
             withTimeout(providerTimeoutMillis) { sender.send(candidate.platform, token, candidate.payload()) }
         } catch (timeout: TimeoutCancellationException) {
