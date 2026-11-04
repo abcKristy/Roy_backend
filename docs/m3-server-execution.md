@@ -372,3 +372,18 @@ Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest 
 Inspected `build/test-results/integrationTest/TEST-com.example.api.MuteSendGuardIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T00:52:57.940Z, suite seconds=2.92. Local T076 server PASS for the stated assertions; mobile, BG-1, external integration and overall M3 acceptance remain open.
 
 Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
+
+## Group 8 accepted integration and accounting ledger — 04.11.2026
+
+Working branch `feat/chat-mute-enforcement`, accepted clean target/origin base `d33297fa1833f6a36949dcfffea5ecb0257093bf`. Task commits: T075 `682bfb0abeee2a1425043ceabb1a67a2202b9568`, T076 `936086d7511381ac226cc6b94ff1bb2bdac1bdb0`. Independent task and whole-branch read-only reviews: APPROVE, no findings. Lead confirmed fast-forward integration and non-force target push; local `feat/back-part-3` and `origin/feat/back-part-3` both resolved to `936086d7511381ac226cc6b94ff1bb2bdac1bdb0`, clean at the group gate. Main before/after remained `2c1de31de2a5481e90e3c84e93a8abdb38f16169`.
+
+Actually updated external accounting paths:
+
+- `spec/plans/tasks/M3/T4/B04-mute-threshold.md`: T075 local server ГОТОВО, checked criteria, lifetime threshold/one-time deadline evidence and task commit.
+- `spec/plans/tasks/M3/T4/B05-mute-guard.md`: T076 local server ГОТОВО, checked criteria, two-session send guard/expiry/read/leave evidence and task commit.
+- `spec/plans/tasks/M3/T4/README.md`: B04–B05 checked with date and task commits.
+- `spec/plans/roadmap/execution-checklist.md`: T075–T076 checked; M3.T4 backend 5/5 locally complete, C open; freshly counted 74/455 checked tasks, unrelated statuses preserved with optimistic reread.
+- `spec/plans/tasks/M3/M3-T4.md`: backend B01–B05 locally complete, C and whole-parent acceptance open.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: matching M3.T4 backend 5/5, partial parent summary.
+
+Environment remains the owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015, with real JdbcSessionRepository sessions. The cases exercise one concurrent threshold ordering and an already reached database deadline, not every schedule or a real seven-day wait. No policy for a manually prepopulated longer deadline with a null trigger was invented. All six accounting files remain outside backend Git and their physical contents are not in target/origin history. This ledger records exact updated paths and topology limitation without moving or duplicating plans. Mobile, BG-1, overall parent/M3 and external integrations remain open.
