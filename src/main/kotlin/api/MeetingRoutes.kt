@@ -90,7 +90,9 @@ private object StrictBookingRevisionSerializer : KSerializer<Long> {
 
     override fun serialize(encoder: Encoder, value: Long) = encoder.encodeLong(value)
 }
-@Serializable private data class CloseProposalInput(val expectedRevision: Long)
+@Serializable private data class CloseProposalInput(
+    @Serializable(with = StrictBookingRevisionSerializer::class) val expectedRevision: Long,
+)
 
 internal fun Route.meetingRoutes(
     proposals: ProposalService,

@@ -223,3 +223,84 @@ Finding-level approval above is not full task/branch approval; those independent
 reviews and the task commit remain separate. Real external delivery, M5 provider,
 client, complete race schedules, combined T3–T5/T6 and BG-1 remain outside acceptance.
 T105 independent read-only final task review by group_review: APPROVE after the approved pre-send recheck, real RED-to-GREEN and both existing worker regressions. Lead synchronized all five external status places: T4 backend5/5, checklist108/455, M4 backend24/28. Current main integration and independent whole-branch review remain separate.
+
+## T105 commit and integration of current main
+
+Final independent group_review task approval preceded Lead's clean task commit
+9aa08b379b888263181450f3166647d768db66be. Lead stamped its actual SHA in five
+external accounting references. This is full task approval, distinct from the
+prior finding-level approval recorded above.
+
+Lead freshly verified main/origin main at
+80dcb6f80fa4710b6a1d42bebd93c2060df3e9c7 by fetch/ls-remote, then prepared its
+--no-ff --no-commit integration into feat/cancellation-events-jobs. The following
+checks ran against that combined merge-pending source, not merely the earlier
+9aa08b3 snapshot. No integration SHA is fabricated before Lead completes the merge.
+The worker performed no Git, production/test, external status or shared-document
+edits during this verification; only this owned protocol and ignored XML archives
+were written. Independent whole-branch contracts review remains Lead's next gate.
+
+### Four affected checks on the combined source
+
+All commands used explicit working directory
+C:/Users/lolut/.codex/worktrees/booking-response-event/backend and the own previously
+verified reused codex-m4-response container. Its ID remained
+b9cd122b11f0dfaa36d930a6ac8b3554eca4dcfef3f6bdf0e5d6cee3bc9ea871, historical
+codex.group=6/task=m4-t087-t114, running only127.0.0.1:55485. The ignored recipe's
+contents and credentials were not displayed or changed. Exact expanded commands:
+
+```powershell
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_cancel_events -DatabasePort 55485
+.\gradlew.bat integrationTest --tests com.example.meetings.BookingCancellationEventsIntegrationTest --offline --no-daemon --max-workers=1
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_cancel_jobs -DatabasePort 55485
+.\gradlew.bat integrationTest --tests com.example.jobs.BookingReminderCancellationIntegrationTest --offline --no-daemon --max-workers=1
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_cancel_jobs -DatabasePort 55485
+$env:TEST_DATABASE_URL='jdbc:postgresql://127.0.0.1:55485/roy_m1t2_step7jobs'
+.\gradlew.bat integrationTest --tests com.example.jobs.JobsIntegrationTest --offline --no-daemon --max-workers=1
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_cancel_jobs -DatabasePort 55485
+$env:TEST_DATABASE_URL='jdbc:postgresql://127.0.0.1:55485/roy_m1t2_step8delete'
+.\gradlew.bat integrationTest --tests com.example.devices.DeviceRebindDeliveryConcurrencyIntegrationTest --offline --no-daemon --max-workers=1
+```
+
+Actual 04.11.2026 results, each exit0 and required integration task executed:
+
+- BookingCancellationEventsIntegrationTest: BUILD SUCCESSFUL43s; XML3 tests,
+  0 skipped/failures/errors, timestamp2026-11-04T16:22:57.940Z, suite20.788s;
+  4 Gradle tasks executed,2 up-to-date.
+- BookingReminderCancellationIntegrationTest: BUILD SUCCESSFUL17s; XML4 tests,
+  0 skipped/failures/errors, timestamp2026-11-04T16:23:32.051Z, suite5.481s;
+  1 Gradle task executed,5 up-to-date.
+- JobsIntegrationTest: BUILD SUCCESSFUL13s; XML3 tests,0 skipped/failures/errors,
+  timestamp2026-11-04T16:23:50.301Z, suite2.018s;1 task executed,5 up-to-date.
+- DeviceRebindDeliveryConcurrencyIntegrationTest: BUILD SUCCESSFUL13s; XML1 test,
+  0 skipped/failures/errors, timestamp2026-11-04T16:24:05.476Z, suite1.432s;
+  1 task executed,5 up-to-date.
+
+Total: eleven actual executed JUnit tests with no skips/failures/errors on the
+combined source. Each actual XML was copied before invoking the next Gradle run,
+without overwriting prior task evidence, to ignored
+.local/pool7-main-integration/<short class name>.xml. All four archives are present
+there; prior RED and task GREEN archives remain separately in .local/t105-evidence.
+No code was changed by this worker during or after these checks.
+
+### Integration cleanup and limits
+
+Every own alias reported PostgreSQL18.6/PostGIS3.6.4 and successful V001–V015.
+The new T104/T105 fixtures cleaned themselves. Legacy Jobs again retained
+users/points/events/pushjobs/mediajobs/devices=3/2/3/2/1/1; Device retained
+2/1/1/1/0/1 in that same displayed column order. Only those worker-created
+exclusive legacy aliases were explicitly cleaned using psql -v ON_ERROR_STOP=1
+and BEGIN; DELETE FROM points; DELETE FROM users; DELETE FROM media_deletion_jobs;
+COMMIT. No original M1/production/shared database was touched.
+
+After each class, read-only SQL checked in its own alias, in order:
+users/points/proposals/votes/bookings/messages/notifications/pushjobs/mediajobs/
+devices/outcomes/sessions/T104 fault triggers/T104 fault functions. Every one of
+these fourteen counts was zero in all four aliases. Identity sequences were not
+reset or claimed gapless. Normal applied schema triggers/Flyway history remain;
+no migration or security configuration was edited.
+
+This confirms the listed local affected checks on merge-pending content. It is
+not the subsequent integration commit, whole-branch review, final main/origin
+publication, external-provider delivery, full schedule coverage, client, combined
+T3–T5/T6 or BG-1 acceptance. T111 was not started.
