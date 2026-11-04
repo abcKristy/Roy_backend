@@ -39,6 +39,7 @@ Lead: independent read-only task review APPROVE before commit; all five external
 ## T102 / M4.T4.B02 — 04.11.2026
 
 Subject: `Verify atomic booking cancellation on unvote`.
+Результат T102: commit `645d8422b3766aef900308d2fd91023935b7f4e7`; независимый repeat task review `group_review` — APPROVE после исправления evidence (подтверждено Lead).
 Исходный backend: `d71a65caaa2a9c7efdeb417c341188e6439d8db4`. Production не менялся: после T101 существующий ProposalService.vote под согласованными locks удаляет только голос actor, повышает revision на действительном изменении, вызывает общий пересчёт и возвращает canonical Proposal после commit.
 
 ### Реальная native HTTP приёмка
@@ -73,3 +74,37 @@ T102 — локальная core HTTP/transaction приёмка unvote. WS deli
 Повторена ровно та же focused команда выше на roy_m4_cancel_unvote:55486. Фактический rerun: BUILD SUCCESSFUL33с; XML tests1/skipped0/failures0/errors0, suite5.512с, timestamp2026-11-04T15:13:07.380Z. Повторно выполнены native HTTP COMMIT rollback/retry, history, guards, no-op и текущий desired-state. После rerun SQL прикладных данных/devices/fault trigger/function снова12×0; Flyway15/all success/max015. Исправление ограничено test evidence; границы локального T102 сохраняются.
 
 T102 independent read-only repeat task review by group_review: APPROVE after the approved evidence correction and real rerun. Lead synchronized all five external status places; checkpoint checklist102/455, T4 backend2/5, M4 backend18/28.
+
+## T103 / M4.T4.B03 — 04.11.2026
+
+Subject: `Verify booking cancellation on member departure`.
+Исходный backend: `645d8422b3766aef900308d2fd91023935b7f4e7`. Production не менялся. Общий путь T101 и существующие PointWriteService.leave/AccountDeletionService.delete проверены через настоящие DELETE membership и POST me/deletion, session/JWT, Netty, JDK HttpClient и PostgreSQL. Сверены M0.T4/M0.T5: leave снимает только собственные votes данного чата и проверяет пустоту по всем темам точки; deletion снимает все votes/физически удаляет memberships actor, отзывает все сессии, обезличивает общий контент и удаляет только опустевшие точки.
+
+### Изолированная среда и команда
+
+Собственный `codex-m4-cancel`, ID/labels/binding повторно проверены: `437d7d852031a32f18fb4ccc251d9f7e8e9a401e3bdfeae82625991182c97aaf`, group7/taskm4, только127.0.0.1:55486. Отдельная БД `roy_m4_cancel_leave`, строгая alias-проверка fixture. PostgreSQL18.6/PostGIS3.6.4, 15 успешных Flyway миграций V001–V015, max015.
+
+```powershell
+# workdir: C:\Users\lolut\.codex\worktrees\booking-cancellation\backend
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_cancel_leave -DatabasePort 55486
+.\gradlew.bat integrationTest --tests com.example.meetings.BookingCancellationDepartureIntegrationTest --offline --no-daemon --max-workers=1
+```
+
+Фактический итоговый PASS после усиления zero-vote history и topic snapshot assertions: BUILD SUCCESSFUL20с; XML `build/test-results/integrationTest/TEST-com.example.meetings.BookingCancellationDepartureIntegrationTest.xml`: tests2/skipped0/failures0/errors0, suite5.297с, timestamp2026-11-04T15:23:15.462Z. Leave scenario3.888с, account deletion1.405с. Производственных дефектов не обнаружено, production RED не заявлен.
+
+### Фактически выполненные native API сценарии
+
+- Leave: два ACTIVE booking в одном чате с startsAt два часа назад. 401 без auth, 404 отсутствующего чата и204 no-op actor, не состоящего в чужом чате, сохраняют полный scoped snapshot. Реальный DELETE actor после снятия COMMIT fault даёт204: все его votes этого чата удалены, revision2→3 и3→4; 2→1 отменяет, 3→2 сохраняет booked. Peer GET показывает canonical closed/cancelled history для первого и booked/active для второго. Booking id/order/author/bookedAt читаются как required поля и сохраняются; cancelledAt разбирается Instant.parse, insufficient_votes сохранён.
+- Только membership actor в данном чате помечается left_at. Собственное членство и vote другой темы той же точки остаются; GET ушедшего actor получает403 NOT_MEMBER. Одна cancellation SYSTEM запись и два cancellation notifications для оставшихся участников, point и обе темы сохраняются; повтор DELETE204 не меняет ни одной строки/seq/timestamp. Чужая точка/чат/бронь/vote count/revision/timestamps остаются точными прежними.
+- Последующие DELETE B и C в основном чате снижают votes до0. Второй booking отменяется только при2→1, первое cancellation history остаётся точным. Перед и после перехода к0 сравниваются полные booking rows: обе причины/время/identity/history неизменны, proposal revisions4 и6; всего две cancellation SYSTEM записи. Точка сохраняется благодаря участнику другой темы. Повтор при0 не мутирует snapshot. Последний выход из другой темы удаляет point и оба chats; повтор получает404 RESOURCE_GONE. Независимая личная точка сохраняется до собственного последнего выхода; чужая общая точка остаётся прежней.
+- Account deletion: native POST без auth401, wrong password422 INVALID_CURRENT_PASSWORD и confirm=false422 не меняют snapshot. Успех204 после снятия fault удаляет все votes и физические memberships actor сразу во всех его чатах; основная2→1 booking отменяется,3→2 сохраняется после startsAt. Общие point/две темы/чаты и TEXT history сохраняются; личная пустая точка удаляется. Все actor author/creator/booker ссылки обнулены, system_payload.actorUserId не раскрывает actor, settings/личные events отсутствуют. Tombstone phone/password/display_name/age очищены и auth_version1; обе сессии revoked. Обе JWT дают401 SESSION_EXPIRED, повтор deletion401 не меняет состояние. Peer GET показывает корректную анонимизированную booking history; одна cancellation SYSTEM запись, два notifications; чужая точка не меняется.
+
+Для КАЖДОГО hook отдельно установлен scoped `AFTER UPDATE ON bookings DEFERRABLE INITIALLY DEFERRED` constraint trigger: только fixture proposal/status=CANCELLED, синтетический23514 на COMMIT. pg_trigger подтверждает tgdeferrable/tginitdeferred=true. Native DELETE/POST получают500 INTERNAL_ERROR; полный scoped snapshot points/topics/chats/memberships/proposals/votes/bookings/messages+seq/notifications/jobs/users safe fields/sessions/settings точно равен исходному. Peer/actor GET остаётся booked; в deletion rollback обе сессии остаются действующими. После удаления fault тот же запрос успешно коммитится. Это настоящий DB COMMIT rollback, не mock exception; trigger снимается в finally.
+
+После итогового прогона фактический SQL users/auth_sessions/points/point_topics/chats/chat_memberships/meeting_proposals/votes/bookings/messages/notification_events/push_delivery_jobs/operation_idempotency/notification_settings/fixture triggers/fixture functions = 0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0. Удалялись только fixture points/users и именованный fault; broad deletes и sequence reset не применялись.
+
+### Границы T103
+
+Это локальная HTTP/DB/core приёмка двух departure hooks. WS delivery и полная event/jobs приёмка T104/T105, конкурентные гонки T113, общая T3–T5/T6, M5 delivery/provider, клиент Android/iOS и BG-1 не закрыты. Baseline public routes не расширялись; deployment, merge соседней группы, миграции, security configuration и внешняя доставка не выполнялись. Остаточных дефектов проверенной области T103 нет.
+
+T103 independent read-only task review by group_review: APPROVE before commit, zero open findings. Lead synchronized all five external status places: T4 backend3/5, checklist104/455, M4 backend20/28. Whole-branch integration and independent review are separate.
