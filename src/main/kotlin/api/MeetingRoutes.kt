@@ -73,7 +73,7 @@ private object StrictVoteBooleanSerializer : KSerializer<Boolean> {
     override fun serialize(encoder: Encoder, value: Boolean) = encoder.encodeBoolean(value)
 }
 @Serializable private data class BookingInput(
-    val confirmOverlap: Boolean,
+    @Serializable(with = StrictVoteBooleanSerializer::class) val confirmOverlap: Boolean,
     @Serializable(with = StrictBookingRevisionSerializer::class) val expectedRevision: Long,
 )
 

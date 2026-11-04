@@ -78,6 +78,7 @@ T102 independent read-only repeat task review by group_review: APPROVE after the
 ## T103 / M4.T4.B03 — 04.11.2026
 
 Subject: `Verify booking cancellation on member departure`.
+Результат T103: commit `54e2f2f3813a86085ed5a570235db1046f1a2add`; независимый task review `group_review` — APPROVE, zero open findings (подтверждено Lead).
 Исходный backend: `645d8422b3766aef900308d2fd91023935b7f4e7`. Production не менялся. Общий путь T101 и существующие PointWriteService.leave/AccountDeletionService.delete проверены через настоящие DELETE membership и POST me/deletion, session/JWT, Netty, JDK HttpClient и PostgreSQL. Сверены M0.T4/M0.T5: leave снимает только собственные votes данного чата и проверяет пустоту по всем темам точки; deletion снимает все votes/физически удаляет memberships actor, отзывает все сессии, обезличивает общий контент и удаляет только опустевшие точки.
 
 ### Изолированная среда и команда
@@ -108,3 +109,53 @@ Subject: `Verify booking cancellation on member departure`.
 Это локальная HTTP/DB/core приёмка двух departure hooks. WS delivery и полная event/jobs приёмка T104/T105, конкурентные гонки T113, общая T3–T5/T6, M5 delivery/provider, клиент Android/iOS и BG-1 не закрыты. Baseline public routes не расширялись; deployment, merge соседней группы, миграции, security configuration и внешняя доставка не выполнялись. Остаточных дефектов проверенной области T103 нет.
 
 T103 independent read-only task review by group_review: APPROVE before commit, zero open findings. Lead synchronized all five external status places: T4 backend3/5, checklist104/455, M4 backend20/28. Whole-branch integration and independent review are separate.
+
+## Группа7 — affected checks после интеграции опубликованного main, 04.11.2026
+
+Lead интегрировал в feat/booking-cancellation опубликованный и независимо fetch/ls-remote подтверждённый main `ed68e26b61fcf0e9f9d84f1306db8534e7254693`, содержащий группы6 и9. Проверены три task commit T101 `d71a65caaa2a9c7efdeb417c341188e6439d8db4`, T102 `645d8422b3766aef900308d2fd91023935b7f4e7`, T103 `54e2f2f3813a86085ed5a570235db1046f1a2add` вместе с интегрированными исходниками main. Worker не выполнял Git операции и не менял production/test/external status/shared/master файлы в этом проходе; сохранены только ignored XML evidence и этот протокол.
+
+Все прогоны выполнены последовательно из `C:\Users\lolut\.codex\worktrees\booking-cancellation\backend`, в собственном контейнере `codex-m4-cancel`, ID/labels/binding повторно совпали с указанными выше, только127.0.0.1:55486. XML каждого класса копировался ДО следующего Gradle, поэтому новый integrationTest не затёр предыдущие evidence:
+
+```powershell
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_cancel_policy -DatabasePort 55486
+.\gradlew.bat integrationTest --tests com.example.meetings.BookingCancellationPolicyIntegrationTest --offline --no-daemon --max-workers=1
+New-Item -ItemType Directory -Path build/pool6-main-integration -Force | Out-Null
+Copy-Item -LiteralPath build/test-results/integrationTest/TEST-com.example.meetings.BookingCancellationPolicyIntegrationTest.xml -Destination build/pool6-main-integration/BookingCancellationPolicyIntegrationTest.xml
+
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_cancel_unvote -DatabasePort 55486
+.\gradlew.bat integrationTest --tests com.example.meetings.BookingCancellationUnvoteIntegrationTest --offline --no-daemon --max-workers=1
+Copy-Item -LiteralPath build/test-results/integrationTest/TEST-com.example.meetings.BookingCancellationUnvoteIntegrationTest.xml -Destination build/pool6-main-integration/BookingCancellationUnvoteIntegrationTest.xml
+
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_cancel_leave -DatabasePort 55486
+.\gradlew.bat integrationTest --tests com.example.meetings.BookingCancellationDepartureIntegrationTest --offline --no-daemon --max-workers=1
+Copy-Item -LiteralPath build/test-results/integrationTest/TEST-com.example.meetings.BookingCancellationDepartureIntegrationTest.xml -Destination build/pool6-main-integration/BookingCancellationDepartureIntegrationTest.xml
+```
+
+Фактические сохранённые XML повторно прочитаны после всех трёх команд:
+
+- BookingCancellationPolicyIntegrationTest / roy_m4_cancel_policy: BUILD SUCCESSFUL19с; tests3/skipped0/failures0/errors0, suite2.847с, timestamp2026-11-04T15:32:03.851Z.
+- BookingCancellationUnvoteIntegrationTest / roy_m4_cancel_unvote: BUILD SUCCESSFUL15с; tests1/skipped0/failures0/errors0, suite3.462с, timestamp2026-11-04T15:32:31.606Z.
+- BookingCancellationDepartureIntegrationTest / roy_m4_cancel_leave: BUILD SUCCESSFUL16с; tests2/skipped0/failures0/errors0, suite4.962с, timestamp2026-11-04T15:33:08.791Z.
+
+Для КАЖДОЙ alias выполнен psql внутри собственного контейнера: `docker exec codex-m4-cancel psql -U m4_test -d <alias> -Atc <SQL>`. Фактические engine/extension/migration queries:
+
+```sql
+SELECT version();
+SELECT extversion FROM pg_extension WHERE extname='postgis';
+SELECT count(*),bool_and(success),max(version) FROM flyway_schema_history;
+SELECT (SELECT count(*) FROM users),(SELECT count(*) FROM auth_sessions),
+       (SELECT count(*) FROM points),(SELECT count(*) FROM point_topics),
+       (SELECT count(*) FROM chats),(SELECT count(*) FROM chat_memberships),
+       (SELECT count(*) FROM meeting_proposals),(SELECT count(*) FROM votes),
+       (SELECT count(*) FROM bookings),(SELECT count(*) FROM messages),
+       (SELECT count(*) FROM notification_events),(SELECT count(*) FROM push_delivery_jobs),
+       (SELECT count(*) FROM operation_idempotency),(SELECT count(*) FROM notification_settings),
+       (SELECT count(*) FROM device_registrations),
+       (SELECT count(*) FROM pg_trigger WHERE NOT tgisinternal AND tgname LIKE 'm4_%'),
+       (SELECT count(*) FROM pg_proc WHERE proname LIKE 'm4_%');
+SELECT last_value,is_called FROM bookings_booking_order_seq;
+```
+
+На всех трёх БД результат PostgreSQL18.6/PostGIS3.6.4, миграции15/true/015; все15 прикладных tables и fixture fault triggers/functions17×0. Для policy сначала проверен более узкий fault-name pattern, затем отдельно повторена широкая проверка m4_% triggers/functions:0/0. Sequence last_value/is_called: policy27/true, unvote9/true, leave18/true. После cleanup bookings пусты, identity gaps допустимы; sequence не сбрасывались.
+
+Результат этого прохода — PASS affected checks на интегрированных исходниках. Он не заменяет независимый whole-branch review и публикацию Lead. Полная event/jobs/WS приёмка T104/T105, полные гонки T113, общая T3–T5/T6, M5 delivery/provider, Android/iOS клиент и BG-1 этим проходом не закрыты. Deployment, внешняя доставка и новые миграции не выполнялись; блокеров выполненных трёх affected checks нет.
