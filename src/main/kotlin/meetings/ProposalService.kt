@@ -39,6 +39,7 @@ class ProposalService(
     private val notifications: JdbcNotificationWriter = JdbcNotificationWriter(),
     // Testable creation time, sampled after locks; production retains PostgreSQL wall time.
     private val clock: Clock? = null,
+    private val cancellationPolicy: BookingCancellationPolicy = BookingCancellationPolicy(),
 ) {
     private val cursors = ChatCursorCodec(cursorSecret)
 
@@ -226,14 +227,8 @@ class ProposalService(
         }
         var bookingChange: BookingChange? = null
         if (after <= 1) {
-            val cancelled = connection.prepareStatement(
-                """UPDATE bookings SET status='CANCELLED',cancelled_at=clock_timestamp(),
-                   cancel_reason='INSUFFICIENT_VOTES'
-                   WHERE proposal_id=? AND status='ACTIVE' RETURNING id"""
-            ).use { statement ->
-                statement.setObject(1, command.proposalId)
-                statement.executeQuery().use { rows -> if (rows.next()) rows.getObject(1, UUID::class.java) else null }
-            }
+            val cancelled = cancellationPolicy.cancelInsufficientBookings(connection, listOf(command.proposalId))
+                .singleOrNull()?.first
             if (cancelled != null) {
                 cancelReminderJobs(connection, cancelled)
                 bookingChange = BookingChange(cancelled, "cancelled", "insufficient_votes")

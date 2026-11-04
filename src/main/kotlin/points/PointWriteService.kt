@@ -16,6 +16,7 @@ import com.example.persistence.SystemMessageKind
 import com.example.persistence.SystemMessageReason
 import com.example.persistence.acquireTransactionAdvisoryLock
 import com.example.persistence.withRetryingJdbcTransaction
+import com.example.meetings.BookingCancellationPolicy
 import com.example.meetings.MeetingEmission
 import com.example.meetings.MeetingProjection
 import kotlinx.serialization.json.JsonObject
@@ -37,6 +38,7 @@ class PointWriteService(
     private val recipients: JdbcNotificationRecipients = JdbcNotificationRecipients(),
     private val notifications: JdbcNotificationWriter = JdbcNotificationWriter(),
     private val meetingProjection: MeetingProjection = MeetingProjection(),
+    private val cancellationPolicy: BookingCancellationPolicy = BookingCancellationPolicy(),
 ) {
     /** The body callback must only read this Connection and build a deterministic HTTP response body. */
     suspend fun create(
@@ -222,22 +224,7 @@ class PointWriteService(
             connection.prepareStatement(
                 "UPDATE meeting_proposals SET revision = revision + 1,updated_at = clock_timestamp() WHERE id = ?"
             ).use { statement -> statement.setObject(1, proposalId); check(statement.executeUpdate() == 1) }
-            val voteCount = connection.prepareStatement("SELECT count(*) FROM votes WHERE proposal_id = ?").use { statement ->
-                statement.setObject(1, proposalId)
-                statement.executeQuery().use { rows -> check(rows.next()); rows.getInt(1) }
-            }
-            if (voteCount <= 1) {
-                connection.prepareStatement(
-                    """UPDATE bookings AS b SET status='CANCELLED',cancelled_at=clock_timestamp(),
-                       cancel_reason='INSUFFICIENT_VOTES'
-                       FROM meeting_proposals AS p
-                       WHERE b.proposal_id = p.id AND p.id = ? AND p.starts_at > clock_timestamp()
-                         AND b.status='ACTIVE' RETURNING b.id"""
-                ).use { statement ->
-                    statement.setObject(1, proposalId)
-                    statement.executeQuery().use { rows -> if (rows.next()) cancelledBookings += rows.getObject(1, UUID::class.java) to proposalId }
-                }
-            }
+            cancelledBookings += cancellationPolicy.cancelInsufficientBookings(connection, listOf(proposalId))
         }
         val leftAt = databaseNow(connection)
         connection.prepareStatement("UPDATE chat_memberships SET left_at = ? WHERE chat_id = ? AND user_id = ?").use { statement ->

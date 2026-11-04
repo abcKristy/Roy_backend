@@ -14,6 +14,7 @@ import com.example.persistence.SystemMessageKind
 import com.example.persistence.SystemMessageReason
 import com.example.persistence.NotificationEventDraft
 import com.example.persistence.NotificationEventType
+import com.example.meetings.BookingCancellationPolicy
 import com.example.meetings.MeetingEmission
 import com.example.meetings.MeetingProjection
 import com.example.meetings.ProposalView
@@ -45,6 +46,7 @@ class AccountDeletionService(
     private val notificationRecipients: JdbcNotificationRecipients = JdbcNotificationRecipients(),
     private val notificationWriter: JdbcNotificationWriter = JdbcNotificationWriter(),
     private val projection: MeetingProjection = MeetingProjection(),
+    private val cancellationPolicy: BookingCancellationPolicy = BookingCancellationPolicy(),
 ) {
     suspend fun delete(identity: SessionIdentity, currentPassword: String): AccountDeletionResult {
         val snapshot = database.withReadOnlyJdbcTransaction { connection ->
@@ -108,13 +110,7 @@ class AccountDeletionService(
             execute(connection,
                 """UPDATE meeting_proposals AS p SET revision=revision+1,updated_at=clock_timestamp()
                    WHERE id=ANY(?)""", votedProposalIds)
-            val cancelledBookings = updateBookings(connection,
-                """UPDATE bookings AS b SET status='CANCELLED',cancelled_at=clock_timestamp(),
-                   cancel_reason='INSUFFICIENT_VOTES'
-                   FROM meeting_proposals AS p WHERE b.proposal_id=p.id AND p.id=ANY(?)
-                   AND p.starts_at>clock_timestamp() AND b.status='ACTIVE'
-                   AND (SELECT count(*) FROM votes v WHERE v.proposal_id=p.id)<=1
-                   RETURNING b.id,b.proposal_id""", votedProposalIds)
+            val cancelledBookings = cancellationPolicy.cancelInsufficientBookings(connection, votedProposalIds)
             execute(connection,
                 """UPDATE push_delivery_jobs AS j SET status='CANCELLED',claim_token=NULL,lease_until=NULL,
                    completed_at=clock_timestamp() FROM notification_events AS e
@@ -278,18 +274,6 @@ class AccountDeletionService(
                 while (rows.next()) add(rows.getObject(1, UUID::class.java))
             } }
         }
-
-    private fun updateBookings(connection: Connection, sql: String, proposalIds: List<UUID>): List<Pair<UUID, UUID>> {
-        val array = connection.createArrayOf("uuid", proposalIds.toTypedArray())
-        return try {
-            connection.prepareStatement(sql).use { statement ->
-                statement.setArray(1, array)
-                statement.executeQuery().use { rows -> buildList {
-                    while (rows.next()) add(rows.getObject(1, UUID::class.java) to rows.getObject(2, UUID::class.java))
-                } }
-            }
-        } finally { array.free() }
-    }
 
     private fun ids(connection: Connection, sql: String, userId: UUID, pointIds: List<UUID>? = null,
                     repeatUserId: Int = 1): List<UUID> =
