@@ -41,7 +41,7 @@ Lead: independent read-only task review APPROVE before commit; all five external
 
 # M4.T5.B02 / T107 — native warning and explicit Boolean consent
 
-Дата: 04.11.2026. Локальный backend PASS; исходная база T106 `480b4ec2427b285f14258e999386987b458c3c4b`; subject `Enforce booking overlap confirmation warning`.
+Дата: 04.11.2026. Локальный backend PASS; исходная база T106 `480b4ec2427b285f14258e999386987b458c3c4b`; subject `Enforce booking overlap confirmation warning`, commit `36ece2a57dd9a0e49fb1088c8fb0b9b4d0b335a7`; final task review contracts APPROVE подтверждён Lead.
 
 ## Подтверждённый дефект и узкое исправление
 
@@ -94,3 +94,48 @@ UNION ALL SELECT 'operation_idempotency',count(*) FROM operation_idempotency;
 Для обеих aliases факт PostgreSQL18.6/PostGIS3.6.4, history15 rows/V001–V015/all success=true; все12 перечисленных fixture tables count0. T107 alias дополнительно `SELECT last_value,is_called FROM bookings_booking_order_seq` дал9/true; gaps сохранены. Native HTTP server остановлен finally, fixture cleanup удаляет только свои UUID rows. Secret/env/JWT содержимое не выводилось. Public exposure/deploy не менялись; BG-1, provider delivery, mobile, общий M4 и оставшиеся T108–T110 остаются отдельной приёмкой.
 
 T107 independent read-only final task review by contracts: APPROVE after approved strict-Boolean fix and real GREEN/regression. Lead synchronized the two shared status registers; T5 backend2/5, checklist102/455, M4 backend18/28 at this checkpoint.
+
+
+# M4.T5.B03 / T108 — fresh confirmation under actual point locks
+
+Дата: 04.11.2026. Локальный backend PASS; база T107 `36ece2a57dd9a0e49fb1088c8fb0b9b4d0b335a7`; subject `Verify fresh booking confirmation checks`.
+
+Добавлен только `BookingOverlapConfirmIntegrationTest`; production BookingService/MeetingRoutes и миграции не менялись. Сверка исходников показала, что существующий book при каждом новом confirmation transaction после actor-idempotency lock получает point row FOR UPDATE, proposal lock и заново читает membership/revision/lifecycle/database time/active booking/own vote/count/direct overlaps. Старый warning не сохраняет terminal outcome и не является источником доверенного списка.
+
+## Исполненные сценарии
+
+1. Native HTTP false сначала даёт409 OVERLAP_CONFIRM_REQUIRED. JDBC transaction держит именно point row FOR UPDATE; native HTTP same-key true запускается отдельным executor. Observer через pg_stat_activity/pg_blocking_pids подтверждает реальный point-lock wait и незавершённый future. Только после этого fixture transaction меняет по одному revision, membership, own vote, vote count, lifecycle или active booking и commits. Получены соответственно STALE_STATE409, NOT_MEMBER403, VOTE_REQUIRED409, INSUFFICIENT_VOTES409, PROPOSAL_CLOSED409, ALREADY_BOOKED409. Snapshot той же gate transaction после её mutation точно совпал со snapshot после завершения отказа: никаких дополнительных bookings/votes/proposal revisions, point timestamps, messages/chat sequence, notifications, idempotency или booking_order allocation. Повтор same-key true вернул тот же текущий отказ без эффектов; outcomes0. Adversarial SQL fixtures намеренно сохраняют revision2 в изолированных vote/membership/lifecycle/active cases, чтобы проверка не завершалась более ранним stale guard; это не заявление о поведении production mutators.
+
+2. Отдельный near-start candidate создаётся после старта HTTP server с DB startsAt=clock_timestamp()+3seconds. False даёт warning. Пока true реально ждёт point lock, observer опрашивает SQL `clock_timestamp()>=starts_at`; gate освобождается после положительного результата. True даёт409 MEETING_ALREADY_STARTED без SQL/sequence изменений. Доказан fresh after-start guard; точное равенство clock/startsAt не заявлено, exact boundary относится к T114. Короткий bounded polling используется для наблюдения, не как свидетельство равенства времени.
+
+3. После warning с двумя direct conflicts true ждёт point lock. Держащая lock transaction отменяет одну прежнюю booking и добавляет другую ACTIVE booking с новым order. True201 возвращает current overlaps из survivor+new booking, исключает отменённую запись; booked revision3. Все прежние booking orders/status сохраняются после confirm, включая order отменённой записи, новая бронь не отменяет survivor. Same-key true replay идентичен response и не повторяет эффекты.
+
+4. Два разных actor одновременно подтверждают два предложения разных тем одной Point после отдельных warning. Это настоящий BookingService/JDBC concurrency, native HTTP guards отдельно покрыты выше. Разные actor idempotency locks не сериализуют друг друга; observer доказывает два ожидающих именно point-lock запроса, включая PostgreSQL queued blocker chain, до освобождения gate. Оба результата Created, original+оба новых bookings ACTIVE. Orders строго возрастают и различны, original order неизменён; ранний commit видит original, поздний original+раннюю новую booking. Нет global rank или отмены соседней брони.
+
+## Фактические runs и исправление test harness
+
+Собственная alias `roy_m4_overlap_confirm` создана только в контейнере codex-m4-overlap/127.0.0.1:55487. Повторный targeted inspect подтвердил ID `0cfd2641af1133496d396305d69ecadeaab5a1237330f668eca803166c5b80a7` и единственный loopback binding. Workdir каждой команды `C:\Users\lolut\.codex\worktrees\booking-overlap\backend`.
+
+```powershell
+. 'C:\d\myFiles\proga\AndroidStudio\kotlin\vus\vkr\project\backend\.local\m4-test-environment.ps1' -DatabaseAlias roy_m4_overlap_confirm -DatabasePort 55487
+docker exec codex-m4-overlap createdb -U $env:DATABASE_USER roy_m4_overlap_confirm
+.\gradlew.bat integrationTest --tests com.example.meetings.BookingOverlapConfirmIntegrationTest --offline --no-daemon --max-workers=1
+Get-Content build/test-results/integrationTest/TEST-com.example.meetings.BookingOverlapConfirmIntegrationTest.xml -TotalCount 8
+```
+
+Первый реальный run: BUILD FAILED45s, XML timestamp `2026-11-04T15:17:58.775Z`, tests4/skipped0/failures2/errors0, duration21.131s. Changed guards и changed conflicts прошли. Near-start test держал gate3seconds при default production lock budget1second, поэтому получил500 из lock timeout; concurrency observer ошибочно требовал обоих непосредственных blockers на gate, хотя PostgreSQL ставит второго за первым waiter, и удержал gate до timeout. Это установленные test harness причины, production дефект не подтверждён.
+
+С согласованием Lead исправлен только тест: явные bounded fixture budgets lock10seconds/statement15seconds (production defaults не менялись), observer учитывает queued point waiters с подтверждённым root gate blocker; first-refusal no-effects дополнительно усилен snapshot внутри gate transaction. Та же focused команда повторена.
+
+GREEN: BUILD SUCCESSFUL25s, actual XML tests4/skipped0/failures0/errors0 timestamp `2026-11-04T15:19:14.346Z`, duration10.523s; cases changed-conflicts3.455s, after-start3.506s, guards3.134s, concurrent actors0.425s. Никаких skips или mocks DB/lock/HTTP. JDK17/Gradle9.5.1/backend1.0.0-SNAPSHOT, существующие Gradle deprecation warnings.
+
+SQL после GREEN выполнен через `docker exec codex-m4-overlap psql -U $env:DATABASE_USER -d roy_m4_overlap_confirm -Atc <query>`; использован тот же versions/history/12-table-cleanup query, что в T107, дополнительно:
+
+```sql
+SELECT last_value,is_called FROM bookings_booking_order_seq;
+SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock';
+```
+
+Факт PostgreSQL18.6/PostGIS3.6.4, Flyway15 rows/V001–V015/all success=true. Все12 fixture tables (users,auth_sessions,points,point_topics,chats,chat_memberships,meeting_proposals,votes,bookings,messages,notification_events,operation_idempotency) count0; lock waiters0; identity last_value28/is_called=true, gaps не сбрасывались. Servers/executors закрыты finally, cleanup удаляет свои UUID fixtures. Production finding/изменений нет. Public routes/deploy не менялись; T109/T110/T114, BG-1, delivery/provider/mobile и общий M4 этим PASS не закрыты.
+
+T108 independent read-only task review by contracts: APPROVE before commit; no confirmed findings. Lead synchronized all five external status places: T5 backend3/5, checklist103/455, M4 backend19/28. Updated main integration and independent whole-branch review are separate.
