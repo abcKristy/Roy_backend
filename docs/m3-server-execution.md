@@ -515,3 +515,21 @@ Controlled UTC base `2030-01-01T00:00:00Z`: at299.999999seconds refusal has Retr
 Lead executed04.11.2026 with JDK17/Gradle9.5.1 in the owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`: `./gradlew.bat integrationTest --tests com.example.api.LongMessageFloodIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in59s. Current XML inspected `build/test-results/integrationTest/TEST-com.example.api.LongMessageFloodIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp `2026-11-04T02:54:34.114Z`, suite3.711s.
 
 Local T082 server PASS for these assertions. Task review: APPROVE, 04.11.2026. External accounting pending group acceptance. Mobile, BG-1 and overall M3 remain open.
+
+## Group 10 accepted integration and accounting ledger — 04.11.2026
+
+Working branch `feat/chat-content-rate-limits`, accepted clean target/origin base `bfece64dff43be30579bf8982b0a16a0220277d5`. Task commits: T080 `93f8e775541c87249103660e8df721628b958ef7`, T081 `87d8e29861fcbd6cd658798625128e9f4a1a40b5`, T082 `e871c810b659ef8f80ebd5663578bd33e96c804a`. Independent task and whole-group read-only reviews: APPROVE, no remaining confirmed findings. Lead confirmed fast-forward integration, successful non-force push, equality of local `feat/back-part-3` and `origin/feat/back-part-3` at `e871c810b659ef8f80ebd5663578bd33e96c804a`, and clean working tree. Main before/after remained `2c1de31de2a5481e90e3c84e93a8abdb38f16169`.
+
+Internal task-review P2 `T080-PROFANITY-STACK` is closed by the integrated possessive outer-repeat correction, reproduced boundary regression, affected units/HTTP acceptance and independent re-review. This is distinct from future final-block audit IDs/counts. No dictionary, policy version, normalization, stemming or ML change was made.
+
+Actually updated external accounting paths:
+
+- `spec/plans/tasks/M3/T5/B04-profanity-filter.md`: T080 local server ГОТОВО, checked criteria, approved corpus/boundary/HTTP evidence and task commit.
+- `spec/plans/tasks/M3/T5/B05-short-flood.md`: T081 local server ГОТОВО, checked criteria, exact short-window/actor-lock/concurrent-slot/default-clock evidence and task commit.
+- `spec/plans/tasks/M3/T5/B06-long-flood.md`: T082 local server ГОТОВО, checked criteria, actual successful ledger/rollback/rolling boundary evidence and task commit.
+- `spec/plans/tasks/M3/T5/README.md`: B04–B06 checked with date and commits.
+- `spec/plans/roadmap/execution-checklist.md`: T080–T082 checked; M3.T5 backend 6/6 locally complete, C open; fresh total 80/455 checked tasks, unrelated statuses preserved using optimistic reread.
+- `spec/plans/tasks/M3/M3-T5.md`: backend B01–B06 locally complete, C and whole-parent acceptance open.
+- `spec/plans/roadmap/M3/M3-chat-moderation.md`: matching M3.T5 backend 6/6, partial whole-parent summary.
+
+The owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat` remains V001–V015. Controlled transaction clocks test exact flood boundaries with real HTTP, persisted sessions and PostgreSQL locks; production defaults to PostgreSQL clock time, with separate actual regression commands recorded above. Service-instance independence is not process-restart proof, the executed races are not every schedule, and the log-capture scope is not every infrastructure sink. All seven accounting files remain outside backend Git and their physical contents are not in target/origin history. This versioned ledger records exact updated paths and topology limitation without moving or duplicating plans. Mobile, BG-1, overall parent/M3 and external integrations remain open.
