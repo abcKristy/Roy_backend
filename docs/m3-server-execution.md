@@ -300,3 +300,17 @@ Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest 
 Inspected `build/test-results/integrationTest/TEST-com.example.api.ReportContextIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T00:19:29.599Z, suite seconds=3.302. Local T072 server PASS for the stated assertions. Mobile, BG-1 and overall M3 remain open.
 
 Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
+
+## T073 — M3.T4.B02
+
+Preceding accepted task commit `644b8c0ae9a63417462647821e369ab7589dc7d7` (T072), branch `feat/chat-report-transactions`. Existing UNIQUE reporter/target and context ON DELETE SET NULL constraints from V009 retained unchanged. Environment remains owned disposable PostgreSQL18.6/PostGIS3.6.4 `roy_m3_chat`, V001–V015, with actual JdbcSessionRepository sessions.
+
+Evidence `com.example.api.ReportLifetimeIntegrationTest` starts two actual HTTP POSTs for one reporter/target pair with different keys after readiness and shared-start barriers, bounded to 15s. The resulting statuses are one201 and one409 DUPLICATE_REPORT. Independent SQL verifies exactly one report and one successful report outcome. A direct duplicate-pair INSERT produces SQLSTATE23505. New keys with a different reason or another accessible context still return DUPLICATE_REPORT and preserve scoped report/outcome/user snapshots; the original key returns its original201 DTO without additional effects.
+
+Deleting the original chat through SQL leaves the same report ID, null context_chat_id and lifetime target count1. Original-key replay still returns the saved201. A new key through another accessible context returns DUPLICATE_REPORT without resetting count; a new request through the deleted context returns403. After the reporter leaves the remaining context, a fresh request returns403 FORBIDDEN, preserving the snapshot instead of revealing duplicate status to an inaccessible context. The database deletion specifically exercises FK retention; point lifecycle deletion evidence belongs to T061. The concurrent start covers the executed ordering, not every interleaving.
+
+Lead executed 04.11.2026 with JDK17/Gradle9.5.1: `./gradlew.bat integrationTest --tests com.example.api.ReportLifetimeIntegrationTest --offline --no-daemon --max-workers=1`, exit0, BUILD SUCCESSFUL in43s.
+
+Inspected `build/test-results/integrationTest/TEST-com.example.api.ReportLifetimeIntegrationTest.xml`: tests=1, skipped=0, failures=0, errors=0, timestamp=2026-11-04T00:24:52.820Z, suite seconds=2.54. Local T073 server PASS for the stated assertions. Mobile, BG-1 and overall M3 remain open.
+
+Task review: APPROVE, no findings, 04.11.2026. External accounting pending group acceptance.
