@@ -128,3 +128,44 @@ execution-checklist.md, M4-T1.md and M4-meetings-booking.md, outside backend Git
 Task commit subject: `Verify atomic zero vote proposal creation`.
 Remote recheck before group completion: fetch succeeded, main=origin/main still
 `2f54ac0734004308aaf5e5d2f0b3a8253772c168`.
+
+Independent read-only task review: APPROVE before T089 commit
+`a8302d2d2d1b5be6a050abd72810f47487ae82b3`.
+The independent second-level group reviewer approved all three group 1 task commits
+and their full diff. Group 1 merged into main as
+`82d13a37acc968b10a08cb9c3f4729cebd8d91ea`; push and `ls-remote` verified
+`main=origin/main` at that commit, with a clean accessible main working tree.
+Pool 1 completed before pool 2 began; no implementation groups ran in parallel.
+
+## Group 2 — T090 / M4.T1.B04 — proposal history and current pin
+
+Working branch `feat/proposal-read-events` starts at the verified published group 1
+merge `82d13a37acc968b10a08cb9c3f4729cebd8d91ea`.
+Existing `MeetingProjection`, `ProposalService` read paths and `ChatReadService`
+nearest-future-open selection were retained without a speculative rewrite.
+
+Added `ProposalReadIntegrationTest`, guarded to own disposable `roy_m4_read`.
+The synthetic fixture contains six proposals: future open alternatives including
+an equal-start tie, an earlier explicitly closed proposal, a started active booked
+proposal and a started unbooked proposal. Creation timestamps give a deterministic
+complete three-page history independent of start order.
+
+The scenario checks list/detail and the production personal REST serializer,
+different actor/peer viewerGoing with the same count, nonmember denial including
+closed and booked records, scoped/signed cursor rejection and repeatable pages.
+Chat detail and myChats select the nearest future OPEN pin, breaking equal-start
+ties by proposal ID. Closing candidates advances the pin and finally clears it
+without removing history. The started booking remains booked/ACTIVE with no
+cancellation metadata; the started unbooked record projects closed. Synthetic
+point/user rows are removed in `finally`. WS payload acceptance is a separate T091
+scope; this service/projection test does not claim wire-level event verification.
+
+Executed 04.11.2026 on own `roy_m4_read`, PostgreSQL18.6/PostGIS3.6.4,
+LOCAL bootstrap V001–V015 in the verified disposable container.
+Command: `.\gradlew.bat integrationTest --tests com.example.meetings.ProposalReadIntegrationTest --offline --no-daemon --max-workers=1`.
+BUILD SUCCESSFUL in 1m27s; JUnit tests=1/skipped=0/failures=0/errors=0;
+2 tasks executed, 4 up-to-date (the integration test itself executed).
+Post-run SQL users/points/proposals/bookings=0/0/0/0.
+External accounting updated: T1/B04-proposal-read.md, T1/README.md,
+execution-checklist.md, M4-T1.md and M4-meetings-booking.md, outside backend Git.
+Task commit subject: `Verify proposal history and current pin`.
