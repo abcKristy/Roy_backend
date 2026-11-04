@@ -14,6 +14,9 @@ import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
+/** A request authenticated before its actor was deactivated while waiting for a lock. */
+class InactiveActorException : RuntimeException("Active actor is required")
+
 /** All calls use the caller's transaction. Lock the actor before checking a key. */
 class JdbcIdempotencyOperations {
     enum class Outcome { SUCCESS, QUOTA_EXCEEDED }
@@ -43,7 +46,7 @@ class JdbcIdempotencyOperations {
         require(requestHash.matches(Regex("[0-9a-f]{64}")))
         connection.prepareStatement("SELECT id FROM users WHERE id = ? AND deleted_at IS NULL FOR NO KEY UPDATE").use { statement ->
             statement.setObject(1, actorId)
-            statement.executeQuery().use { result -> check(result.next()) { "Active actor is required" } }
+            statement.executeQuery().use { result -> if (!result.next()) throw InactiveActorException() }
         }
         connection.prepareStatement(
             """SELECT request_hash, outcome, result_ref, response_snapshot

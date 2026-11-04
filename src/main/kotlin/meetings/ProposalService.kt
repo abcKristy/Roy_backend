@@ -2,6 +2,7 @@ package com.example.meetings
 
 import com.example.chats.ChatCursorCodec
 import com.example.persistence.DatabaseRuntime
+import com.example.persistence.InactiveActorException
 import com.example.persistence.JdbcIdempotencyOperations
 import com.example.persistence.JdbcNotificationRecipients
 import com.example.persistence.JdbcNotificationWriter
@@ -319,7 +320,7 @@ class ProposalService(
     private fun lockActor(connection: Connection, actorId: UUID) {
         connection.prepareStatement("SELECT 1 FROM users WHERE id=? AND deleted_at IS NULL FOR NO KEY UPDATE").use { statement ->
             statement.setObject(1, actorId)
-            statement.executeQuery().use { check(it.next()) { "Active user required" } }
+            statement.executeQuery().use { if (!it.next()) throw InactiveActorException() }
         }
     }
 
