@@ -27,10 +27,12 @@ class ChatSendService(
     private val idempotency: JdbcIdempotencyOperations = JdbcIdempotencyOperations(),
     private val recipients: JdbcNotificationRecipients = JdbcNotificationRecipients(),
     private val notifications: JdbcNotificationWriter = JdbcNotificationWriter(),
+    // Sampled inside the locked transaction; production retains PostgreSQL wall time.
+    private val transactionClock: (Connection) -> Instant = ::messageDatabaseTime,
 ) {
     suspend fun send(command: SendMessageCommand, successBody: (Connection, MessageView) -> JsonObject): SendMessageResult {
         val text = command.text.trim()
-        if (text.isEmpty() || text.codePointCount(0, text.length) > 4096) return SendMessageResult.InvalidText
+        if (text.isEmpty() || '\u0000' in text || text.codePointCount(0, text.length) > 4096) return SendMessageResult.InvalidText
         val hash = JdbcIdempotencyOperations.requestHash("send_message", listOf(command.chatId),
             buildJsonObject { put("text", text) })
         return database.withRetryingJdbcTransaction { connection ->
@@ -46,7 +48,7 @@ class ChatSendService(
             if (!activeMembership(connection, command.chatId, command.actorId)) {
                 return@withRetryingJdbcTransaction SendMessageResult.NotMember
             }
-            val checkedAt = databaseNow(connection)
+            val checkedAt = transactionClock(connection)
             actor.mutedUntil?.takeIf { it.isAfter(checkedAt) }?.let {
                 return@withRetryingJdbcTransaction SendMessageResult.Muted(it)
             }
@@ -62,7 +64,7 @@ class ChatSendService(
                 return@withRetryingJdbcTransaction SendMessageResult.NotMember
             }
             val seq = nextSeq(connection, command.chatId)
-            val now = databaseNow(connection)
+            val now = transactionClock(connection)
             val id = UUID.randomUUID()
             connection.prepareStatement(
                 """INSERT INTO messages (id,chat_id,message_seq,author_user_id,type,body,created_at)
@@ -166,27 +168,31 @@ class ChatSendService(
         statement.executeQuery().use { rows -> check(rows.next()); rows.getLong(1) }
     }
 
-    private fun databaseNow(connection: Connection): Instant = connection.createStatement().use { statement ->
-        statement.executeQuery("SELECT clock_timestamp()").use { rows ->
-            check(rows.next()); rows.getObject(1, OffsetDateTime::class.java).toInstant()
-        }
-    }
-
     private fun floodDelay(connection: Connection, userId: UUID, now: Instant): Int? = connection.prepareStatement(
         """SELECT max(accepted_at),count(*),min(accepted_at) FROM message_rate_events
            WHERE user_id=? AND accepted_at>?"""
     ).use { statement ->
         statement.setObject(1, userId)
-        statement.setObject(2, now.minusSeconds(300).atOffset(ZoneOffset.UTC))
+        statement.setObject(2, now.minusSeconds(LONG_MESSAGE_WINDOW_SECONDS).atOffset(ZoneOffset.UTC))
         statement.executeQuery().use { rows ->
             check(rows.next())
             val latest = rows.getObject(1, OffsetDateTime::class.java)?.toInstant()
             val count = rows.getLong(2)
             val oldest = rows.getObject(3, OffsetDateTime::class.java)?.toInstant()
-            val twoSeconds = latest?.plusSeconds(2)?.let { Duration.between(now, it).toNanos() } ?: 0
-            val fiveMinutes = if (count >= 30) oldest?.plusSeconds(300)?.let { Duration.between(now, it).toNanos() } ?: 0 else 0
+            val twoSeconds = latest?.plusSeconds(SHORT_MESSAGE_WINDOW_SECONDS)?.let { Duration.between(now, it).toNanos() } ?: 0
+            val fiveMinutes = if (count >= LONG_MESSAGE_WINDOW_CAPACITY) oldest?.plusSeconds(LONG_MESSAGE_WINDOW_SECONDS)?.let { Duration.between(now, it).toNanos() } ?: 0 else 0
             val remaining = maxOf(twoSeconds, fiveMinutes)
             if (remaining > 0) ((remaining + 999_999_999L) / 1_000_000_000L).toInt().coerceAtLeast(1) else null
         }
     }
 }
+
+private const val SHORT_MESSAGE_WINDOW_SECONDS = 2L
+private const val LONG_MESSAGE_WINDOW_SECONDS = 300L
+private const val LONG_MESSAGE_WINDOW_CAPACITY = 30L
+
+private fun messageDatabaseTime(connection: Connection): Instant = connection.createStatement().use { statement ->
+        statement.executeQuery("SELECT clock_timestamp()").use { rows ->
+            check(rows.next()); rows.getObject(1, OffsetDateTime::class.java).toInstant()
+        }
+    }

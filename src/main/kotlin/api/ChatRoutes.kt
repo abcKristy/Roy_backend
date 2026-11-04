@@ -45,6 +45,7 @@ internal fun Route.chatReadRoutes(read: ChatReadService, sessions: SessionAccess
         val actor = chatActor(sessions, call.request.headers[HttpHeaders.Authorization])
         val id = chatId(call.parameters["chatId"])
         val q = call.request.queryParameters["q"]?.trim() ?: ""
+        if ('\u0000' in q) throw invalidChatField()
         if (q.codePointCount(0, q.length) !in 3..256) throw ApiException(
             HttpStatusCode.BadRequest, "INVALID_FIELD", "Поиск: от 3 до 256 символов")
         val limit = chatLimit(call.request.queryParameters["limit"])

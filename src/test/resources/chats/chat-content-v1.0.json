@@ -1,0 +1,23 @@
+{
+  "version": "chat-content-v1.0",
+  "normalizationVersion": "chat-content-v1.0",
+  "exceptionSetVersion": "chat-content-v1.0",
+  "source": "spec/for dev/artifacts/chat-message-content-policy.md",
+  "sourceRevision": "1.0, 01.11.2026",
+  "sourceSha256": "85e1bd739f5dda5cea14048d527b6f756a93be4c2d84d59c14198218997179c0",
+  "authorApprovalDate": "02.11.2026",
+  "normalization": "Profanity: NFC, Locale.ROOT lowercase, yo-to-e, format removal, local majority-Cyrillic lookalikes; bounded masks and single-letter spacing. Phone and URL use their separate v1.0 rules.",
+  "exceptions": "Closed exact forms; no inferred stemming, global transliteration or semantic classification. Ordinary word twins and unsupported disguises remain allowed.",
+  "blocked": [
+    "Пиши +7 (999) 123-45-67", "my phone +1 202 555 0143", "звони 123 45 67",
+    "смотри https://example.com", "example.com", "t . me / name", "name@example.com", "http://[2001:db8::1]/",
+    "блять", "х*й", "п-и-з-д-е-ц", "заебал", "fuck off", "this is bullshit", "you bitch"
+  ],
+  "allowed": [
+    "Встречаемся в 12:30 у дома 12", "номер заказа 123 45 67", "версия 1.2.3", "2001:db8", "почта на столе",
+    "Нужна подстраховка", "Он хулиган", "Блин, опоздал", "hello", "cocktail",
+    "Ты неприятный человек", "Никому здесь не рады"
+  ],
+  "normalizedBlocked": ["БЛЯТЬ", "ёбаный", "е\u0308баный", "ё\u200bбать", "xуй", "f.u.c.k", "б л я д ь"],
+  "boundedAllowed": ["х.й", "х-й", "бляяядь", "х у л и г а н", "б\nл я д ь", "б  л я д ь", "ex ample.com", "@nickname"]
+}
