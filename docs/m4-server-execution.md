@@ -652,3 +652,79 @@ execution-checklist.md (96/455), M4-T3.md (backend3/5), M4-meetings-booking.md
 (T3 backend3/5; M4 backend12/28), all physically outside backend Git.
 Task commit subject: `Verify atomic booking commit outcomes`. Independent read-only
 task review: APPROVE before commit. Combined server acceptance remains open.
+
+
+## Завершённые B4 результаты и отдельный итоговый аудит — 04.11.2026
+
+Все T087–T114 реализованы/сверены, фактически проверены и сохранены отдельными тематическими task commits. Все 12 групп девяти пулов прошли task review и другой независимый whole-branch review, затем последовательно слиты и опубликованы только в main. Итоговый проверенный код: [75cf3d6](https://github.com/abcKristy/Roy_backend/commit/75cf3d612cad20d81385bd10f701946379dbbb31). Предсуществовавший Swagger commit2f54ac0 сохранён; фактическая база первого пула —2f54ac0734004308aaf5e5d2f0b3a8253772c168.
+
+| Пул | Группа | Рабочая ветка | Проверенная база | Task commits | Опубликованный merge main |
+|---|---|---|---|---|---|
+| 1 | 1 | feat/proposal-creation | [2f54ac0](https://github.com/abcKristy/Roy_backend/commit/2f54ac0734004308aaf5e5d2f0b3a8253772c168) | T087 [f841281](https://github.com/abcKristy/Roy_backend/commit/f841281f54ac4cbe483cfebc6a49a245cd1ee732); T088 [bd0e71d](https://github.com/abcKristy/Roy_backend/commit/bd0e71d275b6beefcbf09b560c80938e340941e2); T089 [a8302d2](https://github.com/abcKristy/Roy_backend/commit/a8302d2d2d1b5be6a050abd72810f47487ae82b3) | [82d13a3](https://github.com/abcKristy/Roy_backend/commit/82d13a37acc968b10a08cb9c3f4729cebd8d91ea) |
+| 2 | 2 | feat/proposal-read-events | [82d13a3](https://github.com/abcKristy/Roy_backend/commit/82d13a37acc968b10a08cb9c3f4729cebd8d91ea) | T090 [a24e879](https://github.com/abcKristy/Roy_backend/commit/a24e8793309b5ca52d3a96b75f5f8f717217825e); T091 [569a8a8](https://github.com/abcKristy/Roy_backend/commit/569a8a84be98d977d4bf81189ce3036bc4d9a2e8) | [fa43431](https://github.com/abcKristy/Roy_backend/commit/fa43431df668208128adcba9ccadedadf4fc6ffa) |
+| 3 | 3 | feat/meeting-votes | [fa43431](https://github.com/abcKristy/Roy_backend/commit/fa43431df668208128adcba9ccadedadf4fc6ffa) | T092 [3309833](https://github.com/abcKristy/Roy_backend/commit/330983374d555752e1b85b4241bc29d34964cc31); T093 [13ba75b](https://github.com/abcKristy/Roy_backend/commit/13ba75bdfb2152020d70326b93f73cd892f5abde) | [6cea7c4](https://github.com/abcKristy/Roy_backend/commit/6cea7c437456ce793afe58dafc08c3c6998922ca) |
+| 4 | 4 | feat/voter-list-transition | [6cea7c4](https://github.com/abcKristy/Roy_backend/commit/6cea7c437456ce793afe58dafc08c3c6998922ca) | T094 [fa48db9](https://github.com/abcKristy/Roy_backend/commit/fa48db960ded93ad184cb85f447fd7f10ee5f06e); T095 [08d903b](https://github.com/abcKristy/Roy_backend/commit/08d903b4eee17186ec1a43e24879f051f0aeea5b) | [1398e7b](https://github.com/abcKristy/Roy_backend/commit/1398e7b0b8097d0250c227960c5f0b184edf8c7e) |
+| 5 | 5 | feat/booking-core | [1398e7b](https://github.com/abcKristy/Roy_backend/commit/1398e7b0b8097d0250c227960c5f0b184edf8c7e) | T096 [67ab9a3](https://github.com/abcKristy/Roy_backend/commit/67ab9a370eeec5813d68c2c2dbd7e11ac440d9ff); T097 [069c2cb](https://github.com/abcKristy/Roy_backend/commit/069c2cb535423b1330361257e2d3413a157801ac); T098 [c374438](https://github.com/abcKristy/Roy_backend/commit/c3744384068dc379bccfccfe9984c6b9beb7137b) | [ae43668](https://github.com/abcKristy/Roy_backend/commit/ae43668958e3034ada605809d29f1d09a95969d4) |
+| 6 | 6 | feat/booking-response-event | [ae43668](https://github.com/abcKristy/Roy_backend/commit/ae43668958e3034ada605809d29f1d09a95969d4) | T099 [43f9edc](https://github.com/abcKristy/Roy_backend/commit/43f9edccf21cc777bca0620d06b87ac7cbc8ac58); T100 [9cf4a67](https://github.com/abcKristy/Roy_backend/commit/9cf4a6746f54d8ed3fa3165d105efef1a769b8be) | [d5cfce8](https://github.com/abcKristy/Roy_backend/commit/d5cfce8cb3f99bf2de9b7ee38995ed3eaa6deeca) |
+| 6 | 7 | feat/booking-cancellation | [ae43668](https://github.com/abcKristy/Roy_backend/commit/ae43668958e3034ada605809d29f1d09a95969d4) | T101 [d71a65c](https://github.com/abcKristy/Roy_backend/commit/d71a65caaa2a9c7efdeb417c341188e6439d8db4); T102 [645d842](https://github.com/abcKristy/Roy_backend/commit/645d8422b3766aef900308d2fd91023935b7f4e7); T103 [54e2f2f](https://github.com/abcKristy/Roy_backend/commit/54e2f2f3813a86085ed5a570235db1046f1a2add) | [b29e7af](https://github.com/abcKristy/Roy_backend/commit/b29e7afc5551b7afdf7ff6765f4a9b7f80815135) |
+| 7 | 8 | feat/cancellation-events-jobs | [b29e7af](https://github.com/abcKristy/Roy_backend/commit/b29e7afc5551b7afdf7ff6765f4a9b7f80815135) | T104 [ef4e0aa](https://github.com/abcKristy/Roy_backend/commit/ef4e0aa357a6ddc87e9dcbc04ec1b10e1c6723a9); T105 [9aa08b3](https://github.com/abcKristy/Roy_backend/commit/9aa08b379b888263181450f3166647d768db66be) | [59a1891](https://github.com/abcKristy/Roy_backend/commit/59a189132c8136ccef2d8f08d0339a3b27849467) |
+| 6 | 9 | feat/booking-overlap | [ae43668](https://github.com/abcKristy/Roy_backend/commit/ae43668958e3034ada605809d29f1d09a95969d4) | T106 [480b4ec](https://github.com/abcKristy/Roy_backend/commit/480b4ec2427b285f14258e999386987b458c3c4b); T107 [36ece2a](https://github.com/abcKristy/Roy_backend/commit/36ece2a57dd9a0e49fb1088c8fb0b9b4d0b335a7); T108 [a395e6b](https://github.com/abcKristy/Roy_backend/commit/a395e6b446aa182557fd20bedf3d46446da46710) | [ed68e26](https://github.com/abcKristy/Roy_backend/commit/ed68e26b61fcf0e9f9d84f1306db8534e7254693) |
+| 7 | 10 | feat/booking-priority-close | [b29e7af](https://github.com/abcKristy/Roy_backend/commit/b29e7afc5551b7afdf7ff6765f4a9b7f80815135) | T109 [2cb164b](https://github.com/abcKristy/Roy_backend/commit/2cb164bcdf9a24bea2ebdda14b3ac0ecee7ac62f); T110 [610057a](https://github.com/abcKristy/Roy_backend/commit/610057ab12e5bf2948dd1cf030951d32a95c117c) | [80dcb6f](https://github.com/abcKristy/Roy_backend/commit/80dcb6f80fa4710b6a1d42bebd93c2060df3e9c7) |
+| 8 | 11 | tests/meeting-acceptance | [59a1891](https://github.com/abcKristy/Roy_backend/commit/59a189132c8136ccef2d8f08d0339a3b27849467) | T111 [9971abe](https://github.com/abcKristy/Roy_backend/commit/9971abe3fc19e5a6511bfa0d1e9be26c83292e4b); T112 [d07dee4](https://github.com/abcKristy/Roy_backend/commit/d07dee4f7df569ec4bda41713fb0c280c4e1149b) | [1241e99](https://github.com/abcKristy/Roy_backend/commit/1241e9938824d85bd2d491645bcd06e318fe9a63) |
+| 9 | 12 | tests/meeting-races | [1241e99](https://github.com/abcKristy/Roy_backend/commit/1241e9938824d85bd2d491645bcd06e318fe9a63) | T113 [67ff044](https://github.com/abcKristy/Roy_backend/commit/67ff044477d4ca9ad83488bd0aa3233714677552); T114 [17270be](https://github.com/abcKristy/Roy_backend/commit/17270be99f32b8c0dfda021780d3ae4681f5d9aa) | [75cf3d6](https://github.com/abcKristy/Roy_backend/commit/75cf3d612cad20d81385bd10f701946379dbbb31) |
+
+Пулы 1–5, 8, 9 выполнялись по одной группе. В пуле 6 фактически параллельно работали группы 6/7/9 в трёх отдельных managed worktrees и собственных БД на 55485/55486/55487 от одного ae43668; порядок слияния 6→9→7. После первого merge группа9 интегрировала main d5cfce8 (integration merge4f74fe9), повторила8 тестов и получила независимый review; группа7 интегрировала ed68e26 (bf1bd6b), повторила6 тестов и получила независимый review. В пуле 7 группы 8/10 параллельны от b29e7af в двух разных worktrees/БД; порядок 10→8. Группа8 интегрировала 80dcb6f (af37b5e), повторила11 тестов и получила независимый review. Опубликованная история не переписывалась; force-push не использовался.
+
+Task reviewer групп 1–6 и 9–12 — contracts; групп 7–8 — group_review. Независимый branch reviewer групп 7–8 — contracts, остальных — group_review. Реализация: environment, cancellation, overlap; Lead интегрировал Git/статусы и итог. Каждая группа прошла fetch/ls-remote сверку main/origin/main и проверку clean tree после push. Старые отсутствующие worktrees не выдаются за проверенные; managed checkout paths переиспользованы только после сохранённого чистого состояния.
+
+### Свежая проверка опубликованного конечного кода
+
+31/31 классов PASS; 67 JUnit tests: 64 integration в 30 классах + 3 unit в 1 классе; skipped/failures/errors — 0, Gradle exit 0 в каждой строке. UTC 2026-11-04T17:38:58.8042039+00:00 — 2026-11-04T18:18:53.0830181+00:00, длительность — 2394.279 с. Код и manifest оставались неизменными, main/source clean до/после. Все 31 actual XML скопированы до следующего Gradle запуска; свежесть/counts/отсутствие skip/failure/error проверены Lead и обоими независимыми аудиторами.
+
+Фактический воспроизводимый формат команд: `.\gradlew.bat integrationTest --tests <FQCN> --offline --no-daemon --max-workers=1`; для SafeErrorEnvelopeTest — `test` вместо integrationTest. Перед integration запуском использовалась ignored local recipe с указанными alias/port. Для двух legacy guards менялся только TEST_DATABASE_URL на собственный loopback55485 legacy alias; production.env не читался. Credentials/env values не выводились.
+
+| Проверка | FQCN | Alias / port | Tests / skipped / failures / errors | Actual XML UTC |
+|---|---|---|---|---|
+| T087 | com.example.meetings.ProposalSchemaIntegrationTest | roy_m4_schema / 55484 | 1/0/0/0 | 2026-11-04T17:40:32.3290000+00:00 |
+| T088 | com.example.meetings.ProposalTimeIntegrationTest | roy_m4_time / 55484 | 1/0/0/0 | 2026-11-04T17:41:39.5130000+00:00 |
+| T089 | com.example.meetings.ProposalCreateIntegrationTest | roy_m4_create / 55484 | 2/0/0/0 | 2026-11-04T17:42:52.7250000+00:00 |
+| T090 | com.example.meetings.ProposalReadIntegrationTest | roy_m4_read / 55484 | 1/0/0/0 | 2026-11-04T17:44:09.7130000+00:00 |
+| T091 | com.example.meetings.ProposalEventsIntegrationTest | roy_m4_events / 55484 | 1/0/0/0 | 2026-11-04T17:45:08.7510000+00:00 |
+| T092 | com.example.meetings.VoteWriteIntegrationTest | roy_m4_vote / 55484 | 2/0/0/0 | 2026-11-04T17:46:31.7270000+00:00 |
+| T093 | com.example.meetings.VoteProjectionIntegrationTest | roy_m4_vote_projection / 55484 | 1/0/0/0 | 2026-11-04T17:47:20.4390000+00:00 |
+| T094 | com.example.meetings.VoterPageIntegrationTest | roy_m4_voters / 55484 | 1/0/0/0 | 2026-11-04T17:48:22.3390000+00:00 |
+| T095 | com.example.meetings.VoteReadinessIntegrationTest | roy_m4_ready / 55484 | 1/0/0/0 | 2026-11-04T17:49:23.5710000+00:00 |
+| T096 | com.example.meetings.BookingSchemaIntegrationTest | roy_m4_booking_schema / 55484 | 1/0/0/0 | 2026-11-04T17:50:38.4870000+00:00 |
+| T097 | com.example.meetings.BookingGuardsIntegrationTest | roy_m4_booking_guards / 55484 | 1/0/0/0 | 2026-11-04T17:51:59.7560000+00:00 |
+| T098 | com.example.meetings.BookingTransactionIntegrationTest | roy_m4_booking_transaction / 55484 | 1/0/0/0 | 2026-11-04T17:53:12.5230000+00:00 |
+| T099 | com.example.meetings.BookingResponseIntegrationTest | roy_m4_booking_response / 55485 | 1/0/0/0 | 2026-11-04T17:55:06.2330000+00:00 |
+| T100 | com.example.meetings.BookingEventsIntegrationTest | roy_m4_booking_events / 55485 | 1/0/0/0 | 2026-11-04T17:56:22.1030000+00:00 |
+| T101 | com.example.meetings.BookingCancellationPolicyIntegrationTest | roy_m4_cancel_policy / 55486 | 3/0/0/0 | 2026-11-04T17:57:39.5320000+00:00 |
+| T102 | com.example.meetings.BookingCancellationUnvoteIntegrationTest | roy_m4_cancel_unvote / 55486 | 1/0/0/0 | 2026-11-04T17:58:41.3040000+00:00 |
+| T103 | com.example.meetings.BookingCancellationDepartureIntegrationTest | roy_m4_cancel_leave / 55486 | 2/0/0/0 | 2026-11-04T17:59:31.5120000+00:00 |
+| T104 | com.example.meetings.BookingCancellationEventsIntegrationTest | roy_m4_cancel_events / 55485 | 3/0/0/0 | 2026-11-04T18:01:18.8850000+00:00 |
+| T105 | com.example.jobs.BookingReminderCancellationIntegrationTest | roy_m4_cancel_jobs / 55485 | 4/0/0/0 | 2026-11-04T18:02:32.9190000+00:00 |
+| T106 | com.example.meetings.BookingOverlapQueryIntegrationTest | roy_m4_overlap_query / 55487 | 2/0/0/0 | 2026-11-04T18:03:34.8580000+00:00 |
+| T107 | com.example.meetings.BookingOverlapWarningIntegrationTest | roy_m4_overlap_warning / 55487 | 2/0/0/0 | 2026-11-04T18:04:39.1120000+00:00 |
+| T108 | com.example.meetings.BookingOverlapConfirmIntegrationTest | roy_m4_overlap_confirm / 55487 | 4/0/0/0 | 2026-11-04T18:05:53.5610000+00:00 |
+| T109 | com.example.meetings.BookingPairwisePriorityIntegrationTest | roy_m4_booking_priority / 55487 | 1/0/0/0 | 2026-11-04T18:07:05.3960000+00:00 |
+| T110 | com.example.meetings.BookingAuthorCloseIntegrationTest | roy_m4_booking_close / 55487 | 4/0/0/0 | 2026-11-04T18:08:18.8910000+00:00 |
+| T111 | com.example.meetings.MeetingAcceptanceFixtureIntegrationTest | roy_m4_acceptance_fixture / 55485 | 2/0/0/0 | 2026-11-04T18:09:19.5950000+00:00 |
+| T112 | com.example.meetings.MeetingRestChainIntegrationTest | roy_m4_acceptance_fixture / 55485 | 1/0/0/0 | 2026-11-04T18:10:21.9970000+00:00 |
+| T113 | com.example.meetings.MeetingConcurrencyIntegrationTest | roy_m4_acceptance_fixture / 55485 | 9/0/0/0 | 2026-11-04T18:11:55.7320000+00:00 |
+| T114 | com.example.meetings.MeetingTimeBoundsIntegrationTest | roy_m4_acceptance_fixture / 55485 | 6/0/0/0 | 2026-11-04T18:13:51.5620000+00:00 |
+| REG_SAFE_ERRORS | com.example.api.SafeErrorEnvelopeTest | нет DB | 3/0/0/0 | 2026-11-04T18:16:21.1280000+00:00 |
+| REG_JOBS | com.example.jobs.JobsIntegrationTest | roy_m1t2_step7jobs / 55485 | 3/0/0/0 | 2026-11-04T18:17:11.6660000+00:00 |
+| REG_DEVICE_REBIND | com.example.devices.DeviceRebindDeliveryConcurrencyIntegrationTest | roy_m1t2_step8delete / 55485 | 1/0/0/0 | 2026-11-04T18:18:09.4890000+00:00 |
+
+Все 30 integration rows / 27 aliases подтвердили собственные неизменные container IDs, codex.task=m4-t087-t114, единственный 127.0.0.1 port binding, PostgreSQL 18.6 / PostGIS 3.6.4 и 15 успешных V001–V015. До/после проверялась 21 fixture-таблица и временные fault objects; итоговые counts — 0, triggers/functions — 0. Только REG_JOBS/REG_DEVICE_REBIND оставляют synthetic rows: before/after явно сохранены и cleanup выполнен только в их проверенных эксклюзивных own aliases. Sequences записаны, но не сброшены и не объявлены gapless.
+
+Сырые results/31 XML / 31 logs и свежие ledgers T112 (1), T113 (9), T114 (6) находятся в ignored `.local/m4-final-verification/run-20261104T173858804Z-0eab488f/`. Manifest SHA-256: 997897308EB9B5BE217F49768C348EDFDDA7270D8676C71B06057B94D674E367; results.json SHA-256: a77da579e78114911a2921c46e4f4c1ae746b7ab8a20487a6ed567fb0b7e92fb. Типы evidence различены: например T088 — testApplication/realPG/stub SessionRepository, T089/T090 — service/realPG, designated native cases — настоящий Netty/HTTP/WS/JDBC. Ни один missing/stale/skipped/pre-body failure не принят за PASS.
+
+### Статусы, Git-топология и аудит
+
+Все 28 карточек, README/родители, execution-checklist и M4 roadmap синхронизированы:112/455, B4 backend 28/28 ГОТОВО локально; общий M4 остаётся ЧАСТИЧНО, client/BG-1 открыты. Эти учётные файлы физически находятся в родительском `spec/plans/` вне backend Git; их нельзя выдавать за файлы main. Версионируемые completed protocols и [единственный аудит](m4-t087-t114-review.md) находятся внутри backend Git.
+
+Отдельный итоговый аудит выполнен ПОСЛЕ публикации всех 12 групп: contracts проверил T087–T100, group_review — T101–T114, оба прочитали все 31 fresh XML и итоговый manifest/results. Оба FORMAL APPROVE. Новых замечаний — 0, открытых — 0; исправлений после этого аудита — 0; пустая fix/meeting-audit-findings не создавалась. Аудит публикуется отдельным коммитом с уникальным заголовком `Audit completed meeting server tasks`; SHA собственного коммита не выдумывается внутри его содержимого.
+
+Это локальная серверная приёмка B4. Real M5 provider delivery/nearby/reminder acceptance целиком, Android/iOS device UI, production deployment, stress/load и BG-1 не объявлены пройденными. Point-in-time push recheck не отзывает уже начатый send. Дополнительные блоки после полной проверки B4 не начинались по указанию пользователя.
