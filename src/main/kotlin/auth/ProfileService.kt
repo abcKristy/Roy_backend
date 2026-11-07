@@ -316,7 +316,9 @@ class ProfileService(
         val replacement = passwordHashing.hash(request.newPassword)
         return database.withRetryingJdbcTransaction { connection ->
             lockUser(connection, identity) ?: sessionExpired()
-            if (!sessionActive(connection, identity)) sessionExpired()
+            if (!sessionActive(connection, identity, allowLegacy = true) ||
+                !identity.accessExpiresAt.isAfter(Instant.now())
+            ) sessionExpired()
             val stillCurrent = connection.prepareStatement(
                 "SELECT password_hash,auth_version FROM users WHERE id=?"
             ).use { statement ->

@@ -91,8 +91,9 @@ class RealtimePointChangedTest {
         }
         val secret = "synthetic-point-event-secret-at-least-32-bytes"
         val now = Instant.now()
+        val expiresAt = Instant.ofEpochSecond(now.epochSecond + 3600)
         val identities = listOf(firstMember, otherTopicMember, outsider).associateWith {
-            SessionIdentity(it, UUID.randomUUID(), 0)
+            SessionIdentity(it, UUID.randomUUID(), 0, expiresAt)
         }
         val sessions = SessionAccessService(secret, object : SessionRepository {
             override suspend fun findActive(identity: SessionIdentity, now: Instant): UserSelf? =
@@ -103,7 +104,7 @@ class RealtimePointChangedTest {
         })
         val tokens = identities.mapValues { (_, identity) ->
             "Bearer " + JwtTokenIssuer(secret).issue(identity.userId, identity.sessionId, 0,
-                now.minusSeconds(1), now.plusSeconds(3600))
+                now.minusSeconds(1), expiresAt)
         }
         val hub = RealtimeHub(db, sessions)
         application {

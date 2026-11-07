@@ -3,6 +3,8 @@ package com.example.auth
 import com.example.api.ApiException
 import com.example.config.ServerConfig
 import com.example.persistence.HikariDatabaseBootstrap
+import com.example.persistence.JdbcSessionRepository
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.runBlocking
 import java.time.Instant
 import java.time.ZoneOffset
@@ -10,12 +12,12 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ProfileServiceIntegrationTest {
     @Test
-    fun `name update and password change revoke all sessions atomically`() = runBlocking {
+    fun `password change from a legacy session revokes every access and refresh session`() = runBlocking {
         val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_[a-z0-9]+$").matches(url))
         val runtime = HikariDatabaseBootstrap(ServerConfig(url,
@@ -29,6 +31,7 @@ class ProfileServiceIntegrationTest {
         val firstId = UUID.randomUUID()
         val secondId = UUID.randomUUID()
         val identity = SessionIdentity(userId, firstId, 0)
+        val refreshHash = UUID.randomUUID().toString().replace("-", "").repeat(2)
         val oldHash = hashing.hash("old password 123")
         val now = Instant.now()
         try {
@@ -51,20 +54,25 @@ class ProfileServiceIntegrationTest {
                 }
                 for (id in listOf(firstId, secondId)) connection.prepareStatement(
                     """INSERT INTO auth_sessions(id,user_id,created_at,expires_at,auth_version,
-                       refresh_token_hash) VALUES (?,?,?,?,0,?)"""
+                       refresh_token_hash) VALUES (?,?,?,?,?,?)"""
                 ).use { statement ->
                     statement.setObject(1, id)
                     statement.setObject(2, userId)
                     statement.setObject(3, now.atOffset(ZoneOffset.UTC))
                     statement.setObject(4, now.plusSeconds(3600).atOffset(ZoneOffset.UTC))
-                    statement.setString(5, UUID.randomUUID().toString().replace("-", "").repeat(2))
+                    statement.setObject(5, if (id == firstId) null else 0)
+                    statement.setString(6, if (id == firstId) null else refreshHash)
                     statement.executeUpdate()
                 }
             }
-            assertEquals("Новое имя", service.updateName(identity, UpdateProfileRequest(" Новое имя ")).displayName)
-            assertEquals("INVALID_CURRENT_PASSWORD", assertFailsWith<ApiException> {
-                service.changePassword(identity, ChangePasswordRequest("wrong password", "new password 123"))
-            }.code)
+            val repository = JdbcSessionRepository(runtime)
+            val modernIdentity = SessionIdentity(userId, secondId, 0)
+            val wrongPassword = assertFailsWith<ApiException> {
+                service.changePassword(modernIdentity, ChangePasswordRequest("wrong password", "new password 123"))
+            }
+            assertEquals(HttpStatusCode.UnprocessableEntity, wrongPassword.status)
+            assertEquals("INVALID_CURRENT_PASSWORD", wrongPassword.code)
+            assertNotNull(repository.findActive(modernIdentity, now))
             val sessions = service.changePassword(identity,
                 ChangePasswordRequest("old password 123", "new password 123"))
             assertEquals(setOf(firstId, secondId), sessions.toSet())
@@ -84,9 +92,16 @@ class ProfileServiceIntegrationTest {
                     statement.executeQuery().use { rows -> rows.next(); assertEquals(0, rows.getInt(1)) }
                 }
             }
-            assertEquals("SESSION_EXPIRED", assertFailsWith<ApiException> {
-                service.updateName(identity, UpdateProfileRequest("Ещё имя"))
-            }.code)
+            for (expired in listOf(identity, modernIdentity)) {
+                assertEquals(null, repository.findActive(expired, now))
+                assertEquals("SESSION_EXPIRED", assertFailsWith<ApiException> {
+                    service.changePassword(expired, ChangePasswordRequest("new password 123", "another password 123"))
+                }.code)
+            }
+            assertEquals(
+                RefreshRotationResult.Invalid,
+                repository.rotate(secondId, refreshHash, "a".repeat(64), now),
+            )
         } finally {
             runtime.close()
         }
