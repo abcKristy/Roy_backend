@@ -57,16 +57,53 @@ class MvpBackendChainIntegrationTest {
             val peer = api.register(version, "Synthetic Peer")
             val nearby = api.register(version, "Synthetic Nearby")
 
-            api.send("PUT", "/me/notification-settings", 200, nearby.access, buildJsonObject {
-                put("remindersPushEnabled", true)
-                put("personalPushEnabled", true)
-                put("extraPushEnabled", false)
-                put("extraInAppEnabled", true)
-                put("expectedRevision", 0)
-            })
+            val centerRoute = "/me/notification-location"
+            fun setNearbyExtra(enabled: Boolean, revision: Long): Long =
+                api.send("PUT", "/me/notification-settings", 200, nearby.access, buildJsonObject {
+                    put("remindersPushEnabled", true)
+                    put("personalPushEnabled", true)
+                    put("extraPushEnabled", false)
+                    put("extraInAppEnabled", enabled)
+                    put("expectedRevision", revision)
+                }).obj().getValue("revision").jsonPrimitive.long
+
+            fun putCenter(position: JsonObject): JsonObject =
+                api.send("PUT", centerRoute, 200, nearby.access, buildJsonObject {
+                    put("position", position)
+                }).obj()
+
+            fun assertCenterErased() {
+                val center = api.send("GET", centerRoute, 200, nearby.access).obj()
+                assertEquals(JsonNull, center.getValue("position"))
+                assertEquals(JsonNull, center.getValue("updatedAt"))
+                DriverManager.getConnection(database, user, password).use { db ->
+                    assertCount(db, "SELECT count(*) FROM users WHERE id=? AND NOT EXISTS " +
+                        "(SELECT 1 FROM notification_locations WHERE user_id=users.id)", nearby.id)
+                }
+            }
+
+            val nearbyRevision = setNearbyExtra(true, 0)
             val position = buildJsonObject { put("lat", 55.75); put("lon", 37.62) }
-            api.send("PUT", "/me/notification-location", 200, nearby.access,
-                buildJsonObject { put("position", position) })
+            assertEquals(position, putCenter(position).getValue("position"))
+            val lastPosition = buildJsonObject { put("lat", 55.7501); put("lon", 37.6201) }
+            val lastCenter = putCenter(lastPosition)
+            assertEquals(lastPosition, lastCenter.getValue("position"))
+            Instant.parse(lastCenter.string("updatedAt"))
+            assertEquals(lastCenter, api.send("GET", centerRoute, 200, nearby.access).obj())
+            DriverManager.getConnection(database, user, password).use { db ->
+                assertCount(db, "SELECT count(*) FROM notification_locations WHERE user_id=?", nearby.id)
+            }
+
+            val spoofedCenterRoute = "$centerRoute?userId=${nearby.id}"
+            val peerCenter = api.send("GET", spoofedCenterRoute, 200, peer.access).obj()
+            assertEquals(JsonNull, peerCenter.getValue("position"))
+            api.send("PUT", centerRoute, 422, peer.access, buildJsonObject {
+                put("userId", nearby.id)
+                put("position", position)
+            })
+            api.send("DELETE", spoofedCenterRoute, 401)
+            api.send("DELETE", spoofedCenterRoute, 204, peer.access)
+            assertEquals(lastCenter, api.send("GET", centerRoute, 200, nearby.access).obj())
             val pointRequest = buildJsonObject {
                 put("position", position)
                 put("topic", buildJsonObject { put("presetKey", "football") })
@@ -163,6 +200,25 @@ class MvpBackendChainIntegrationTest {
                         booked.string("id"), proposalId)
                     assertCount(db, "SELECT count(*) FROM notification_events WHERE id=? AND recipient_user_id=? AND read_at IS NOT NULL",
                         event.string("id"), nearby.id)
+                }
+
+                api.send("DELETE", centerRoute, 204, nearby.access)
+                assertCenterErased()
+                putCenter(lastPosition)
+                val disabledRevision = setNearbyExtra(false, nearbyRevision)
+                assertCenterErased()
+                setNearbyExtra(true, disabledRevision)
+                assertCenterErased()
+
+                putCenter(lastPosition)
+                api.send("POST", "/me/deletion", 204, nearby.access, buildJsonObject {
+                    put("currentPassword", FixturePassword)
+                    put("confirm", true)
+                })
+                api.send("GET", centerRoute, 401, nearby.access)
+                DriverManager.getConnection(database, user, password).use { db ->
+                    assertCount(db, "SELECT count(*) FROM users WHERE id=? AND deleted_at IS NOT NULL AND NOT EXISTS " +
+                        "(SELECT 1 FROM notification_locations WHERE user_id=users.id)", nearby.id)
                 }
             } finally {
                 socket.abort()
