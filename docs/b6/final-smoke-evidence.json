@@ -1,0 +1,11 @@
+{
+  "source": "becb05132ee933e36cf1a1774d8fd027bdcf942a",
+  "source_worktree_clean": true,
+  "jar_sha256": "cbd1e2fe1c81c3a7e50c6053455ef02457e99a6ca042b67c2d171b40e3d5e349",
+  "health": 200,
+  "openapi": "3.1.0",
+  "websocket_docs": 200,
+  "draft_privacy": 200,
+  "missing_token_ws_upgrade": 401,
+  "transport": "loopback HTTP and WS"
+}
