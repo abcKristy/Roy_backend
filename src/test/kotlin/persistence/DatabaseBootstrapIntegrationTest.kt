@@ -65,7 +65,7 @@ class DatabaseBootstrapIntegrationTest {
             connection.createStatement().use { statement ->
                 statement.executeQuery("SELECT count(*) FROM flyway_schema_history WHERE success").use { rows ->
                     assertTrue(rows.next())
-                    assertEquals(14, rows.getInt(1))
+                    assertEquals(16, rows.getInt(1))
                 }
             }
         }

@@ -1,0 +1,26 @@
+import groovy.json.JsonSlurper
+import org.gradle.api.tasks.testing.Test
+
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    def prototype = project.tasks.named('integrationTest', Test).get()
+    def plan = new JsonSlurper().parse(new File(System.getenv('B6_PLAN')))
+    def checks = plan.collect { alias, classes ->
+        project.tasks.register('b6Db_' + alias, Test) {
+            dependsOn('testClasses')
+            testClassesDirs = prototype.testClassesDirs
+            classpath = prototype.classpath
+            systemProperty('integration.required', 'true')
+            environment('TEST_DATABASE_URL', 'jdbc:postgresql://127.0.0.1:' + System.getenv('B6_PORT') + '/' + alias)
+            filter { classes.each { includeTestsMatching('com.example.' + it) } }
+            reports.junitXml.outputLocation.set(new File(System.getenv('B6_RESULTS'), alias))
+            outputs.upToDateWhen { false }
+            afterTest { descriptor, result ->
+                if (result.resultType.toString() == 'SKIPPED') {
+                    throw new GradleException('Required integration scenario skipped: ' + descriptor.name)
+                }
+            }
+        }
+    }
+    project.tasks.register('b6Integration') { dependsOn(checks) }
+}

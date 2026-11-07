@@ -1,0 +1,141 @@
+{
+  "roy_m1t2_bootstrap": ["persistence.DatabaseBootstrapIntegrationTest"],
+  "roy_m1t2_history": ["persistence.MigrationHistoryValidationIntegrationTest"],
+  "roy_m1t2_step5moderation": ["moderation.ModerationServiceIntegrationTest"],
+  "roy_m1t2_upgrade": [
+    "auth.RefreshHistoryMigrationIntegrationTest"
+  ],
+  "roy_b5_mvp_chain": [
+    "acceptance.MvpBackendChainIntegrationTest"
+  ],
+  "roy_m2t6_atomic_failures": [
+    "api.M2AtomicCreateFailureIntegrationTest"
+  ],
+  "roy_m2t6_tcp_replay": [
+    "api.M2LostTcpCreateResponseIntegrationTest"
+  ],
+  "roy_m2t6_quota_topic_filter": [
+    "api.M2QuotaTopicFilterAcceptanceIntegrationTest"
+  ],
+  "roy_m2t6_quota_edges": [
+    "api.M2MonthlyQuotaBoundaryIntegrationTest"
+  ],
+  "roy_m2t2_guards": [
+    "api.PointQuotaBlockRouteIntegrationTest",
+    "points.PointCreationGuardsIntegrationTest"
+  ],
+  "roy_m2t2_ledger": [
+    "points.PointCreationLedgerIntegrationTest",
+    "points.PointQuotaSqlIntegrationTest"
+  ],
+  "roy_m2t3_autojoin": [
+    "points.AddTopicAutojoinIntegrationTest"
+  ],
+  "roy_m2t5_race": [
+    "points.PointJoinLastLeaveRaceIntegrationTest"
+  ],
+  "roy_m2t4_filter": [
+    "api.PointMapFilterValidationIntegrationTest",
+    "points.PointMapFilterSqlIntegrationTest"
+  ],
+  "roy_m3_chat": [
+    "acceptance.ChatRestAcceptanceIntegrationTest",
+    "acceptance.ChatWebSocketAcceptanceIntegrationTest",
+    "acceptance.ChatSendLeaveRaceIntegrationTest",
+    "realtime.WebSocketLifecycleIntegrationTest",
+    "realtime.WebSocketSubscriptionIntegrationTest",
+    "api.SendReplayIntegrationTest",
+    "api.ShortMessageFloodIntegrationTest",
+    "api.LongMessageFloodIntegrationTest",
+    "api.MuteThresholdIntegrationTest",
+    "api.MuteSendGuardIntegrationTest",
+    "api.ReportContextIntegrationTest",
+    "api.ReportLifetimeIntegrationTest",
+    "api.ReportTransactionIntegrationTest",
+    "api.ProfanityFilterIntegrationTest",
+    "api.UrlFilterIntegrationTest",
+    "api.PhoneFilterIntegrationTest",
+    "api.HistorySearchIntegrationTest",
+    "api.SendInputIntegrationTest",
+    "api.HistoryAccessIntegrationTest"
+  ],
+  "roy_m4_acceptance_fixture": [
+    "meetings.MeetingAcceptanceFixtureIntegrationTest",
+    "meetings.MeetingRestChainIntegrationTest",
+    "meetings.MeetingConcurrencyIntegrationTest",
+    "meetings.MeetingTimeBoundsIntegrationTest"
+  ],
+  "roy_m4_overlap_confirm": [
+    "meetings.BookingOverlapConfirmIntegrationTest"
+  ],
+  "roy_m4_booking_guards": [
+    "meetings.BookingGuardsIntegrationTest"
+  ],
+  "roy_m4_events": [
+    "meetings.ProposalEventsIntegrationTest"
+  ],
+  "roy_m1t2_step6proposal": [
+    "meetings.ProposalServiceIntegrationTest"
+  ],
+  "roy_b55_reminders": [
+    "jobs.ReminderSchedulerIntegrationTest"
+  ],
+  "roy_m4_cancel_jobs": [
+    "jobs.BookingReminderCancellationIntegrationTest"
+  ],
+  "roy_m1t2_step7jobs": [
+    "jobs.JobsIntegrationTest"
+  ],
+  "roy_m1t2_step3notify": [
+    "persistence.JdbcNotificationWriterIntegrationTest"
+  ],
+  "roy_m1t2_step7notifications": [
+    "api.NotificationHistoryIntegrationTest",
+    "api.NotificationRoutesIntegrationTest",
+    "notifications.NotificationServiceIntegrationTest"
+  ],
+  "roy_m5t124_settings": [
+    "api.NotificationSettingsIntegrationTest"
+  ],
+  "roy_m5t125_devices": [
+    "api.DeviceRegistrationSecurityIntegrationTest"
+  ],
+  "roy_m5t126_crypto": [
+    "api.PushTokenEncryptionIntegrationTest"
+  ],
+  "roy_m5t119_avatar": [
+    "api.AvatarSwapRoutesIntegrationTest"
+  ],
+  "roy_m5t120_read": [
+    "api.AvatarReadRoutesIntegrationTest"
+  ],
+  "roy_m1t2_step8delete": [
+    "auth.ProfileServiceIntegrationTest",
+    "api.AccountDeletionRoutesIntegrationTest",
+    "accounts.AccountDeletionPrivateCleanupIntegrationTest",
+    "accounts.AccountDeletionFanoutConcurrencyIntegrationTest",
+    "accounts.AccountDeletionServiceIntegrationTest",
+    "devices.DeviceRebindDeliveryConcurrencyIntegrationTest"
+  ],
+  "roy_m2t2_nearby": [
+    "api.PointCreationContextRoutesIntegrationTest"
+  ],
+  "roy_m1t2_step4routesfinal": [
+    "api.PointRoutesIntegrationTest"
+  ],
+  "roy_m1t2_step6routes": [
+    "api.MeetingRoutesIntegrationTest"
+  ],
+  "roy_m1t2_b6login": [
+    "auth.JdbcLoginRepositoryIntegrationTest"
+  ],
+  "roy_m1t2_b6register": [
+    "auth.JdbcRegistrationRepositoryIntegrationTest"
+  ],
+  "roy_m1t2_b6session": [
+    "auth.JdbcSessionRepositoryIntegrationTest"
+  ],
+  "roy_m1t2_b6refresh": [
+    "auth.JdbcRefreshRepositoryIntegrationTest"
+  ]
+}

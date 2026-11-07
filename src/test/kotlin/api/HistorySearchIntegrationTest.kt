@@ -34,7 +34,11 @@ class HistorySearchIntegrationTest {
         val chat = UUID.randomUUID()
         val message = UUID.randomUUID()
         val privateText = "Private history marker ${UUID.randomUUID()}"
-        val identities = listOf(member, outsider, left).associateWith { SessionIdentity(it, UUID.randomUUID(), 0) }
+        val now = Instant.now()
+        val expiresAt = Instant.ofEpochSecond(now.epochSecond + 3600)
+        val identities = listOf(member, outsider, left).associateWith {
+            SessionIdentity(it, UUID.randomUUID(), 0, expiresAt)
+        }
         val active = identities.values.toMutableSet()
         DriverManager.getConnection(url, user, password).use { c ->
             c.autoCommit = false
@@ -82,10 +86,9 @@ class HistorySearchIntegrationTest {
             })
             val read = ChatReadService(db, secret)
             application { configureTransport(); routing { chatReadRoutes(read, sessions) } }
-            val now = Instant.now()
             fun bearer(id: UUID): String {
                 val identity = identities.getValue(id)
-                return "Bearer " + JwtTokenIssuer(secret).issue(id, identity.sessionId, 0, now.minusSeconds(1), now.plusSeconds(3600))
+                return "Bearer " + JwtTokenIssuer(secret).issue(id, identity.sessionId, 0, now.minusSeconds(1), expiresAt)
             }
             suspend fun search(q: String, cursor: String? = null, limit: Int = 1, id: UUID = chat, actor: UUID = member, status: HttpStatusCode = HttpStatusCode.OK): JsonObject {
                 val response = client.get("/api/v1/chats/$id/messages/search") {

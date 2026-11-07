@@ -1,0 +1,44 @@
+{
+  "source": "a8349157b2ed7800d14014c7338a3764ff1fbeab",
+  "source_worktree_clean": false,
+  "local_database": "18.6 (Debian 18.6-1.pgdg13+2)|3.6.4|16",
+  "gradle_exit": 0,
+  "suites": [
+    {
+      "fixture": "roy_m1t2_bootstrap",
+      "class": "com.example.persistence.DatabaseBootstrapIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "local migration and production validation work with a short connection timeout"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_history",
+      "class": "com.example.persistence.MigrationHistoryValidationIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "pending and changed checksums prevent startup while repeat migration preserves seed"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step5moderation",
+      "class": "com.example.moderation.ModerationServiceIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "unique lifetime reports mute exactly once and retain replay"
+      ]
+    }
+  ]
+}
