@@ -43,7 +43,7 @@ internal fun Route.accountDeletionRoutes(service: AccountDeletionService, sessio
                         try { realtime.publishCommitted(RealtimeEvent(UUID.randomUUID(), RealtimeEventType.CHAT_MESSAGE_CREATED,
                             RealtimeScopeKind.CHAT, message.chatId, message.createdAt, messageJson(message))) }
                         catch (cancel: CancellationException) { throw cancel }
-                        catch (failure: Exception) { call.application.log.warn("Membership broadcast failed", failure) }
+                        catch (failure: Exception) { call.application.log.warn("Membership broadcast failed exception={}", failure.javaClass.name) }
                     }
                     for (change in result.meetingChanges) {
                         val proposal = change.proposal
@@ -52,7 +52,7 @@ internal fun Route.accountDeletionRoutes(service: AccountDeletionService, sessio
                             try { realtime.publishCommitted(RealtimeEvent(UUID.randomUUID(), RealtimeEventType.CHAT_MESSAGE_CREATED,
                                 RealtimeScopeKind.CHAT, proposal.chatId, message.createdAt, messageJson(message))) }
                             catch (cancel: CancellationException) { throw cancel }
-                            catch (failure: Exception) { call.application.log.warn("Meeting message broadcast failed", failure) }
+                            catch (failure: Exception) { call.application.log.warn("Meeting message broadcast failed exception={}", failure.javaClass.name) }
                         }
                         try {
                             realtime.publishCommitted(RealtimeEvent(UUID.randomUUID(), RealtimeEventType.PROPOSAL_UPDATED,
@@ -69,13 +69,13 @@ internal fun Route.accountDeletionRoutes(service: AccountDeletionService, sessio
                                     }))
                             }
                         } catch (cancel: CancellationException) { throw cancel }
-                        catch (failure: Exception) { call.application.log.warn("Meeting state broadcast failed", failure) }
+                        catch (failure: Exception) { call.application.log.warn("Meeting state broadcast failed exception={}", failure.javaClass.name) }
                     }
                 }
                 if (realtime != null) for (chatId in result.membershipMessages.map { it.message.chatId }.distinct()) {
                     try { realtime.publishPointChangedForChat(chatId) }
                     catch (cancel: CancellationException) { throw cancel }
-                    catch (failure: Exception) { call.application.log.warn("Point change broadcast failed", failure) }
+                    catch (failure: Exception) { call.application.log.warn("Point change broadcast failed exception={}", failure.javaClass.name) }
                 }
                 if (realtime != null) for (point in result.removedPoints) for (recipientId in point.formerMemberIds) {
                     try {
@@ -83,12 +83,12 @@ internal fun Route.accountDeletionRoutes(service: AccountDeletionService, sessio
                             RealtimeScopeKind.USER, recipientId, Instant.now(),
                             buildJsonObject { put("pointId", point.pointId.toString()); put("reason", "no_members") }))
                     } catch (cancel: CancellationException) { throw cancel }
-                    catch (failure: Exception) { call.application.log.warn("Point deletion broadcast failed", failure) }
+                    catch (failure: Exception) { call.application.log.warn("Point deletion broadcast failed exception={}", failure.javaClass.name) }
                 }
                 if (realtime != null) for (sessionId in result.revokedSessionIds) {
                     try { realtime.closeRevokedSession(sessionId, "expired") }
                     catch (cancel: CancellationException) { throw cancel }
-                    catch (failure: Exception) { call.application.log.warn("Session close after account deletion failed", failure) }
+                    catch (failure: Exception) { call.application.log.warn("Session close after account deletion failed exception={}", failure.javaClass.name) }
                 }
                 call.respond(HttpStatusCode.NoContent)
             }

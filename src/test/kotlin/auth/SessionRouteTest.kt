@@ -1,5 +1,8 @@
 package com.example.auth
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.example.api.configureRouting
@@ -12,11 +15,14 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
+import org.slf4j.LoggerFactory
+import java.sql.SQLException
 import java.time.Instant
 import java.util.Date
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SessionRouteTest {
@@ -25,8 +31,10 @@ class SessionRouteTest {
     private val sessionId = UUID.randomUUID()
 
     @Test
-    fun `me requires bearer and logout revokes current session`() = testApplication {
+    fun `me requires bearer and logout revokes current session without logging callback details`() = testApplication {
         var active = true
+        val authorization = token()
+        val markers = listOf(authorization, secret, "test-only-database-password", "synthetic private content")
         val service = SessionAccessService(secret, object : SessionRepository {
             override suspend fun findActive(identity: SessionIdentity, now: Instant): UserSelf? =
                 if (active && identity.userId == userId && identity.sessionId == sessionId && identity.authVersion == 0)
@@ -38,6 +46,8 @@ class SessionRouteTest {
                 active = false
                 return true
             }
+        }, onSessionRevoked = {
+            throw SQLException(markers.joinToString(" "))
         })
         application {
             configureTransport()
@@ -49,12 +59,26 @@ class SessionRouteTest {
         val unauthorized = client.get("/api/v1/me")
         assertEquals(HttpStatusCode.Unauthorized, unauthorized.status)
         assertTrue(unauthorized.bodyAsText().contains("AUTH_REQUIRED"))
-        val authorization = token()
         val me = client.get("/api/v1/me") { header(HttpHeaders.Authorization, authorization) }
         assertEquals(HttpStatusCode.OK, me.status)
         assertTrue(me.bodyAsText().contains("\"phone\":\"+79991234567\""))
-        val logout = client.post("/api/v1/auth/logout") { header(HttpHeaders.Authorization, authorization) }
-        assertEquals(HttpStatusCode.NoContent, logout.status)
+        val logger = LoggerFactory.getLogger(SessionAccessService::class.java) as Logger
+        val captured = ListAppender<ILoggingEvent>().apply { start() }
+        val priorAdditivity = logger.isAdditive
+        logger.isAdditive = false
+        logger.addAppender(captured)
+        try {
+            val logout = client.post("/api/v1/auth/logout") { header(HttpHeaders.Authorization, authorization) }
+            assertEquals(HttpStatusCode.NoContent, logout.status)
+            val warning = captured.list.single { it.formattedMessage.startsWith("Post-commit session notification failed") }
+            assertTrue(warning.throwableProxy == null, "Unexpected exception object in the logout warning")
+            assertTrue(warning.formattedMessage.contains(SQLException::class.java.name))
+            for (marker in markers) assertFalse(warning.formattedMessage.contains(marker), "Private value in the logout warning")
+        } finally {
+            logger.detachAppender(captured)
+            logger.isAdditive = priorAdditivity
+            captured.stop()
+        }
         assertEquals(HttpStatusCode.Unauthorized, client.get("/api/v1/me") {
             header(HttpHeaders.Authorization, authorization)
         }.status)

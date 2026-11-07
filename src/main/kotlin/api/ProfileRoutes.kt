@@ -97,7 +97,7 @@ fun Route.profileRoutes(
             } catch (cancel: CancellationException) {
                 throw cancel
             } catch (failure: Exception) {
-                log.warn("Post-commit password-change socket close failed", failure)
+                log.warn("Post-commit password-change socket close failed exception={}", failure.javaClass.name)
             }
         }
         call.respond(HttpStatusCode.NoContent)

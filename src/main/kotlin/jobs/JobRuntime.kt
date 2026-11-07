@@ -47,7 +47,7 @@ class JobRuntime(
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (failure: Exception) {
-                    log.warn("Background job {} failed", name, failure)
+                    log.warn("Background job {} failed exception={}", name, failure.javaClass.name)
                 }
                 delay(intervalMillis)
             }

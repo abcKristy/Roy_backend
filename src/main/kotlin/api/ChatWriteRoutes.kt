@@ -51,7 +51,7 @@ internal fun Route.chatWriteRoutes(
                     } catch (cancel: CancellationException) {
                         throw cancel
                     } catch (failure: Exception) {
-                        call.application.log.warn("Post-commit WebSocket delivery failed for chat {}", chatId, failure)
+                        call.application.log.warn("Post-commit WebSocket delivery failed for chat {} exception={}", chatId, failure.javaClass.name)
                     }
                 }
                 call.respondMessageSnapshot(result.responseSnapshot)
