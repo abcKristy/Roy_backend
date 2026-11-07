@@ -1,5 +1,6 @@
 package com.example.config
 
+import com.example.external.ApnsEnvironment
 import java.time.Duration
 import java.net.URI
 import java.net.URISyntaxException
@@ -27,10 +28,18 @@ class ServerConfig(
     val pushTokenEncryptionKeyBase64: String? = null,
     val dadataApiKey: String? = null,
     val avatarObjectStorage: AvatarObjectStorageConfig? = null,
+    val ruStorePush: RuStorePushConfig? = null,
+    val apnsPush: ApnsPushConfig? = null,
 ) {
     init {
         require(avatarObjectStorage == null || appEnvironment == AppEnvironment.PRODUCTION) {
             "Object Storage configuration requires APP_ENV=production"
+        }
+        require((ruStorePush == null && apnsPush == null) || appEnvironment == AppEnvironment.PRODUCTION) {
+            "Push provider configuration requires APP_ENV=production"
+        }
+        require((ruStorePush == null && apnsPush == null) || !pushTokenEncryptionKeyBase64.isNullOrBlank()) {
+            "Push provider configuration requires PUSH_TOKEN_ENCRYPTION_KEY_BASE64"
         }
         require((migrationUser == null) == (migrationPassword == null)) { "Migration credentials must be provided together" }
         require(databaseMaxPoolSize in 1..100) { "DATABASE_MAX_POOL_SIZE must be between 1 and 100" }
@@ -116,6 +125,24 @@ class ServerConfig(
                 accessKeyId = required("AVATAR_STORAGE_ACCESS_KEY_ID"),
                 secretAccessKey = required("AVATAR_STORAGE_SECRET_ACCESS_KEY"),
             ) else null
+            val ruStorePush = if (listOf("RUSTORE_PROJECT_ID", "RUSTORE_SERVICE_TOKEN")
+                    .any { !environment[it].isNullOrBlank() }) {
+                RuStorePushConfig(required("RUSTORE_PROJECT_ID"), required("RUSTORE_SERVICE_TOKEN"))
+            } else null
+            val apnsSettings = listOf("APNS_TEAM_ID", "APNS_KEY_ID", "APNS_PRIVATE_KEY_PEM", "APNS_TOPIC", "APNS_ENVIRONMENT")
+            val apnsPush = if (apnsSettings.any { !environment[it].isNullOrBlank() }) {
+                ApnsPushConfig(
+                    teamId = required("APNS_TEAM_ID"),
+                    keyId = required("APNS_KEY_ID"),
+                    privateKeyPem = required("APNS_PRIVATE_KEY_PEM"),
+                    topic = required("APNS_TOPIC"),
+                    environment = when (required("APNS_ENVIRONMENT")) {
+                        "sandbox" -> ApnsEnvironment.SANDBOX
+                        "production" -> ApnsEnvironment.PRODUCTION
+                        else -> throw IllegalArgumentException("APNS_ENVIRONMENT must be sandbox or production")
+                    },
+                )
+            } else null
             return ServerConfig(
                 databaseUrl = databaseUrl,
                 databaseUser = required("DATABASE_USER"),
@@ -136,6 +163,8 @@ class ServerConfig(
                 pushTokenEncryptionKeyBase64 = environment["PUSH_TOKEN_ENCRYPTION_KEY_BASE64"]?.takeIf { it.isNotBlank() },
                 dadataApiKey = environment["DADATA_API_KEY"]?.takeIf { it.isNotBlank() },
                 avatarObjectStorage = avatarObjectStorage,
+                ruStorePush = ruStorePush,
+                apnsPush = apnsPush,
             )
         }
     }

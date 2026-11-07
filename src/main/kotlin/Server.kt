@@ -41,6 +41,11 @@ import com.example.jobs.NotificationBroadcaster
 import com.example.jobs.RetentionCleanup
 import com.example.jobs.AvatarMediaStore
 import com.example.jobs.MediaDeletionWorker
+import com.example.jobs.PushDeliveryWorker
+import com.example.jobs.PushSender
+import com.example.jobs.PushTokenDecoder
+import com.example.external.ApnsPushSender
+import com.example.external.RuStorePushSender
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -71,6 +76,19 @@ internal fun Application.configuredModule(config: ServerConfig) {
         val passwordHashing = PasswordHashingWork(Argon2idPasswordHasher())
         val tokenIssuer = JwtTokenIssuer(config.jwtSecret)
         val draftPolicy = if (config.draftPrivacyEnabled) DraftPrivacyPolicy(requireNotNull(config.publicBaseUrl)) else null
+        val pushSenders = buildMap<String, PushSender> {
+            config.ruStorePush?.let { put("ANDROID_RUSTORE", RuStorePushSender(it.projectId, it.serviceToken)) }
+            config.apnsPush?.let { put("IOS_APNS", ApnsPushSender(it.teamId, it.keyId, it.privateKeyPem, it.topic, it.environment)) }
+        }
+        val push = if (deviceTokenCipher != null && pushSenders.isNotEmpty()) {
+            PushDeliveryWorker(
+                database,
+                PushSender { platform, token, payload -> pushSenders.getValue(platform).send(platform, token, payload) },
+                PushTokenDecoder(deviceTokenCipher::decrypt),
+                enabledPlatforms = pushSenders.keys,
+                locationPrivacyVersion = draftPolicy?.version,
+            )
+        } else null
         val sessionRepository = JdbcSessionRepository(database)
         lateinit var realtimeHub: RealtimeHub
         val sessionAccess = SessionAccessService(config.jwtSecret, sessionRepository,
@@ -87,6 +105,7 @@ internal fun Application.configuredModule(config: ServerConfig) {
             }),
             cleanup = RetentionCleanup(database),
             media = avatarStore?.let { MediaDeletionWorker(database, AvatarMediaStore(it)) },
+            push = push,
             onExpired = { expired ->
                 expired.forEach { item ->
                     val messagePayload = buildJsonObject {
@@ -144,7 +163,7 @@ internal fun Application.configuredModule(config: ServerConfig) {
             draftPrivacyPolicy = draftPolicy,
             pointReadRepository = PointReadRepository(database, config.jwtSecret),
             pointWriteService = PointWriteService(database),
-            reverseGeocoder = DaDataReverseGeocoder(config.dadataApiKey),
+            reverseGeocoder = DaDataReverseGeocoder(config.dadataApiKey.takeIf { config.appEnvironment == AppEnvironment.PRODUCTION }),
             moderationService = ModerationService(database),
             chatReadService = ChatReadService(database, config.jwtSecret),
             chatSendService = ChatSendService(database, MessageContentPolicy()),

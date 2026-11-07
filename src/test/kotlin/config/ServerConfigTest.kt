@@ -10,6 +10,39 @@ import kotlin.test.assertTrue
 
 class ServerConfigTest {
     @Test
+    fun `push providers are optional complete production settings`() {
+        val rustore = mapOf(
+            "RUSTORE_PROJECT_ID" to "123",
+            "RUSTORE_SERVICE_TOKEN" to "fixture-token",
+        )
+        val apns = mapOf(
+            "APNS_TEAM_ID" to "TEAM123456",
+            "APNS_KEY_ID" to "KEY1234567",
+            "APNS_PRIVATE_KEY_PEM" to "fixture-pem",
+            "APNS_TOPIC" to "example.roy",
+            "APNS_ENVIRONMENT" to "sandbox",
+        )
+        val enabled = required + ("PUSH_TOKEN_ENCRYPTION_KEY_BASE64" to "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+        assertEquals("123", ServerConfig.fromEnvironment(enabled + rustore).ruStorePush?.projectId)
+        assertEquals("example.roy", ServerConfig.fromEnvironment(enabled + apns).apnsPush?.topic)
+        for (settings in listOf(rustore, apns)) {
+            assertFailsWith<IllegalArgumentException> { ServerConfig.fromEnvironment(required + settings) }
+            assertFailsWith<IllegalArgumentException> {
+                ServerConfig.fromEnvironment(enabled + settings + ("APP_ENV" to "local"))
+            }
+            for (missing in settings.keys) {
+                val failure = assertFailsWith<IllegalStateException> {
+                    ServerConfig.fromEnvironment(enabled + (settings - missing))
+                }
+                assertFalse(failure.stackTraceToString().contains("fixture-"))
+            }
+        }
+        assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(enabled + apns + ("APNS_ENVIRONMENT" to "other"))
+        }
+    }
+
+    @Test
     fun `malformed public url reports only a safe setting name`() {
         val failure = assertFailsWith<IllegalArgumentException> {
             ServerConfig.fromEnvironment(required + ("PUBLIC_BASE_URL" to "https://private.example/secret value"))
