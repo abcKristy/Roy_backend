@@ -94,6 +94,7 @@ internal fun Route.notificationRoutes(service: NotificationService, sessions: Se
         })
     }
     put("/api/v1/me/notifications/{notificationId}/read") {
+        call.response.header(HttpHeaders.CacheControl, "no-store")
         val actor = notificationActor(sessions, call.request.headers[HttpHeaders.Authorization])
         val id = notificationId(call.parameters["notificationId"])
         val view = service.markRead(actor, id) ?: throw ApiException(

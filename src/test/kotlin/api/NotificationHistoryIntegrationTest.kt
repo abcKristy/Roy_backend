@@ -12,12 +12,17 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
+import io.ktor.client.request.put
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -27,10 +32,13 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.sql.Connection
 import java.sql.DriverManager
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class NotificationHistoryIntegrationTest {
     @Test
@@ -61,6 +69,39 @@ class NotificationHistoryIntegrationTest {
         val forged = changedPrefix + cursor.drop(1)
         list(ownerToken, limit = 2, cursor = forged).expectInvalidCursor()
         assertEquals("no-store", list(ownerToken, limit = 2).headers[HttpHeaders.CacheControl])
+    }
+
+    @Test
+    fun `read uses one server timestamp across retries and protects foreign and hidden events`() = withHistory {
+        val event = seedEvent(owner, Instant.now().minusSeconds(300))
+        val hidden = seedEvent(owner, Instant.now(), visible = false)
+        val otherEvent = seedEvent(other, Instant.now())
+        val missing = UUID.randomUUID()
+        for ((token, id) in listOf(otherToken to event, ownerToken to hidden, ownerToken to otherEvent, ownerToken to missing)) {
+            assertEquals("RESOURCE_GONE", markRead(token, id).expectJson(HttpStatusCode.NotFound).errorCode())
+        }
+        assertNull(readAt(event))
+        assertNull(readAt(hidden))
+        assertNull(readAt(otherEvent))
+
+        val before = Instant.now().minusSeconds(1)
+        val responses = coroutineScope {
+            val ready = CompletableDeferred<Unit>()
+            val requests = List(3) { async { ready.await(); markRead(ownerToken, event) } }
+            ready.complete(Unit)
+            requests.awaitAll()
+        }
+        val snapshots = responses.map { it.expectJson(HttpStatusCode.OK) }
+        val canonical = snapshots.first()
+        snapshots.forEach { assertEquals(canonical, it) }
+        val firstRead = Instant.parse(canonical.getValue("readAt").jsonPrimitive.content)
+        assertTrue(firstRead in before..Instant.now().plusSeconds(1))
+        assertEquals(firstRead, readAt(event))
+        assertEquals(canonical, list(ownerToken, limit = 2).expectJson(HttpStatusCode.OK)
+            .getValue("items").jsonArray.single().jsonObject)
+        val repeated = markRead(ownerToken, event)
+        assertEquals(canonical, repeated.expectJson(HttpStatusCode.OK))
+        assertEquals("no-store", repeated.headers[HttpHeaders.CacheControl])
     }
 
     private fun withHistory(test: suspend HistoryFixture.() -> Unit) = testApplication {
@@ -147,6 +188,20 @@ class NotificationHistoryIntegrationTest {
             parameter("limit", limit)
             cursor?.let { parameter("cursor", it) }
         }
+
+        suspend fun markRead(token: String, id: UUID) = client.put("/api/v1/me/notifications/$id/read") {
+            header(HttpHeaders.Authorization, token)
+        }
+
+        fun readAt(id: UUID): Instant? = connection().use { connection ->
+            connection.prepareStatement("SELECT read_at FROM notification_events WHERE id=?").use { statement ->
+                statement.setObject(1, id)
+                statement.executeQuery().use { rows ->
+                    check(rows.next())
+                    rows.getObject(1, OffsetDateTime::class.java)?.toInstant()
+                }
+            }
+        }
     }
 
     private companion object {
@@ -156,9 +211,10 @@ class NotificationHistoryIntegrationTest {
         }
 
         suspend fun HttpResponse.expectInvalidCursor() {
-            val response = expectJson(HttpStatusCode.BadRequest)
-            assertEquals("INVALID_CURSOR", response.getValue("error").jsonObject.getValue("code").jsonPrimitive.content)
+            assertEquals("INVALID_CURSOR", expectJson(HttpStatusCode.BadRequest).errorCode())
         }
+
+        fun JsonObject.errorCode(): String = getValue("error").jsonObject.getValue("code").jsonPrimitive.content
 
         fun JsonObject.ids(): List<String> = getValue("items").jsonArray.map {
             it.jsonObject.getValue("id").jsonPrimitive.content

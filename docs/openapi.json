@@ -8308,6 +8308,13 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "description": "Запрещает кэширование персональных уведомлений.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
