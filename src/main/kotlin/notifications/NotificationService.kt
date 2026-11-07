@@ -139,8 +139,9 @@ class NotificationService(
             }
         }
 
-    suspend fun location(userId: UUID): NotificationLocationView = database.withReadOnlyJdbcTransaction { connection ->
-        readLocation(connection, userId)
+    suspend fun location(userId: UUID): NotificationLocationView {
+        val policyVersion = locationPrivacyVersion ?: return NotificationLocationView(null, null, null)
+        return database.withReadOnlyJdbcTransaction { connection -> readLocation(connection, userId, policyVersion) }
     }
 
     suspend fun setLocation(userId: UUID, latitude: Double, longitude: Double): LocationWriteResult {
@@ -175,7 +176,7 @@ class NotificationService(
                 statement.setDouble(3, latitude)
                 check(statement.executeUpdate() == 1)
             }
-            LocationWriteResult.Updated(readLocation(connection, userId))
+            LocationWriteResult.Updated(readLocation(connection, userId, locationPrivacyVersion))
         }
     }
 
@@ -201,10 +202,13 @@ class NotificationService(
         ) else null }
     }
 
-    private fun readLocation(connection: Connection, userId: UUID): NotificationLocationView = connection.prepareStatement(
-        "SELECT ST_Y(position::geometry),ST_X(position::geometry),updated_at FROM notification_locations WHERE user_id=?"
+    private fun readLocation(connection: Connection, userId: UUID, policyVersion: String): NotificationLocationView = connection.prepareStatement(
+        """SELECT ST_Y(location.position::geometry),ST_X(location.position::geometry),location.updated_at
+           FROM notification_locations AS location JOIN users AS owner ON owner.id=location.user_id
+           WHERE location.user_id=? AND owner.deleted_at IS NULL AND owner.accepted_privacy_version=?"""
     ).use { statement ->
         statement.setObject(1, userId)
+        statement.setString(2, policyVersion)
         statement.executeQuery().use { rows -> if (rows.next()) NotificationLocationView(
             rows.getDouble(1), rows.getDouble(2), rows.getObject(3, OffsetDateTime::class.java).toInstant()
         ) else NotificationLocationView(null, null, null) }

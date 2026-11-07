@@ -49,7 +49,11 @@ class DraftPrivacyRouteTest {
         assertEquals(HttpStatusCode.OK, documentResponse.status)
         assertTrue(documentResponse.headers[HttpHeaders.ContentType].orEmpty().startsWith("text/markdown"))
         assertTrue(documentResponse.bodyAsText().contains(DraftPrivacyPolicy.VERSION))
-        assertEquals(first.document, documentResponse.bodyAsText())
+        val document = documentResponse.bodyAsText()
+        assertEquals(first.document, document)
+        assertTrue(document.contains("черновик для локальной разработки и тестовых аккаунтов"))
+        assertTrue(document.contains("добровольного включения канала и передачи последнего центра карты"))
+        assertTrue(document.contains("Фоновое отслеживание GPS не предусмотрено"))
     }
 
     @Test

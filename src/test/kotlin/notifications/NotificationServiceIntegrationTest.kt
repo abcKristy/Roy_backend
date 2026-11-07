@@ -140,6 +140,12 @@ class NotificationServiceIntegrationTest {
             assertEquals(1, enabled.revision)
             assertIs<LocationWriteResult.Updated>(service.setLocation(actor, 55.75, 37.62))
             assertEquals(55.75, service.location(actor).latitude)
+            val newerPolicy = NotificationService(database, "notification-test-secret-at-least-32-bytes", "newer")
+            val productionGate = NotificationService(database, "notification-test-secret-at-least-32-bytes")
+            assertIs<LocationWriteResult.PolicyNotAccepted>(newerPolicy.setLocation(actor, 55.75, 37.62))
+            assertIs<LocationWriteResult.PolicyUnavailable>(productionGate.setLocation(actor, 55.75, 37.62))
+            assertNull(newerPolicy.location(actor).latitude)
+            assertNull(productionGate.location(actor).latitude)
             DriverManager.getConnection(url, dbUser, dbPassword).use { connection ->
                 connection.autoCommit = false
                 insertEvent(connection, visible, actor, "PERSONAL", "chat_message", true, "visible", UUID.randomUUID())
@@ -175,8 +181,6 @@ class NotificationServiceIntegrationTest {
                 NotificationSettingsChange(true, true, false, false, 1))).settings
             assertEquals(2, disabled.revision)
             assertNull(service.location(actor).latitude)
-            val newerPolicy = NotificationService(database, "notification-test-secret-at-least-32-bytes", "newer")
-            assertIs<LocationWriteResult.PolicyNotAccepted>(newerPolicy.setLocation(actor, 55.75, 37.62))
             DriverManager.getConnection(url, dbUser, dbPassword).use { connection ->
                 connection.prepareStatement(
                     """SELECT status,completed_at FROM push_delivery_jobs WHERE notification_event_id=?"""
@@ -188,9 +192,6 @@ class NotificationServiceIntegrationTest {
                     }
                 }
             }
-            val productionGate = NotificationService(database, "notification-test-secret-at-least-32-bytes")
-            assertIs<LocationWriteResult.PolicyUnavailable>(productionGate.setLocation(actor, 55.75, 37.62))
-            assertNull(productionGate.location(actor).latitude)
             productionGate.deleteLocation(actor)
         }
     }
