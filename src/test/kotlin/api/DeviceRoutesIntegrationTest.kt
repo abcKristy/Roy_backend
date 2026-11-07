@@ -2,14 +2,13 @@ package com.example.api
 
 import com.example.auth.JwtTokenIssuer
 import com.example.auth.SessionAccessService
-import com.example.auth.SessionIdentity
-import com.example.auth.SessionRepository
-import com.example.auth.UserSelf
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
 import com.example.devices.DeviceService
 import com.example.devices.DeviceTokenCipher
+import com.example.devices.seedDeviceSession
 import com.example.persistence.HikariDatabaseBootstrap
+import com.example.persistence.JdbcSessionRepository
 import io.ktor.client.request.delete
 import io.ktor.client.request.header
 import io.ktor.client.request.put
@@ -37,26 +36,21 @@ class DeviceRoutesIntegrationTest {
         val dbUser = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
         val dbPassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
         val actor = UUID.randomUUID()
-        val sessionId = UUID.randomUUID()
         val installationId = UUID.randomUUID()
         val phone = "+7" + actor.mostSignificantBits.toULong().toString().takeLast(10).padStart(10, '0')
-        DriverManager.getConnection(url, dbUser, dbPassword).use { connection ->
+        val sessionId = DriverManager.getConnection(url, dbUser, dbPassword).use { connection ->
             connection.prepareStatement(
                 """INSERT INTO users (id,phone_e164,password_hash,display_name,age_years,
                    accepted_privacy_version,accepted_privacy_at,created_at,updated_at)
                    VALUES (?,?,'test','Test',20,'test',clock_timestamp(),clock_timestamp(),clock_timestamp())"""
             ).use { statement -> statement.setObject(1, actor); statement.setString(2, phone); statement.executeUpdate() }
+            connection.seedDeviceSession(actor).sessionId
         }
         val secret = "device-route-secret-at-least-32-bytes"
         val runtime = HikariDatabaseBootstrap(ServerConfig(url, dbUser, dbPassword, secret,
             appEnvironment = AppEnvironment.LOCAL)).start()
         try {
-            val sessions = SessionAccessService(secret, object : SessionRepository {
-                override suspend fun findActive(identity: SessionIdentity, now: Instant): UserSelf? =
-                    if (identity.userId == actor && identity.sessionId == sessionId)
-                        UserSelf(actor.toString(), "Test", null, phone, 20, null, now.toString()) else null
-                override suspend fun revoke(identity: SessionIdentity, now: Instant) = false
-            })
+            val sessions = SessionAccessService(secret, JdbcSessionRepository(runtime))
             val cipher = DeviceTokenCipher.fromBase64(Base64.getEncoder().encodeToString(ByteArray(32) { it.toByte() }))
             application {
                 configureTransport()

@@ -39,9 +39,10 @@ class DeviceRebindDeliveryConcurrencyIntegrationTest {
         val runtime = HikariDatabaseBootstrap(ServerConfig(url, user, password,
             "test-secret", appEnvironment = AppEnvironment.LOCAL)).start()
         runtime.use { database ->
-            DriverManager.getConnection(url, user, password).use { connection ->
+            val (oldSession, newSession) = DriverManager.getConnection(url, user, password).use { connection ->
                 connection.autoCommit = false
                 seedUser(connection, oldOwner); seedUser(connection, newOwner)
+                val sessions = connection.seedDeviceSession(oldOwner) to connection.seedDeviceSession(newOwner)
                 connection.prepareStatement(
                     """INSERT INTO points(id,location,address,address_source,created_by_user_id,created_at,updated_at)
                        VALUES (?,ST_SetSRID(ST_MakePoint(37.8,55.8),4326),'Test','MANUAL',?,clock_timestamp(),clock_timestamp())"""
@@ -56,10 +57,11 @@ class DeviceRebindDeliveryConcurrencyIntegrationTest {
                     "INSERT INTO chat_memberships(chat_id,user_id,joined_at) VALUES (?,?,clock_timestamp())"
                 ).use { s -> s.setObject(1, chat); s.setObject(2, oldOwner); s.executeUpdate() }
                 connection.commit()
+                sessions
             }
             val devices = DeviceService(database, cipher)
             assertIs<RegisterDeviceResult.Registered>(devices.register(
-                RegisterDeviceCommand(oldOwner, installation, "ANDROID_RUSTORE", "old-token")))
+                RegisterDeviceCommand(oldSession, installation, "ANDROID_RUSTORE", "old-token")))
             DriverManager.getConnection(url, user, password).use { connection ->
                 connection.autoCommit = false
                 connection.prepareStatement(
@@ -89,7 +91,7 @@ class DeviceRebindDeliveryConcurrencyIntegrationTest {
             assertTrue(providerEntered.await(15, TimeUnit.SECONDS))
             try {
                 assertIs<RegisterDeviceResult.Registered>(devices.register(
-                    RegisterDeviceCommand(newOwner, installation, "ANDROID_RUSTORE", "new-token")))
+                    RegisterDeviceCommand(newSession, installation, "ANDROID_RUSTORE", "new-token")))
             } finally {
                 releaseProvider.countDown()
             }

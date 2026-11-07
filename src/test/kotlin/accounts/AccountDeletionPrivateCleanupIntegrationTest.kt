@@ -65,6 +65,10 @@ class AccountDeletionPrivateCleanupIntegrationTest {
                     installation, actor, "a".repeat(64),
                 )
                 connection.execute(
+                    """INSERT INTO device_retired_tokens(installation_id,platform,token_digest)
+                       VALUES (?,'ANDROID_RUSTORE',?)""", installation, "b".repeat(64),
+                )
+                connection.execute(
                     """INSERT INTO notification_events(id,recipient_user_id,channel,event_type,dedupe_key,
                        display_snapshot,visible_in_app,push_requested,created_at)
                        VALUES (?,?,'PERSONAL','chat_message',?,'{}'::jsonb,true,true,clock_timestamp())""",
@@ -109,6 +113,7 @@ class AccountDeletionPrivateCleanupIntegrationTest {
                 Triple("notification_settings", "user_id", actor),
                 Triple("notification_locations", "user_id", actor),
                 Triple("device_registrations", "user_id", actor),
+                Triple("device_retired_tokens", "installation_id", installation),
                 Triple("point_creation_events", "creator_user_id", actor),
                 Triple("operation_idempotency", "actor_user_id", actor),
                 Triple("message_rate_events", "user_id", actor),
@@ -137,7 +142,7 @@ class AccountDeletionPrivateCleanupIntegrationTest {
 
     private fun Connection.count(table: String, column: String, id: UUID): Int {
         check(table in setOf("points", "chat_memberships", "notification_events", "notification_settings",
-            "notification_locations", "device_registrations", "point_creation_events", "operation_idempotency",
+            "notification_locations", "device_registrations", "device_retired_tokens", "point_creation_events", "operation_idempotency",
             "message_rate_events", "push_delivery_jobs", "reports"))
         return prepareStatement("SELECT count(*) FROM $table WHERE $column=?").use { statement ->
             statement.setObject(1, id)

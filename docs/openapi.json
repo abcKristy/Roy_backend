@@ -6073,7 +6073,7 @@
         ],
         "operationId": "identity_put_api_v1_me_push_devices_installationId",
         "summary": "Регистрация установки для push",
-        "description": "Регистрирует, обновляет токен или перепривязывает установку к текущему аккаунту. Допустимы только пары (android,rustore) и (ios,apns). Токен непустой, не более 4096 байт UTF-8, без пробельных и управляющих символов. Идентичный повтор возвращает исходный registeredAt. Перепривязка отменяет ожидающие доставки прежнему владельцу. Провайдер не вызывается, принятие токена провайдером не проверяется; ответа PUSH_REGISTRATION_FAILED нет. Idempotency-Key не используется.\nТребуется Authorization: Bearer <access JWT>. Изменения затрагивают только текущий аккаунт; JWT и активность сеанса проверяются при каждом запросе. Пример заголовка: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (замените собственным токеном).",
+        "description": "Регистрирует, обновляет токен или перепривязывает установку к текущему аккаунту. Допустимы только пары (android,rustore) и (ios,apns). Токен непустой, не более 4096 байт UTF-8, без пробельных и управляющих символов. Идентичный повтор возвращает исходный registeredAt. Перепривязка отменяет ожидающие доставки прежнему владельцу. Устаревший сеанс или ранее заменённый токен отклоняется. Провайдер не вызывается, принятие токена провайдером не проверяется; ответа PUSH_REGISTRATION_FAILED нет. Idempotency-Key не используется.\nТребуется Authorization: Bearer <access JWT>. Изменения затрагивают только текущий аккаунт; JWT и активность сеанса проверяются при каждом запросе. Пример заголовка: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (замените собственным токеном).",
         "security": [
           {
             "bearerAuth": []
@@ -6124,7 +6124,7 @@
             }
           },
           "400": {
-            "description": "INVALID_FIELD: installationId не удаётся разобрать как UUID.\nINVALID_JSON: Тело содержит синтаксически некорректный JSON либо некорректную последовательность UTF-8.",
+            "description": "INVALID_FIELD: installationId не записан как канонический UUID в нижнем регистре.\nINVALID_JSON: Тело содержит синтаксически некорректный JSON либо некорректную последовательность UTF-8.",
             "headers": {
               "X-Request-Id": {
                 "description": "Канонический UUID клиента либо UUID, созданный сервером.",
@@ -6141,7 +6141,7 @@
                 },
                 "examples": {
                   "INVALID_FIELD": {
-                    "summary": "installationId не удаётся разобрать как UUID.",
+                    "summary": "installationId не записан как канонический UUID в нижнем регистре.",
                     "value": {
                       "error": {
                         "code": "INVALID_FIELD",
@@ -6226,7 +6226,7 @@
             }
           },
           "409": {
-            "description": "DEVICE_TOKEN_IN_USE: Та же пара платформы и хеша токена уже активна у другой установки.",
+            "description": "DEVICE_TOKEN_IN_USE: Та же пара платформы и хеша токена уже активна у другой установки.\nSTALE_STATE: Сеанс старше последней принятой операции этой установки либо токен ранее заменён на этой установке.",
             "headers": {
               "X-Request-Id": {
                 "description": "Канонический UUID клиента либо UUID, созданный сервером.",
@@ -6248,6 +6248,18 @@
                       "error": {
                         "code": "DEVICE_TOKEN_IN_USE",
                         "message": "Токен уже привязан к установке",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  },
+                  "STALE_STATE": {
+                    "summary": "Сеанс старше последней принятой операции этой установки либо токен ранее заменён на этой установке.",
+                    "value": {
+                      "error": {
+                        "code": "STALE_STATE",
+                        "message": "Регистрация установки устарела",
                         "details": null,
                         "retryAfterSeconds": null
                       },
@@ -6407,7 +6419,7 @@
               "format": "uuid"
             },
             "example": "00000000-0000-4000-8000-000000000002",
-            "description": "Постоянный UUID, созданный для этой установки приложения."
+            "description": "Постоянный UUID, созданный для этой установки приложения. Используется каноническая запись UUID в нижнем регистре."
           },
           {
             "name": "X-Request-Id",
@@ -6494,7 +6506,7 @@
             }
           },
           "400": {
-            "description": "INVALID_FIELD: installationId не удаётся разобрать как UUID.",
+            "description": "INVALID_FIELD: installationId не записан как канонический UUID в нижнем регистре.",
             "headers": {
               "X-Request-Id": {
                 "description": "Канонический UUID клиента либо UUID, созданный сервером.",
@@ -6511,7 +6523,7 @@
                 },
                 "examples": {
                   "INVALID_FIELD": {
-                    "summary": "installationId не удаётся разобрать как UUID.",
+                    "summary": "installationId не записан как канонический UUID в нижнем регистре.",
                     "value": {
                       "error": {
                         "code": "INVALID_FIELD",
@@ -6642,7 +6654,7 @@
               "format": "uuid"
             },
             "example": "00000000-0000-4000-8000-000000000002",
-            "description": "Постоянный UUID, созданный для этой установки приложения."
+            "description": "Постоянный UUID, созданный для этой установки приложения. Используется каноническая запись UUID в нижнем регистре."
           },
           {
             "name": "X-Request-Id",
