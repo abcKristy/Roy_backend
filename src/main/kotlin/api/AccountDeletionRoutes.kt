@@ -32,7 +32,7 @@ internal fun Route.accountDeletionRoutes(service: AccountDeletionService, sessio
         call.response.header(HttpHeaders.CacheControl, "no-store")
         val identity = sessions.currentIdentity(call.request.headers[HttpHeaders.Authorization])
         val input = call.receiveStrictJson(AccountDeletionInput.serializer())
-        if (!input.confirm || input.currentPassword.isBlank() || input.currentPassword.length > 1024) {
+        if (!input.confirm || input.currentPassword.isEmpty() || input.currentPassword.length > 1024) {
             throw ApiException(HttpStatusCode.UnprocessableEntity, "INVALID_FIELD", "Подтвердите удаление и укажите пароль")
         }
         when (val result = service.delete(identity, input.currentPassword)) {

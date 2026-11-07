@@ -23,7 +23,7 @@ import com.example.persistence.withRetryingJdbcTransaction
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.sql.Connection
-import java.time.OffsetDateTime
+import java.time.Instant
 import java.util.UUID
 
 sealed interface AccountDeletionResult {
@@ -64,16 +64,17 @@ class AccountDeletionService(
 
         return database.withRetryingJdbcTransaction { connection ->
             val locked = connection.prepareStatement(
-                "SELECT password_hash,auth_version,avatar_object_key,deleted_at FROM users WHERE id=? FOR NO KEY UPDATE"
+                """SELECT password_hash,auth_version,avatar_object_key FROM users
+                   WHERE id=? AND deleted_at IS NULL FOR NO KEY UPDATE"""
             ).use { statement ->
                 statement.setObject(1, identity.userId)
                 statement.executeQuery().use { rows ->
-                    if (rows.next()) LockedUser(rows.getString(1), rows.getInt(2), rows.getString(3),
-                        rows.getObject(4, OffsetDateTime::class.java) != null) else null
+                    if (rows.next()) LockedUser(rows.getString(1), rows.getInt(2), rows.getString(3)) else null
                 }
             } ?: return@withRetryingJdbcTransaction AccountDeletionResult.SessionExpired
-            if (locked.deleted || locked.hash != snapshot.first || locked.authVersion != snapshot.second ||
-                !activeSession(connection, identity)) return@withRetryingJdbcTransaction AccountDeletionResult.SessionExpired
+            if (locked.hash != snapshot.first || locked.authVersion != snapshot.second ||
+                !activeSession(connection, identity) || !identity.accessExpiresAt.isAfter(Instant.now())
+            ) return@withRetryingJdbcTransaction AccountDeletionResult.SessionExpired
 
             // The actor lock stabilizes this set. Other writers serialize on point locks.
             val pointIds = ids(connection,
@@ -243,13 +244,15 @@ class AccountDeletionService(
         }
     }
 
-    private data class LockedUser(val hash: String, val authVersion: Int, val avatarKey: String?, val deleted: Boolean)
+    private data class LockedUser(val hash: String, val authVersion: Int, val avatarKey: String?)
 
     private fun activeSession(connection: Connection, identity: SessionIdentity): Boolean = connection.prepareStatement(
         """SELECT 1 FROM auth_sessions WHERE id=? AND user_id=? AND revoked_at IS NULL
-           AND expires_at>clock_timestamp()"""
+           AND expires_at>clock_timestamp() AND (auth_version IS NULL OR auth_version=?) FOR UPDATE"""
     ).use { statement ->
-        statement.setObject(1, identity.sessionId); statement.setObject(2, identity.userId)
+        statement.setObject(1, identity.sessionId)
+        statement.setObject(2, identity.userId)
+        statement.setInt(3, identity.authVersion)
         statement.executeQuery().use { it.next() }
     }
 

@@ -1,14 +1,18 @@
 package com.example.accounts
 
 import com.example.auth.Argon2idPasswordHasher
+import com.example.auth.PasswordHasher
 import com.example.auth.PasswordHashingWork
 import com.example.auth.SessionIdentity
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
 import com.example.persistence.HikariDatabaseBootstrap
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import java.sql.DriverManager
 import java.util.UUID
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -16,7 +20,7 @@ import kotlin.test.assertTrue
 
 class AccountDeletionServiceIntegrationTest {
     @Test
-    fun `deletion anonymizes shared graph and revokes all sessions`() = runBlocking {
+    fun `overlapping deletions anonymize the shared graph and revoke sessions once`() = runBlocking {
         val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step8delete$").matches(url))
         val dbUser = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
@@ -85,7 +89,20 @@ class AccountDeletionServiceIntegrationTest {
             val service = AccountDeletionService(it, PasswordHashingWork(hasher))
             val identity = SessionIdentity(actor, session, 0)
             assertEquals(AccountDeletionResult.WrongPassword, service.delete(identity, "wrong-password"))
-            assertIs<AccountDeletionResult.Deleted>(service.delete(identity, "correct-password"))
+            val bothVerified = CyclicBarrier(2)
+            val pausedHasher = object : PasswordHasher by hasher {
+                override fun verify(password: String, encodedHash: String): Boolean {
+                    val valid = hasher.verify(password, encodedHash)
+                    bothVerified.await(10, TimeUnit.SECONDS)
+                    return valid
+                }
+            }
+            val concurrentService = AccountDeletionService(it, PasswordHashingWork(pausedHasher))
+            val first = async { concurrentService.delete(identity, "correct-password") }
+            val second = async { concurrentService.delete(identity, "correct-password") }
+            val results = listOf(first.await(), second.await())
+            assertIs<AccountDeletionResult.Deleted>(results.single { it is AccountDeletionResult.Deleted })
+            assertEquals(1, results.count { it == AccountDeletionResult.SessionExpired })
             assertEquals(AccountDeletionResult.SessionExpired, service.delete(identity, "correct-password"))
         }
         DriverManager.getConnection(url, dbUser, dbPassword).use { connection ->

@@ -47,7 +47,7 @@ class AccountDeletionRoutesIntegrationTest {
                        VALUES (?,?,?,'Test',20,'draft',clock_timestamp(),clock_timestamp(),clock_timestamp())"""
                 ).use { statement ->
                     statement.setObject(1, actor); statement.setString(2, phone)
-                    statement.setString(3, hasher.hash("correct-password")); statement.executeUpdate()
+                    statement.setString(3, hasher.hash("        ")); statement.executeUpdate()
                 }
                 connection.prepareStatement(
                     """INSERT INTO auth_sessions(id,user_id,created_at,expires_at)
@@ -71,13 +71,13 @@ class AccountDeletionRoutesIntegrationTest {
                 setBody(body)
             }
             assertEquals(HttpStatusCode.UnprocessableEntity,
-                deletion("""{"currentPassword":"correct-password","confirm":false}""").status)
+                deletion("""{"currentPassword":"        ","confirm":false}""").status)
             assertEquals(HttpStatusCode.UnprocessableEntity,
                 deletion("""{"currentPassword":"incorrect","confirm":true}""").status)
             assertEquals(HttpStatusCode.NoContent,
-                deletion("""{"currentPassword":"correct-password","confirm":true}""").status)
+                deletion("""{"currentPassword":"        ","confirm":true}""").status)
             assertEquals(HttpStatusCode.Unauthorized,
-                deletion("""{"currentPassword":"correct-password","confirm":true}""").status)
+                deletion("""{"currentPassword":"        ","confirm":true}""").status)
         } finally { runtime.close() }
     }
 }
