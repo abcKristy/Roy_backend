@@ -24,7 +24,7 @@ Evidence: `auth/DraftPrivacyPolicy.kt`, `config/ServerConfig.kt`, `api/Routing.k
 
 ## Push-device registration does not call the push provider
 
-The authenticated `PUT /api/v1/me/push-devices/{installationId}` returns `503 PUSH_REGISTRATION_FAILED` when the backend has no encryption key. With a configured key it validates the platform/provider pair and token syntax, encrypts the token and checks local uniqueness. It returns `409 DEVICE_TOKEN_IN_USE` for a duplicate active token and `409 STALE_STATE` for an older session or a previously replaced token. Calls to RuStore/APNs are deferred until the provider adapters and push worker are wired into the server runtime.
+The authenticated `PUT /api/v1/me/push-devices/{installationId}` returns `503 PUSH_REGISTRATION_FAILED` when the backend has no encryption key. With a configured key it validates the platform/provider pair and token syntax, encrypts the token and checks local uniqueness. It returns `409 DEVICE_TOKEN_IN_USE` for a duplicate active token and `409 STALE_STATE` for an older session or a previously replaced token. Registration stores the token locally. In `APP_ENV=production`, the backend starts `PushDeliveryWorker` when an encryption key and a complete RuStore or APNs configuration are supplied. The worker sends queued notifications only for configured providers. Live delivery to devices belongs to acceptance in the target environment.
 
 Evidence includes `api/DeviceRoutes.kt`, `devices/DeviceService.kt`, `jobs/PushDeliveryWorker.kt`, `api/DeviceRegistrationSecurityIntegrationTest.kt`, and `api/PushTokenEncryptionIntegrationTest.kt`.
 
