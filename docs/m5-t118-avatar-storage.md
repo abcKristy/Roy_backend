@@ -30,8 +30,8 @@ $env:JAVA_HOME = 'C:/Program Files/Java/jdk-17'
 
 The tests compiled unsuccessfully before the adapter and configuration existed. The first post-implementation run exposed the SDK's default signed chunk framing in the upload body. The passing run configured fixed-length uploads and exercised the Apache 5 client. The error assertion permits coroutine stacktrace recovery to copy the sanitized exception while checking the entire cause chain for provider exceptions.
 
-## External acceptance for BG-1
+## External acceptance on stages 4–5
 
-**BLOCKED.** A private Yandex test bucket, its KMS key and scoped service account access were unavailable. Authenticated write, byte-for-byte read, delete and repeated delete, anonymous read/list denial, and actual KMS encryption have no live provider evidence. The loopback server exercises request/response handling locally and does not satisfy this criterion.
+A private Yandex bucket, its KMS key and scoped service account access are provisioned at stage 4. Authenticated write, byte-for-byte read, delete and repeated delete, anonymous read/list denial, and actual KMS encryption have no live provider evidence. The loopback server exercises request/response handling locally and does not satisfy this criterion.
 
 Planning files under `spec/plans/` and `project/postman/Рой.postman_collection.json` live outside backend Git. Swagger fragments under `docs/openapi/` and generated `docs/openapi.json` are versioned in backend Git. T118 adds no HTTP operation.

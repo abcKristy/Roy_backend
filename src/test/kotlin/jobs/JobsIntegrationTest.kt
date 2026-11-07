@@ -162,6 +162,91 @@ class JobsIntegrationTest {
         }
     }
 
+    @Test
+    fun `retention leaves unresolved avatar erasure available for retry`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val job = UUID.randomUUID()
+        connection(dbUrl).use { c ->
+            c.prepareStatement(
+                """INSERT INTO media_deletion_jobs(id,object_key,status,attempts,next_attempt_at,created_at,completed_at)
+                   VALUES (?,?,'FAILED',5,clock_timestamp(),clock_timestamp()-interval '35 days',
+                   clock_timestamp()-interval '31 days')"""
+            ).use {
+                it.setObject(1, job)
+                it.setString(2, UUID.randomUUID().toString())
+                it.executeUpdate()
+            }
+        }
+        runtime(dbUrl).use { database ->
+            RetentionCleanup(database).runBatch()
+            val worker = MediaDeletionWorker(database, MediaStore { MediaDeleteResult.AlreadyMissing })
+            assertTrue(worker.retryFailed(job))
+            assertEquals(1, worker.processBatch())
+            assertEquals(1L, worker.snapshot().done)
+        }
+    }
+
+    @Test
+    fun `media failure stays pending and an expired lease cannot acknowledge completion`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val job = UUID.randomUUID()
+        val objectKey = UUID.randomUUID().toString()
+        fun update(sql: String) = connection(dbUrl).use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                statement.setObject(1, job)
+                statement.executeUpdate()
+            }
+        }
+        fun status() = connection(dbUrl).use { connection ->
+            connection.prepareStatement("SELECT status FROM media_deletion_jobs WHERE id=?").use { statement ->
+                statement.setObject(1, job)
+                statement.executeQuery().use { rows -> assertTrue(rows.next()); rows.getString(1) }
+            }
+        }
+        connection(dbUrl).use { connection ->
+            connection.prepareStatement(
+                """INSERT INTO media_deletion_jobs(id,object_key,status,attempts,next_attempt_at,created_at)
+                   VALUES (?,?,'PENDING',0,clock_timestamp(),clock_timestamp())"""
+            ).use { statement ->
+                statement.setObject(1, job)
+                statement.setString(2, objectKey)
+                statement.executeUpdate()
+            }
+        }
+        try {
+            runtime(dbUrl).use { database ->
+                val failing = MediaDeletionWorker(database, MediaStore { key ->
+                    assertEquals(objectKey, key)
+                    MediaDeleteResult.Retryable
+                })
+                assertEquals(1, failing.processBatch())
+                assertEquals("PENDING", status())
+                assertEquals(1L, failing.snapshot().retried)
+                update("UPDATE media_deletion_jobs SET next_attempt_at=clock_timestamp() WHERE id=?")
+
+                val late = MediaDeletionWorker(database, MediaStore { key ->
+                    assertEquals(objectKey, key)
+                    update("UPDATE media_deletion_jobs SET lease_until=clock_timestamp() WHERE id=?")
+                    MediaDeleteResult.Deleted
+                })
+                assertEquals(1, late.processBatch())
+                assertEquals("PROCESSING", status())
+                assertEquals(0L, late.snapshot().done)
+            }
+            runtime(dbUrl).use { restartedDatabase ->
+                val restarted = MediaDeletionWorker(restartedDatabase, MediaStore { key ->
+                    assertEquals(objectKey, key)
+                    MediaDeleteResult.AlreadyMissing
+                })
+                assertEquals(1, restarted.processBatch())
+                assertEquals(1L, restarted.snapshot().reclaimed)
+                assertEquals("DONE", status())
+            }
+        } finally {
+            update("DELETE FROM media_deletion_jobs WHERE id=?")
+        }
+    }
+
     private fun checkedUrl(): String? {
         val value = url
         require(value.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step7jobs$")))
@@ -210,7 +295,7 @@ class JobsIntegrationTest {
                (id,recipient_user_id,channel,event_type,dedupe_key,point_id,chat_id,display_snapshot,
                 visible_in_app,push_requested,created_at)
                VALUES (?,?,'PERSONAL','chat_message',?, ?,?,'{"title":"Test","body":"Test"}'::jsonb,
-                 true,true,clock_timestamp())"""
+                 true,true,clock_timestamp()-interval '2 hours')"""
         ).use { s ->
             s.setObject(1, event); s.setObject(2, account); s.setString(3, "job:$job")
             s.setObject(4, point); s.setObject(5, chat); s.executeUpdate()

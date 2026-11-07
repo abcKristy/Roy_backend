@@ -23,7 +23,7 @@ class RetentionCleanup(private val database: DatabaseRuntime) {
                 pushJobs = delete("push_delivery_jobs",
                     "status IN ('SENT','FAILED','CANCELLED') AND completed_at<clock_timestamp()-interval '30 days'"),
                 mediaJobs = delete("media_deletion_jobs",
-                    "status IN ('DONE','FAILED','CANCELLED') AND completed_at<clock_timestamp()-interval '30 days'"),
+                    "status='DONE' AND completed_at<clock_timestamp()-interval '30 days'"),
             )
         }
     }

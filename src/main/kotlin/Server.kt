@@ -39,6 +39,8 @@ import com.example.jobs.ReminderScheduler
 import com.example.jobs.ProposalExpiryScheduler
 import com.example.jobs.NotificationBroadcaster
 import com.example.jobs.RetentionCleanup
+import com.example.jobs.AvatarMediaStore
+import com.example.jobs.MediaDeletionWorker
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -61,6 +63,9 @@ internal fun Application.configuredModule(config: ServerConfig) {
     var cloudAvatarStore: YandexAvatarStore? = null
     try {
         cloudAvatarStore = config.avatarObjectStorage?.let { YandexAvatarStore(it) }
+        val avatarStore = if (config.appEnvironment == AppEnvironment.LOCAL) {
+            LocalAvatarStore(Path.of(".local", "avatars"))
+        } else cloudAvatarStore
         configureTransport()
         installRealtimeTransport()
         val passwordHashing = PasswordHashingWork(Argon2idPasswordHasher())
@@ -81,6 +86,7 @@ internal fun Application.configuredModule(config: ServerConfig) {
                 ))
             }),
             cleanup = RetentionCleanup(database),
+            media = avatarStore?.let { MediaDeletionWorker(database, AvatarMediaStore(it)) },
             onExpired = { expired ->
                 expired.forEach { item ->
                     val messagePayload = buildJsonObject {
@@ -150,9 +156,7 @@ internal fun Application.configuredModule(config: ServerConfig) {
             deviceService = deviceTokenCipher?.let { DeviceService(database, it) },
             profileService = ProfileService(
                 database, passwordHashing,
-                avatarStore = if (config.appEnvironment == AppEnvironment.LOCAL) {
-                    LocalAvatarStore(Path.of(".local", "avatars"))
-                } else cloudAvatarStore,
+                avatarStore = avatarStore,
             ),
             accountDeletionService = AccountDeletionService(database, passwordHashing),
             realtimeHub = realtimeHub,

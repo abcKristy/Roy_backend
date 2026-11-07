@@ -1,6 +1,7 @@
 package com.example.jobs
 
 import com.example.persistence.DatabaseRuntime
+import com.example.storage.AvatarStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
@@ -18,6 +19,14 @@ sealed interface MediaDeleteResult {
 /** A missing object is a successful idempotent delete. */
 fun interface MediaStore {
     suspend fun deleteIfExists(objectKey: String): MediaDeleteResult
+}
+
+class AvatarMediaStore(private val store: AvatarStore) : MediaStore {
+    override suspend fun deleteIfExists(objectKey: String): MediaDeleteResult {
+        // The avatar adapter treats a missing object as a successful delete.
+        store.delete(objectKey)
+        return MediaDeleteResult.Deleted
+    }
 }
 
 data class MediaDeletionSnapshot(val done: Long, val retried: Long, val failed: Long, val reclaimed: Long)
@@ -44,26 +53,32 @@ class MediaDeletionWorker(
     suspend fun processBatch(limit: Int = 20): Int {
         require(limit in 1..100)
         reclaimExpired(limit)
-        val claims = database.withJdbcTransaction { connection ->
-            connection.prepareStatement(
-                """WITH due AS (
-                     SELECT id FROM media_deletion_jobs
-                     WHERE status='PENDING' AND next_attempt_at<=clock_timestamp()
-                     ORDER BY next_attempt_at,id FOR UPDATE SKIP LOCKED LIMIT ?
-                   ) UPDATE media_deletion_jobs AS j
-                   SET status='PROCESSING',attempts=j.attempts+1,completed_at=NULL,claim_token=gen_random_uuid(),
-                       lease_until=clock_timestamp()+(? * interval '1 second')
-                   FROM due WHERE j.id=due.id RETURNING j.id,j.claim_token,j.object_key"""
-            ).use { statement ->
-                statement.setInt(1, limit); statement.setInt(2, leaseSeconds)
-                statement.executeQuery().use { rows -> buildList {
-                    while (rows.next()) add(Claim(rows.getObject(1, UUID::class.java),
-                        rows.getObject(2, UUID::class.java), rows.getString(3)))
-                } }
+        var processed = 0
+        repeat(limit) {
+            val claim = claimNext() ?: return processed
+            processOne(claim)
+            processed++
+        }
+        return processed
+    }
+
+    private suspend fun claimNext(): Claim? = database.withJdbcTransaction { connection ->
+        connection.prepareStatement(
+            """WITH due AS (
+                 SELECT id FROM media_deletion_jobs
+                 WHERE status='PENDING' AND next_attempt_at<=clock_timestamp()
+                 ORDER BY next_attempt_at,id FOR UPDATE SKIP LOCKED LIMIT 1
+               ) UPDATE media_deletion_jobs AS j
+               SET status='PROCESSING',attempts=j.attempts+1,completed_at=NULL,claim_token=gen_random_uuid(),
+                   lease_until=clock_timestamp()+(? * interval '1 second')
+               FROM due WHERE j.id=due.id RETURNING j.id,j.claim_token,j.object_key"""
+        ).use { statement ->
+            statement.setInt(1, leaseSeconds)
+            statement.executeQuery().use { rows ->
+                if (rows.next()) Claim(rows.getObject(1, UUID::class.java),
+                    rows.getObject(2, UUID::class.java), rows.getString(3)) else null
             }
         }
-        claims.forEach { processOne(it) }
-        return claims.size
     }
 
     suspend fun reclaimExpired(limit: Int = 100): Int {
@@ -104,16 +119,7 @@ class MediaDeletionWorker(
     private data class Claim(val id: UUID, val token: UUID, val objectKey: String)
 
     private suspend fun processOne(claim: Claim) {
-        val active = database.withReadOnlyJdbcTransaction { connection ->
-            connection.prepareStatement(
-                """SELECT 1 FROM media_deletion_jobs WHERE id=? AND claim_token=?
-                   AND status='PROCESSING' AND lease_until>clock_timestamp()"""
-            ).use { statement ->
-                statement.setObject(1, claim.id); statement.setObject(2, claim.token)
-                statement.executeQuery().use { it.next() }
-            }
-        }
-        if (!active) return
+        if (!renewLease(claim.id, claim.token)) return
         val result = try {
             withTimeout(storeTimeoutMillis) { store.deleteIfExists(claim.objectKey) }
         } catch (timeout: TimeoutCancellationException) {
@@ -151,7 +157,7 @@ class MediaDeletionWorker(
                completed_at=CASE WHEN ? IN ('DONE','FAILED','CANCELLED')
                  THEN clock_timestamp() ELSE NULL END,
                next_attempt_at=clock_timestamp()+(? * interval '1 second')
-               WHERE id=? AND claim_token=? AND status='PROCESSING'"""
+               WHERE id=? AND claim_token=? AND status='PROCESSING' AND lease_until>clock_timestamp()"""
         ).use { statement ->
             statement.setString(1, effective); statement.setString(2, effective); statement.setLong(3, delay)
             statement.setObject(4, claim.id); statement.setObject(5, claim.token)
