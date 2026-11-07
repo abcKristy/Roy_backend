@@ -16,10 +16,13 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.put
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonTransformingSerializer
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
@@ -29,6 +32,17 @@ private data class NotificationSettingsInput(
     val remindersPushEnabled: Boolean, val personalPushEnabled: Boolean,
     val extraPushEnabled: Boolean, val extraInAppEnabled: Boolean, val expectedRevision: Long,
 )
+
+private object NotificationSettingsInputSerializer :
+    JsonTransformingSerializer<NotificationSettingsInput>(NotificationSettingsInput.serializer()) {
+    override fun transformDeserialize(element: JsonElement): JsonElement {
+        // The standard decoder also coerces quoted strings to Booleans and Longs.
+        if ((element as? JsonObject)?.values?.any { it is JsonPrimitive && it.isString } == true) {
+            throw SerializationException("Expected JSON booleans and an integer revision")
+        }
+        return element
+    }
+}
 
 @Serializable private data class LocationPositionInput(val lat: Double, val lon: Double)
 @Serializable private data class NotificationLocationInput(val position: LocationPositionInput)
@@ -41,15 +55,17 @@ internal fun Route.notificationRoutes(service: NotificationService, sessions: Se
     }
     put("/api/v1/me/notification-settings") {
         val actor = notificationActor(sessions, call.request.headers[HttpHeaders.Authorization])
-        val input = call.receiveStrictJson(NotificationSettingsInput.serializer())
+        val input = call.receiveStrictJson(NotificationSettingsInputSerializer)
         if (input.expectedRevision < 0) throw invalidNotificationField()
         when (val result = service.updateSettings(actor, NotificationSettingsChange(
             input.remindersPushEnabled, input.personalPushEnabled,
             input.extraPushEnabled, input.extraInAppEnabled, input.expectedRevision,
         ))) {
             is SettingsUpdateResult.Updated -> call.respond(settingsJson(result.settings))
-            SettingsUpdateResult.Stale -> throw ApiException(
-                HttpStatusCode.Conflict, "STALE_STATE", "Настройки изменились. Обновите их перед сохранением")
+            is SettingsUpdateResult.Stale -> throw ApiException(
+                HttpStatusCode.Conflict, "STALE_STATE", "Настройки изменились. Обновите их перед сохранением",
+                details = settingsJson(result.settings),
+            )
             SettingsUpdateResult.Unavailable -> throw notificationUnavailable()
         }
     }
