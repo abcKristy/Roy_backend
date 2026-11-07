@@ -3245,7 +3245,7 @@
             }
           },
           "422": {
-            "description": "INVALID_FIELD: expectedRevision отрицательна.\nINVALID_FIELD: Синтаксически корректный JSON содержит неизвестные поля, не содержит обязательных полей либо содержит поля неверного типа.",
+            "description": "INVALID_FIELD: expectedRevision отрицательна.\nINVALID_FIELD: Синтаксически корректный JSON содержит неизвестные поля, не содержит обязательных полей либо содержит поля неверного типа. Для флагов передаются JSON boolean, для expectedRevision — целое число Int64. Строки в кавычках отклоняются.",
             "headers": {
               "X-Request-Id": {
                 "description": "Канонический UUID клиента либо UUID, созданный сервером.",
@@ -3274,7 +3274,7 @@
                     }
                   },
                   "INVALID_FIELD_2": {
-                    "summary": "Синтаксически корректный JSON содержит неизвестные поля, не содержит обязательных полей либо содержит поля неверного типа.",
+                    "summary": "Синтаксически корректный JSON содержит неизвестные поля, не содержит обязательных полей либо содержит поля неверного типа. Для флагов передаются JSON boolean, для expectedRevision — целое число Int64. Строки в кавычках отклоняются.",
                     "value": {
                       "error": {
                         "code": "INVALID_FIELD",
@@ -3290,7 +3290,7 @@
             }
           },
           "409": {
-            "description": "STALE_STATE: expectedRevision не совпадает с текущей сохранённой revision.",
+            "description": "STALE_STATE: expectedRevision не совпадает с текущей сохранённой revision. В error.details возвращаются четыре текущих флага каналов и revision из заблокированной строки аккаунта.",
             "headers": {
               "X-Request-Id": {
                 "description": "Канонический UUID клиента либо UUID, созданный сервером.",
@@ -3303,16 +3303,40 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "const": "STALE_STATE"
+                            },
+                            "details": {
+                              "$ref": "#/components/schemas/IdentityNotificationSettings"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
                 },
                 "examples": {
                   "STALE_STATE": {
-                    "summary": "expectedRevision не совпадает с текущей сохранённой revision.",
+                    "summary": "Текущие настройки аккаунта при конфликте ревизий.",
                     "value": {
                       "error": {
                         "code": "STALE_STATE",
                         "message": "Настройки изменились. Обновите их перед сохранением",
-                        "details": null,
+                        "details": {
+                          "remindersPushEnabled": true,
+                          "personalPushEnabled": false,
+                          "extraPushEnabled": false,
+                          "extraInAppEnabled": true,
+                          "revision": 1
+                        },
                         "retryAfterSeconds": null
                       },
                       "requestId": "00000000-0000-4000-8000-000000000099"
@@ -3501,7 +3525,9 @@
                   },
                   "expectedRevision": {
                     "type": "integer",
-                    "minimum": 0
+                    "minimum": 0,
+                    "format": "int64",
+                    "maximum": 9223372036854775807
                   }
                 },
                 "required": [
@@ -5152,7 +5178,9 @@
           },
           "revision": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "format": "int64",
+            "maximum": 9223372036854775807
           }
         },
         "required": [

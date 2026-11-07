@@ -26,7 +26,7 @@ data class NotificationSettingsChange(
 
 sealed interface SettingsUpdateResult {
     data class Updated(val settings: NotificationSettingsView) : SettingsUpdateResult
-    data object Stale : SettingsUpdateResult
+    data class Stale(val settings: NotificationSettingsView) : SettingsUpdateResult
     data object Unavailable : SettingsUpdateResult
 }
 
@@ -61,16 +61,13 @@ class NotificationService(
     }
 
     suspend fun updateSettings(userId: UUID, change: NotificationSettingsChange): SettingsUpdateResult {
-        if (change.expectedRevision < 0) return SettingsUpdateResult.Stale
         return database.withRetryingJdbcTransaction { connection ->
             if (!lockActiveUser(connection, userId)) return@withRetryingJdbcTransaction SettingsUpdateResult.Unavailable
-            val current = connection.prepareStatement(
-                """SELECT revision FROM notification_settings WHERE user_id=? FOR UPDATE"""
-            ).use { statement ->
-                statement.setObject(1, userId)
-                statement.executeQuery().use { rows -> if (rows.next()) rows.getLong(1) else null }
-            } ?: return@withRetryingJdbcTransaction SettingsUpdateResult.Unavailable
-            if (current != change.expectedRevision) return@withRetryingJdbcTransaction SettingsUpdateResult.Stale
+            val current = readSettings(connection, userId, forUpdate = true)
+                ?: return@withRetryingJdbcTransaction SettingsUpdateResult.Unavailable
+            if (current.revision != change.expectedRevision) {
+                return@withRetryingJdbcTransaction SettingsUpdateResult.Stale(current)
+            }
             connection.prepareStatement(
                 """UPDATE notification_settings SET reminders_push_enabled=?,personal_push_enabled=?,
                    extra_push_enabled=?,extra_in_app_enabled=?,revision=revision+1,updated_at=clock_timestamp()
@@ -190,9 +187,13 @@ class NotificationService(
         }
     }
 
-    private fun readSettings(connection: Connection, userId: UUID): NotificationSettingsView? = connection.prepareStatement(
+    private fun readSettings(
+        connection: Connection,
+        userId: UUID,
+        forUpdate: Boolean = false,
+    ): NotificationSettingsView? = connection.prepareStatement(
         """SELECT reminders_push_enabled,personal_push_enabled,extra_push_enabled,extra_in_app_enabled,revision
-           FROM notification_settings WHERE user_id=?"""
+           FROM notification_settings WHERE user_id=?""" + if (forUpdate) " FOR UPDATE" else ""
     ).use { statement ->
         statement.setObject(1, userId)
         statement.executeQuery().use { rows -> if (rows.next()) NotificationSettingsView(
