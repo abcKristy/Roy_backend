@@ -26,9 +26,13 @@ class JdbcNotificationWriterIntegrationTest {
                 val member = UUID.randomUUID()
                 val near = UUID.randomUUID()
                 val far = UUID.randomUUID()
+                val boundary = UUID.randomUUID()
+                val staleConsent = UUID.randomUUID()
                 val noOptIn = UUID.randomUUID()
                 val former = UUID.randomUUID()
-                listOf(actor, member, near, far, noOptIn, former).forEach { insertRecipient(connection, it) }
+                listOf(actor, member, near, boundary, far, staleConsent, noOptIn, former)
+                    .forEach { insertRecipient(connection, it) }
+                execute(connection, "UPDATE users SET accepted_privacy_version='old' WHERE id=?", staleConsent)
                 val point = UUID.randomUUID()
                 val topic = UUID.randomUUID()
                 val chat = UUID.randomUUID()
@@ -56,22 +60,25 @@ class JdbcNotificationWriterIntegrationTest {
                        VALUES (?,?,?,clock_timestamp() + interval '1 day',
                                clock_timestamp() + interval '1 day 1 hour',clock_timestamp(),clock_timestamp())""",
                     proposal, chat, actor)
-                listOf(actor, member, near, noOptIn, former).forEach { id ->
+                listOf(actor, member, staleConsent, noOptIn, former).forEach { id ->
                     execute(connection,
                         """INSERT INTO notification_locations (user_id,position,updated_at)
                            VALUES (?,ST_SetSRID(ST_MakePoint(37.6184,55.7512),4326)::geography,clock_timestamp())""",
                         id)
                 }
-                execute(connection,
-                    """INSERT INTO notification_locations (user_id,position,updated_at)
-                       VALUES (?,ST_SetSRID(ST_MakePoint(37.8,55.7512),4326)::geography,clock_timestamp())""",
-                    far)
-                listOf(actor, member, near, far, former).forEach { id -> execute(connection,
+                for ((id, distance) in listOf(near to 999.0, boundary to 1000.0, far to 1000.001)) {
+                    execute(connection,
+                        """INSERT INTO notification_locations (user_id,position,updated_at)
+                           VALUES (?,ST_Project(ST_SetSRID(ST_MakePoint(37.6184,55.7512),4326)::geography,
+                                                ?,radians(90)),clock_timestamp())""",
+                        id, distance)
+                }
+                listOf(actor, member, near, boundary, far, staleConsent, former).forEach { id -> execute(connection,
                     "UPDATE notification_settings SET extra_in_app_enabled = true WHERE user_id = ?", id) }
 
                 val recipients = JdbcNotificationRecipients()
                 assertEquals(listOf(member), recipients.activeChatMembers(connection, chat, actor))
-                assertEquals(setOf(near, former), recipients.nearbyForProposal(connection, proposal).toSet())
+                assertEquals(setOf(near, boundary, former), recipients.nearbyForProposal(connection, proposal, "test").toSet())
             } finally {
                 connection.rollback()
             }
@@ -213,7 +220,7 @@ class JdbcNotificationWriterIntegrationTest {
         }
     }
 
-    private fun execute(connection: Connection, sql: String, vararg values: UUID) {
+    private fun execute(connection: Connection, sql: String, vararg values: Any) {
         connection.prepareStatement(sql).use { statement ->
             values.forEachIndexed { index, value -> statement.setObject(index + 1, value) }
             statement.executeUpdate()

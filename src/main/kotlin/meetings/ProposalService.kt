@@ -42,6 +42,7 @@ class ProposalService(
     private val clock: Clock? = null,
     private val cancellationPolicy: BookingCancellationPolicy = BookingCancellationPolicy(),
     private val voteClock: Clock? = null,
+    private val locationPrivacyVersion: String? = null,
 ) {
     private val cursors = ChatCursorCodec(cursorSecret)
 
@@ -163,22 +164,30 @@ class ProposalService(
             val draft = SystemMessageDraft(SystemMessageKind.MEETING_PROPOSED, command.actorId,
                 pointId, command.chatId, proposalId = id, startsAt = startsAt, endsAt = endsAt)
             val emission = MeetingEmission(systemMessages.append(connection, UUID.randomUUID(), draft), draft)
-            val nearbyIds = recipients.nearbyForProposal(connection, id)
-            val barrier = RecipientBarrier.acquire(connection, nearbyIds.map { RecipientLockClaim(it, RecipientLockMode.SHARED) })
-            nearbyIds.forEach { recipientId ->
-                notifications.write(connection, barrier, NotificationEventDraft(
-                    recipientId, NotificationEventType.NEARBY_MEETING, "nearby:$id",
-                    buildJsonObject {
-                        put("title", "Встреча рядом")
-                        put("body", "Рядом предложена встреча")
-                    }, pointId = pointId, proposalId = id,
-                ))
-            }
+            enqueueNearby(connection, id, pointId)
             val view = checkNotNull(projection.read(connection, id, command.actorId))
             val snapshot = buildJsonObject { put("status", 201); put("body", successBody(connection, view)) }
             idempotency.recordSuccess(connection, command.actorId, "create_proposal", command.idempotencyKey,
                 hash, id, snapshot)
             CreateProposalResult.Created(view, snapshot, listOf(emission))
+        }
+    }
+
+    private fun enqueueNearby(connection: Connection, proposalId: UUID, pointId: UUID) {
+        val policyVersion = locationPrivacyVersion ?: return
+        val recipientIds = recipients.nearbyForProposal(connection, proposalId, policyVersion)
+        if (recipientIds.isEmpty()) return
+
+        val snapshot = buildJsonObject {
+            put("title", "Встреча рядом")
+            put("body", "Рядом предложена встреча")
+        }
+        val barrier = RecipientBarrier.acquire(connection, recipientIds.map { RecipientLockClaim(it, RecipientLockMode.SHARED) })
+        recipientIds.forEach { recipientId ->
+            notifications.write(connection, barrier, NotificationEventDraft(
+                recipientId, NotificationEventType.NEARBY_MEETING, "nearby:$proposalId", snapshot,
+                pointId = pointId, proposalId = proposalId,
+            ))
         }
     }
 

@@ -148,7 +148,7 @@ internal fun Application.configuredModule(config: ServerConfig) {
             moderationService = ModerationService(database),
             chatReadService = ChatReadService(database, config.jwtSecret),
             chatSendService = ChatSendService(database, MessageContentPolicy()),
-            proposalService = ProposalService(database, config.jwtSecret),
+            proposalService = ProposalService(database, config.jwtSecret, locationPrivacyVersion = draftPolicy?.version),
             bookingService = BookingService(database),
             notificationService = NotificationService(
                 database, config.jwtSecret, locationPrivacyVersion = draftPolicy?.version,

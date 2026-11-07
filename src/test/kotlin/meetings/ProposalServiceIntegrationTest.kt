@@ -2,6 +2,10 @@ package com.example.meetings
 
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
+import com.example.notifications.LocationWriteResult
+import com.example.notifications.NotificationService
+import com.example.notifications.NotificationSettingsChange
+import com.example.notifications.SettingsUpdateResult
 import com.example.persistence.HikariDatabaseBootstrap
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.buildJsonObject
@@ -27,12 +31,13 @@ class ProposalServiceIntegrationTest {
         val creator = UUID.randomUUID()
         val voter = UUID.randomUUID()
         val nearby = UUID.randomUUID()
+        val late = UUID.randomUUID()
         val pointId = UUID.randomUUID()
         val topicId = UUID.randomUUID()
         val chatId = UUID.randomUUID()
         DriverManager.getConnection(url, user, password).use { connection ->
             connection.autoCommit = false
-            listOf(creator, voter, nearby).forEach { addUser(connection, it) }
+            listOf(creator, voter, nearby, late).forEach { addUser(connection, it) }
             connection.prepareStatement(
                 """UPDATE notification_settings SET extra_in_app_enabled=true WHERE user_id=?"""
             ).use { statement -> statement.setObject(1, nearby); statement.executeUpdate() }
@@ -61,7 +66,7 @@ class ProposalServiceIntegrationTest {
         val database = HikariDatabaseBootstrap(ServerConfig(url, user, password, secret,
             appEnvironment = AppEnvironment.PRODUCTION)).start()
         try {
-            val service = ProposalService(database, secret)
+            val service = ProposalService(database, secret, locationPrivacyVersion = "test")
             val start = Instant.now().plusSeconds(7_200)
             val command = CreateProposalCommand(creator, chatId, UUID.randomUUID(), start, start.plusSeconds(3_600))
             val created = assertIs<CreateProposalResult.Created>(service.create(command) { _, view ->
@@ -71,6 +76,10 @@ class ProposalServiceIntegrationTest {
             assertEquals(0, created.proposal.goingCount)
             assertEquals(0, created.proposal.revision)
             assertEquals("meeting_proposed", created.emissions.single().draft.kind.databaseValue)
+            val locations = NotificationService(database, secret, "test")
+            assertIs<SettingsUpdateResult.Updated>(locations.updateSettings(late,
+                NotificationSettingsChange(true, true, false, true, 0)))
+            assertIs<LocationWriteResult.Updated>(locations.setLocation(late, 55.75, 37.62))
             assertIs<CreateProposalResult.Replay>(service.create(command) { _, view ->
                 buildJsonObject { put("id", view.id.toString()) }
             })
@@ -111,6 +120,7 @@ class ProposalServiceIntegrationTest {
             assertEquals("meeting_booking_cancelled", afterUnvote.emissions.single().draft.kind.databaseValue)
             DriverManager.getConnection(url, user, password).use { connection ->
                 assertEquals(1, count(connection, "notification_events", "recipient_user_id", nearby))
+                assertEquals(0, count(connection, "notification_events", "recipient_user_id", late))
                 assertEquals(1, count(connection, "meeting_proposals", "chat_id", chatId))
                 assertEquals(1, count(connection, "votes", "proposal_id", created.proposal.id))
                 connection.prepareStatement("SELECT status,cancel_reason FROM bookings WHERE id=?").use { statement ->
@@ -121,6 +131,13 @@ class ProposalServiceIntegrationTest {
                         assertEquals("INSUFFICIENT_VOTES", rows.getString(2))
                     }
                 }
+            }
+            assertIs<CreateProposalResult.Created>(ProposalService(database, secret).create(
+                command.copy(idempotencyKey = UUID.randomUUID()),
+            ) { _, view -> buildJsonObject { put("id", view.id.toString()) } })
+            DriverManager.getConnection(url, user, password).use { connection ->
+                assertEquals(1, count(connection, "notification_events", "recipient_user_id", nearby))
+                assertEquals(0, count(connection, "notification_events", "recipient_user_id", late))
             }
         } finally {
             database.close()

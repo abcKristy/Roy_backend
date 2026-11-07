@@ -42,7 +42,7 @@ class ProposalEventsIntegrationTest {
                 configureTransport()
                 installRealtimeTransport()
                 configureRouting(f.runtime, sessionAccess = access, realtimeHub = hub,
-                    proposalService = ProposalService(f.runtime, f.secret), bookingService = BookingService(f.runtime),
+                    proposalService = ProposalService(f.runtime, f.secret, locationPrivacyVersion = "test"), bookingService = BookingService(f.runtime),
                     notificationService = NotificationService(f.runtime, f.secret))
             }
             val sockets = mutableListOf<WebSocket>()
