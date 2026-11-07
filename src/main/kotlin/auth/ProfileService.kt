@@ -3,6 +3,9 @@ package com.example.auth
 import com.example.api.ApiException
 import com.example.persistence.DatabaseRuntime
 import com.example.persistence.withRetryingJdbcTransaction
+import com.example.storage.AvatarImage
+import com.example.storage.AvatarStorageException
+import com.example.storage.AvatarStore
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.Serializable
 import java.sql.Connection
@@ -21,7 +24,18 @@ data class ChangePasswordRequest(val currentPassword: String, val newPassword: S
 class ProfileService(
     private val database: DatabaseRuntime,
     private val passwordHashing: PasswordHashingWork,
+    private val avatarStore: AvatarStore? = null,
 ) {
+    /** Stages a processed object before any profile transaction. The key stays server-side. */
+    internal suspend fun stageAvatar(image: AvatarImage): String {
+        val store = avatarStore ?: avatarStorageUnavailable()
+        return try {
+            store.save(image)
+        } catch (_: AvatarStorageException) {
+            avatarStorageUnavailable()
+        }
+    }
+
     suspend fun updateName(identity: SessionIdentity, request: UpdateProfileRequest): UserSelf {
         val name = request.displayName.trim()
         if (name.codePointCount(0, name.length) !in 1..80 ||
@@ -133,5 +147,9 @@ class ProfileService(
 
     private fun invalidField(): Nothing = throw ApiException(
         HttpStatusCode.UnprocessableEntity, "INVALID_FIELD", "Некорректные данные",
+    )
+
+    private fun avatarStorageUnavailable(): Nothing = throw ApiException(
+        HttpStatusCode.ServiceUnavailable, "AVATAR_STORAGE_UNAVAILABLE", "Хранилище фотографий недоступно",
     )
 }

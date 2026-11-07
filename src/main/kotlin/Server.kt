@@ -13,6 +13,7 @@ import com.example.auth.ProfileService
 import com.example.accounts.AccountDeletionService
 import com.example.auth.SessionAccessService
 import com.example.auth.RefreshService
+import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
 import com.example.persistence.HikariDatabaseBootstrap
 import com.example.persistence.JdbcRegistrationRepository
@@ -45,8 +46,10 @@ import kotlinx.serialization.json.put
 import java.util.UUID
 import com.example.realtime.installRealtimeTransport
 import com.example.geocoding.DaDataReverseGeocoder
+import com.example.storage.LocalAvatarStore
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
+import java.nio.file.Path
 
 /** Ktor composition root. Migrations must succeed before routes are installed. */
 fun Application.module() {
@@ -142,7 +145,12 @@ fun Application.module() {
             deviceService = config.pushTokenEncryptionKeyBase64?.let { key ->
                 DeviceService(database, DeviceTokenCipher.fromBase64(key))
             },
-            profileService = ProfileService(database, passwordHashing),
+            profileService = ProfileService(
+                database, passwordHashing,
+                avatarStore = if (config.appEnvironment == AppEnvironment.LOCAL) {
+                    LocalAvatarStore(Path.of(".local", "avatars"))
+                } else null,
+            ),
             accountDeletionService = AccountDeletionService(database, passwordHashing),
             realtimeHub = realtimeHub,
         )
