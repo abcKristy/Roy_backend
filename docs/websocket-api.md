@@ -84,7 +84,7 @@ system.kind: meeting_proposed, meeting_ready, meeting_booked, meeting_booking_ca
 {"proposalId":"55555555-5555-4555-8555-555555555555","bookingId":"66666666-6666-4666-8666-666666666666","status":"cancelled","cancelReason":"insufficient_votes"}
 ```
 
-`notification.created` — scope user, payload совпадает с REST Notification. kind reminder_1h|chat_message|proposal_vote|proposal_ready|booking_created|booking_cancelled|nearby_meeting. Все target ID nullable; для nearby_meeting chatId/proposalId намеренно null. readAt nullable. Пример payload:
+`notification.created` — scope user, payload совпадает с REST Notification. kind reminder_1h|chat_message|proposal_vote|proposal_ready|booking_created|booking_cancelled|nearby_meeting. Все target ID nullable; для nearby_meeting chatId/proposalId равны null, а отображаемый текст содержит публичный адрес точки и время начала встречи. readAt nullable. Пример payload:
 
 ```json
 {"id":"77777777-7777-4777-8777-777777777777","kind":"chat_message","title":"Новое сообщение","body":"В чате появилось сообщение","target":{"pointId":"33333333-3333-4333-8333-333333333333","chatId":"22222222-2222-4222-8222-222222222222","proposalId":null},"createdAt":"2027-02-08T12:00:00Z","readAt":null}

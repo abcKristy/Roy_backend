@@ -63,8 +63,8 @@ class JdbcNotificationWriter {
                     "Proposal notifications require chat and proposal IDs"
                 }
             NotificationEventType.NEARBY_MEETING ->
-                require(draft.pointId != null && draft.proposalId != null) {
-                    "Nearby notifications require point and proposal IDs"
+                require(draft.pointId != null && draft.proposalId != null && draft.chatId == null) {
+                    "Nearby notifications require a point and private proposal ID without a chat ID"
                 }
         }
         if (!barrier.isActiveSharedRecipient(connection, draft.recipientUserId)) {

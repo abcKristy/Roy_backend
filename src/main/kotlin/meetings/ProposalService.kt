@@ -164,7 +164,7 @@ class ProposalService(
             val draft = SystemMessageDraft(SystemMessageKind.MEETING_PROPOSED, command.actorId,
                 pointId, command.chatId, proposalId = id, startsAt = startsAt, endsAt = endsAt)
             val emission = MeetingEmission(systemMessages.append(connection, UUID.randomUUID(), draft), draft)
-            enqueueNearby(connection, id, pointId)
+            enqueueNearby(connection, id, pointId, startsAt)
             val view = checkNotNull(projection.read(connection, id, command.actorId))
             val snapshot = buildJsonObject { put("status", 201); put("body", successBody(connection, view)) }
             idempotency.recordSuccess(connection, command.actorId, "create_proposal", command.idempotencyKey,
@@ -173,14 +173,18 @@ class ProposalService(
         }
     }
 
-    private fun enqueueNearby(connection: Connection, proposalId: UUID, pointId: UUID) {
+    private fun enqueueNearby(connection: Connection, proposalId: UUID, pointId: UUID, startsAt: Instant) {
         val policyVersion = locationPrivacyVersion ?: return
         val recipientIds = recipients.nearbyForProposal(connection, proposalId, policyVersion)
         if (recipientIds.isEmpty()) return
 
+        val address = connection.prepareStatement("SELECT address FROM points WHERE id=?").use { statement ->
+            statement.setObject(1, pointId)
+            statement.executeQuery().use { rows -> check(rows.next()); rows.getString(1) }
+        }
         val snapshot = buildJsonObject {
             put("title", "Встреча рядом")
-            put("body", "Рядом предложена встреча")
+            put("body", "$address · $startsAt")
         }
         val barrier = RecipientBarrier.acquire(connection, recipientIds.map { RecipientLockClaim(it, RecipientLockMode.SHARED) })
         recipientIds.forEach { recipientId ->

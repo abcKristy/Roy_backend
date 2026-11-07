@@ -6,7 +6,10 @@ import com.example.auth.JwtTokenIssuer
 import com.example.auth.SessionAccessService
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
+import com.example.jobs.NotificationBroadcaster
 import com.example.notifications.NotificationService
+import com.example.notifications.NotificationSettingsChange
+import com.example.notifications.SettingsUpdateResult
 import com.example.persistence.HikariDatabaseBootstrap
 import com.example.persistence.JdbcSessionRepository
 import com.example.realtime.*
@@ -38,12 +41,18 @@ class ProposalEventsIntegrationTest {
         Fixture().use { f ->
             val access = SessionAccessService(f.secret, JdbcSessionRepository(f.runtime))
             val hub = RealtimeHub(f.runtime, access)
+            val notifications = NotificationService(f.runtime, f.secret)
+            val broadcaster = NotificationBroadcaster(f.runtime, publish = { recipient, eventId, payload, createdAt ->
+                hub.publishCommitted(RealtimeEvent(eventId, RealtimeEventType.NOTIFICATION_CREATED,
+                    RealtimeScopeKind.USER, recipient, createdAt, payload))
+            })
             val server = embeddedServer(Netty, host = "127.0.0.1", port = 0) {
                 configureTransport()
                 installRealtimeTransport()
                 configureRouting(f.runtime, sessionAccess = access, realtimeHub = hub,
-                    proposalService = ProposalService(f.runtime, f.secret, locationPrivacyVersion = "test"), bookingService = BookingService(f.runtime),
-                    notificationService = NotificationService(f.runtime, f.secret))
+                    proposalService = ProposalService(f.runtime, f.secret, locationPrivacyVersion = "test"),
+                    bookingService = BookingService(f.runtime),
+                    notificationService = notifications)
             }
             val sockets = mutableListOf<WebSocket>()
             server.start(wait = false)
@@ -188,11 +197,17 @@ class ProposalEventsIntegrationTest {
                 isolated()
                 val publicNearby = get(f.nearby, "/api/v1/me/notifications")["items"]!!.jsonArray.single().jsonObject
                 assertEquals("nearby_meeting", publicNearby["kind"]!!.jsonPrimitive.content)
+                val start = proposal.getValue("startsAt").jsonPrimitive.content
+                assertEquals("Synthetic events fixture · $start", publicNearby.getValue("body").jsonPrimitive.content)
                 assertEquals(buildJsonObject {
                     put("pointId", f.point.toString()); put("chatId", JsonNull); put("proposalId", JsonNull)
                 }, publicNearby["target"])
                 assertFalse(publicNearby.toString().contains(f.chat.toString()))
                 assertFalse(publicNearby.toString().contains(proposal["id"]!!.jsonPrimitive.content))
+                broadcaster.tick()
+                val wireNearby = nearbyWire.next()
+                assertEquals("notification.created", wireNearby.getValue("type").jsonPrimitive.content)
+                assertEquals(publicNearby, wireNearby.getValue("payload"))
                 f.assertNearby(proposal["id"]!!.jsonPrimitive.content)
                 for (member in listOf(f.actor, f.peer)) assertTrue(get(member, "/api/v1/me/notifications")["items"]!!.jsonArray.isEmpty())
                 val replay = client.send(request(f.actor, "/api/v1/chats/${f.chat}/proposals", command, key), HttpResponse.BodyHandlers.ofString())
@@ -213,13 +228,17 @@ class ProposalEventsIntegrationTest {
                     assertEquals(listOf(publicNearby), get(f.nearby, "/api/v1/me/notifications")["items"]!!.jsonArray.toList())
                     allSilent()
                 } finally { f.dropFault() }
+                assertIs<SettingsUpdateResult.Updated>(notifications.updateSettings(f.nearby,
+                    NotificationSettingsChange(true, true, true, false, 0)))
                 val retried = client.send(request(f.actor, "/api/v1/chats/${f.chat}/proposals", retryCommand, retryKey), HttpResponse.BodyHandlers.ofString())
                 assertEquals(201, retried.statusCode())
                 val retriedBody = Json.parseToJsonElement(retried.body()).jsonObject
                 assertEvents(retriedBody, 2)
                 assertEquals(State(2, 0, 2, 2, 2, 2), f.state())
-                f.assertNearby(retriedBody["id"]!!.jsonPrimitive.content)
+                f.assertNearby(retriedBody["id"]!!.jsonPrimitive.content, pushOnly = true)
                 isolated()
+                broadcaster.tick()
+                assertEquals(listOf(publicNearby), get(f.nearby, "/api/v1/me/notifications")["items"]!!.jsonArray.toList())
                 allSilent()
             } finally {
                 sockets.forEach { it.abort() }
@@ -295,12 +314,15 @@ class ProposalEventsIntegrationTest {
                 count("SELECT count(*) FROM notification_events WHERE point_id=?", point),
                 count("SELECT last_message_seq FROM chats WHERE id=?", chat))
         }
-        fun assertNearby(proposalId: String) = connection().use { c ->
-            c.prepareStatement("SELECT recipient_user_id,proposal_id,dedupe_key FROM notification_events WHERE proposal_id=?").use { s ->
+        fun assertNearby(proposalId: String, pushOnly: Boolean = false) = connection().use { c ->
+            c.prepareStatement("""SELECT recipient_user_id,proposal_id,dedupe_key,visible_in_app,push_requested
+                FROM notification_events WHERE proposal_id=?""").use { s ->
                 s.setObject(1, UUID.fromString(proposalId))
                 s.executeQuery().use { rows ->
                     assertTrue(rows.next()); assertEquals(nearby, rows.getObject(1, UUID::class.java))
                     assertEquals(proposalId, rows.getObject(2).toString()); assertEquals("nearby:$proposalId", rows.getString(3))
+                    assertEquals(!pushOnly, rows.getBoolean("visible_in_app"))
+                    assertEquals(pushOnly, rows.getBoolean("push_requested"))
                     assertFalse(rows.next())
                 }
             }

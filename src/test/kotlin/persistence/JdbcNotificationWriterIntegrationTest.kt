@@ -158,8 +158,12 @@ class JdbcNotificationWriterIntegrationTest {
                     eventType = NotificationEventType.NEARBY_MEETING,
                     dedupeKey = "nearby:${UUID.randomUUID()}",
                     pointId = UUID.randomUUID(),
+                    chatId = null,
                     proposalId = UUID.randomUUID(),
                 )
+                assertFailsWith<IllegalArgumentException> {
+                    writer.write(connection, barrier, nearby.copy(chatId = UUID.randomUUID()))
+                }
                 assertIs<NotificationWriteResult.ExtraDisabled>(writer.write(connection, barrier, nearby))
                 connection.prepareStatement(
                     "UPDATE notification_settings SET extra_in_app_enabled = true WHERE user_id = ?"
