@@ -10,6 +10,7 @@ import com.example.notifications.NotificationView
 import com.example.notifications.SettingsUpdateResult
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
@@ -46,6 +47,17 @@ private object NotificationSettingsInputSerializer :
 
 @Serializable private data class LocationPositionInput(val lat: Double, val lon: Double)
 @Serializable private data class NotificationLocationInput(val position: LocationPositionInput)
+
+private object NotificationLocationInputSerializer :
+    JsonTransformingSerializer<NotificationLocationInput>(NotificationLocationInput.serializer()) {
+    override fun transformDeserialize(element: JsonElement): JsonElement {
+        val position = (element as? JsonObject)?.get("position") as? JsonObject
+        if (position?.values?.any { it is JsonPrimitive && it.isString } == true) {
+            throw SerializationException("Expected JSON numbers for coordinates")
+        }
+        return element
+    }
+}
 
 internal fun Route.notificationRoutes(service: NotificationService, sessions: SessionAccessService) {
     get("/api/v1/me/notification-settings") {
@@ -88,12 +100,14 @@ internal fun Route.notificationRoutes(service: NotificationService, sessions: Se
         call.respond(notificationJson(view))
     }
     get("/api/v1/me/notification-location") {
+        call.response.header(HttpHeaders.CacheControl, "no-store")
         val actor = notificationActor(sessions, call.request.headers[HttpHeaders.Authorization])
         call.respond(locationJson(service.location(actor)))
     }
     put("/api/v1/me/notification-location") {
+        call.response.header(HttpHeaders.CacheControl, "no-store")
         val actor = notificationActor(sessions, call.request.headers[HttpHeaders.Authorization])
-        val input = call.receiveStrictJson(NotificationLocationInput.serializer())
+        val input = call.receiveStrictJson(NotificationLocationInputSerializer)
         when (val result = service.setLocation(actor, input.position.lat, input.position.lon)) {
             is LocationWriteResult.Updated -> call.respond(locationJson(result.location))
             LocationWriteResult.InvalidPosition, LocationWriteResult.DisabledBySettings -> throw invalidNotificationField()
@@ -105,6 +119,7 @@ internal fun Route.notificationRoutes(service: NotificationService, sessions: Se
         }
     }
     delete("/api/v1/me/notification-location") {
+        call.response.header(HttpHeaders.CacheControl, "no-store")
         val actor = notificationActor(sessions, call.request.headers[HttpHeaders.Authorization])
         service.deleteLocation(actor)
         call.respond(HttpStatusCode.NoContent)
