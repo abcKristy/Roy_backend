@@ -19,17 +19,20 @@ private data class PushDeviceInput(val platform: String, val provider: String, v
 @Serializable
 private data class PushDeviceResponse(val installationId: String, val registeredAt: String)
 
-internal fun Route.deviceRoutes(service: DeviceService, sessions: SessionAccessService) {
+internal fun Route.deviceRoutes(service: DeviceService?, sessions: SessionAccessService) {
     put("/api/v1/me/push-devices/{installationId}") {
         val identity = sessions.currentIdentity(call.request.headers[HttpHeaders.Authorization])
         val installationId = deviceId(call.parameters["installationId"])
+        val availableService = service ?: throw ApiException(
+            HttpStatusCode.ServiceUnavailable, "PUSH_REGISTRATION_FAILED", "Регистрация push временно недоступна",
+        )
         val input = call.receiveStrictJson(PushDeviceInput.serializer())
         val platform = when (input.platform to input.provider) {
             "android" to "rustore" -> "ANDROID_RUSTORE"
             "ios" to "apns" -> "IOS_APNS"
             else -> throw ApiException(HttpStatusCode.UnprocessableEntity, "INVALID_FIELD", "Некорректная платформа устройства")
         }
-        when (val result = service.register(RegisterDeviceCommand(identity, installationId, platform, input.token))) {
+        when (val result = availableService.register(RegisterDeviceCommand(identity, installationId, platform, input.token))) {
             is RegisterDeviceResult.Registered -> call.respond(PushDeviceResponse(
                 result.value.installationId.toString(), result.value.registeredAt.toString()))
             RegisterDeviceResult.InvalidToken -> throw ApiException(
@@ -41,6 +44,7 @@ internal fun Route.deviceRoutes(service: DeviceService, sessions: SessionAccessS
             RegisterDeviceResult.SessionUnavailable -> deviceSessionExpired()
         }
     }
+    if (service == null) return
     delete("/api/v1/me/push-devices/{installationId}") {
         val identity = sessions.currentIdentity(call.request.headers[HttpHeaders.Authorization])
         if (!service.revoke(identity, deviceId(call.parameters["installationId"]))) deviceSessionExpired()

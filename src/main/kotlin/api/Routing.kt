@@ -90,7 +90,7 @@ fun Application.configureRouting(
         if (notificationService != null && sessionAccess != null) {
             notificationRoutes(notificationService, sessionAccess)
         }
-        if (deviceService != null && sessionAccess != null) {
+        if (sessionAccess != null) {
             deviceRoutes(deviceService, sessionAccess)
         }
         if (profileService != null && sessionAccess != null) {
