@@ -179,22 +179,6 @@ class LocalAvatarStoreTest {
         }
     }
 
-    private fun restrictToOwner(directory: Path) {
-        val view = Files.getFileAttributeView(directory, AclFileAttributeView::class.java)
-        if (view != null) {
-            view.acl = listOf(
-                AclEntry.newBuilder()
-                    .setType(ALLOW)
-                    .setPrincipal(view.owner)
-                    .setPermissions(*AclEntryPermission.entries.toTypedArray())
-                    .setFlags(FILE_INHERIT, DIRECTORY_INHERIT)
-                    .build(),
-            )
-        } else {
-            Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
-        }
-    }
-
     private fun allowAnotherPrincipal(path: Path, directory: Boolean) {
         val view = Files.getFileAttributeView(path, AclFileAttributeView::class.java)
         if (view != null) {
@@ -218,5 +202,21 @@ class LocalAvatarStoreTest {
         assertNotNull(actual)
         assertEquals(expected.contentType, actual.contentType)
         assertContentEquals(expected.bytes, actual.bytes)
+    }
+}
+
+internal fun restrictToOwner(directory: Path) {
+    val view = Files.getFileAttributeView(directory, AclFileAttributeView::class.java)
+    if (view != null) {
+        view.acl = listOf(
+            AclEntry.newBuilder()
+                .setType(ALLOW)
+                .setPrincipal(view.owner)
+                .setPermissions(*AclEntryPermission.entries.toTypedArray())
+                .setFlags(FILE_INHERIT, DIRECTORY_INHERIT)
+                .build(),
+        )
+    } else {
+        Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
     }
 }
