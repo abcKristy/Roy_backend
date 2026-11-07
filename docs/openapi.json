@@ -11471,13 +11471,15 @@
           "bookingOrder": {
             "type": "integer",
             "format": "int64",
-            "minimum": 1
+            "minimum": 1,
+            "description": "Порядковый номер успешной брони точки. Меньшее значение имеет приоритет при прямом пересечении активных броней."
           },
           "overlappingActive": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MeetingConflict"
-            }
+            },
+            "description": "Текущие активные брони той же точки, напрямую пересекающие интервал этой активной брони, по возрастанию bookingOrder. Для отменённой брони список пуст."
           },
           "bookedAt": {
             "type": "string",
@@ -11507,7 +11509,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Причина отмены активной брони: недостаточно голосов, удаление точки или закрытие автором; null для активной брони."
           }
         },
         "additionalProperties": false
