@@ -1,0 +1,919 @@
+{
+  "source": "becb05132ee933e36cf1a1774d8fd027bdcf942a",
+  "source_worktree_clean": true,
+  "local_database": "18.6 (Debian 18.6-1.pgdg13+2)|3.6.4|16",
+  "gradle_exit": 0,
+  "suites": [
+    {
+      "fixture": "roy_m1t2_bootstrap",
+      "class": "com.example.persistence.DatabaseBootstrapIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "local migration and production validation work with a short connection timeout"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_history",
+      "class": "com.example.persistence.MigrationHistoryValidationIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "pending and changed checksums prevent startup while repeat migration preserves seed"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step5moderation",
+      "class": "com.example.moderation.ModerationServiceIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "unique lifetime reports mute exactly once and retain replay"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_upgrade",
+      "class": "com.example.auth.RefreshHistoryMigrationIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "upgrade revokes rotated legacy sessions and preserves never rotated sessions"
+      ]
+    },
+    {
+      "fixture": "roy_b5_mvp_chain",
+      "class": "com.example.acceptance.MvpBackendChainIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "local MVP connects real auth points chat meetings profile and notifications"
+      ]
+    },
+    {
+      "fixture": "roy_m2t6_atomic_failures",
+      "class": "com.example.api.M2AtomicCreateFailureIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "each graph insert failure rolls back HTTP create and same key retry commits once"
+      ]
+    },
+    {
+      "fixture": "roy_m2t6_tcp_replay",
+      "class": "com.example.api.M2LostTcpCreateResponseIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "client drops TCP response after commit and same key returns saved create body"
+      ]
+    },
+    {
+      "fixture": "roy_m2t6_quota_topic_filter",
+      "class": "com.example.api.M2QuotaTopicFilterAcceptanceIntegrationTest",
+      "status": "PASS",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "duplicate topic and changed cursor filters refuse without mutating point graph",
+        "last slot survives point deletion and quota refusal replays 720 hour block"
+      ]
+    },
+    {
+      "fixture": "roy_m2t6_quota_edges",
+      "class": "com.example.api.M2MonthlyQuotaBoundaryIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "month nine to ten then refusal replay block and expiry recovery persist correctly"
+      ]
+    },
+    {
+      "fixture": "roy_m2t2_guards",
+      "class": "com.example.api.PointQuotaBlockRouteIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "lost quota response replays committed 409 without extending block"
+      ]
+    },
+    {
+      "fixture": "roy_m2t2_guards",
+      "class": "com.example.points.PointCreationGuardsIntegrationTest",
+      "status": "PASS",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "parallel last slot creates one point and commits one quota denial",
+        "parallel nearby creates require confirmation for the second actor"
+      ]
+    },
+    {
+      "fixture": "roy_m2t2_ledger",
+      "class": "com.example.points.PointCreationLedgerIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "deleting a created point keeps its ledger event and quota slot"
+      ]
+    },
+    {
+      "fixture": "roy_m2t2_ledger",
+      "class": "com.example.points.PointQuotaSqlIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "rolling windows include their lower boundary and exclude now and future"
+      ]
+    },
+    {
+      "fixture": "roy_m2t3_autojoin",
+      "class": "com.example.points.AddTopicAutojoinIntegrationTest",
+      "status": "PASS",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "database topic unique violation maps only its own constraint to duplicate",
+        "concurrent canonical duplicate creates one topic and no loser membership",
+        "add topic commits chat membership and replay together or rolls all back"
+      ]
+    },
+    {
+      "fixture": "roy_m2t5_race",
+      "class": "com.example.points.PointJoinLastLeaveRaceIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "concurrent join and last leave serialize to a valid point state"
+      ]
+    },
+    {
+      "fixture": "roy_m2t4_filter",
+      "class": "com.example.api.PointMapFilterValidationIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "invalid filters return 400 while valid empty filter returns an empty page"
+      ]
+    },
+    {
+      "fixture": "roy_m2t4_filter",
+      "class": "com.example.points.PointMapFilterSqlIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "map SQL applies topic counts and any topic within bbox"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.acceptance.ChatRestAcceptanceIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "joined actor completes persisted chat lifecycle with authoritative reads"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.acceptance.ChatWebSocketAcceptanceIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "socket isolation missed delta and concrete session revoke match persisted chat"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.acceptance.ChatSendLeaveRaceIntegrationTest",
+      "status": "PASS",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "last member leave deletes chat before overlapping send",
+        "send holding actor commits before overlapping leave",
+        "leave holding actor revokes overlapping send"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.realtime.WebSocketLifecycleIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "real heartbeat expiry logout and abrupt transport loss retain session boundaries"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.realtime.WebSocketSubscriptionIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "real database sessions scope subscriptions leave and individual revocation"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.SendReplayIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "concurrent canonical replay preserves original snapshot across mutable state"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.ShortMessageFloodIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "short actor window respects exact clock boundaries across chats and devices"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.LongMessageFloodIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "rolling five minute ledger enforces thirty successful sends across devices and chats"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.MuteThresholdIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "lifetime threshold crosses once under concurrent distinct reporters"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.MuteSendGuardIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "persisted mute blocks both authenticated devices without send side effects"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.ReportContextIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "report context and input validation reject without persisted side effects"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.ReportLifetimeIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "lifetime report pair survives context deletion and concurrent duplicates"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.ReportTransactionIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "report target mute and outcome roll back on deferred commit failure"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.ProfanityFilterIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "approved profanity is rejected without persistence or logging"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.UrlFilterIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "approved links are rejected locally without persistence or logging"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.PhoneFilterIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "approved phone forms are rejected without persistence or logging"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.HistorySearchIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "search binds cursor and snapshot while escaping patterns without advancing read"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.SendInputIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "strict send input has no side effects before accepted canonical command"
+      ]
+    },
+    {
+      "fixture": "roy_m3_chat",
+      "class": "com.example.api.HistoryAccessIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "history ACL applies to detail history search and revoked access"
+      ]
+    },
+    {
+      "fixture": "roy_m4_acceptance_fixture",
+      "class": "com.example.meetings.MeetingAcceptanceFixtureIntegrationTest",
+      "status": "PASS",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "failure after committed fixture seed removes only its UUID namespace",
+        "real fixture isolates two same point topics members intervals replay and controlled creation time"
+      ]
+    },
+    {
+      "fixture": "roy_m4_acceptance_fixture",
+      "class": "com.example.meetings.MeetingRestChainIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "persisted meeting chain agrees across native clients websocket and reconnect recovery"
+      ]
+    },
+    {
+      "fixture": "roy_m4_acceptance_fixture",
+      "class": "com.example.meetings.MeetingConcurrencyIntegrationTest",
+      "status": "PASS",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "distinct simultaneous voters preserve both rows and one ready edge",
+        "same voter concurrent desired true stores one row and revision",
+        "author close and vote respect whichever point transition commits first",
+        "authenticated booking queued behind real account deletion returns stable session failure",
+        "book and real membership exit cannot leave invalid active booking",
+        "different bookers serialize to one active booking",
+        "same key simultaneous booking replays one identity and order",
+        "authenticated vote queued behind real account deletion returns stable session failure",
+        "book and unvote cannot leave active booking below threshold"
+      ]
+    },
+    {
+      "fixture": "roy_m4_acceptance_fixture",
+      "class": "com.example.meetings.MeetingTimeBoundsIntegrationTest",
+      "status": "PASS",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "vote true respects persisted microsecond start independently of expiry",
+        "new booking before exact and after start differs from historical replay",
+        "actual past active booking survives real PostgreSQL reads and expiry tick",
+        "vote false cannot cancel a started active booking",
+        "vote and book sample controlled server clock after real point lock wait",
+        "author close is forbidden exactly at start and preserves booked history"
+      ]
+    },
+    {
+      "fixture": "roy_m4_overlap_confirm",
+      "class": "com.example.meetings.BookingOverlapConfirmIntegrationTest",
+      "status": "PASS",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "explicit confirmation sees newly committed direct conflicts and preserves existing orders",
+        "confirmation rechecks database start time after actual point lock wait",
+        "confirmation waiting on point lock rechecks all changed guards after warning",
+        "different actors confirming across topics actually serialize on point and both retain active bookings"
+      ]
+    },
+    {
+      "fixture": "roy_m4_booking_guards",
+      "class": "com.example.meetings.BookingGuardsIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "native booking guards distinguish eligibility and reject non Long revision without effects"
+      ]
+    },
+    {
+      "fixture": "roy_m4_events",
+      "class": "com.example.meetings.ProposalEventsIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "committed proposal emits isolated wire events and public nearby while replay and rollback stay silent"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step6proposal",
+      "class": "com.example.meetings.ProposalServiceIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "proposal creation nearby recipients vote threshold and cancellation are transactional"
+      ]
+    },
+    {
+      "fixture": "roy_b55_reminders",
+      "class": "com.example.jobs.ReminderSchedulerIntegrationTest",
+      "status": "PASS",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "two claims selected before either commits create one reminder per active member",
+        "reminder channel keeps in app history and fans out only to active opted in devices",
+        "database discovery shares the exact UTC window boundaries",
+        "restarted limited poll advances past already notified booking"
+      ]
+    },
+    {
+      "fixture": "roy_m4_cancel_jobs",
+      "class": "com.example.jobs.BookingReminderCancellationIntegrationTest",
+      "status": "PASS",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "already entered provider cannot undo cancellation through late delivered or retryable completion",
+        "closed proposal suppresses a reminder with a stale active booking",
+        "booking cancellation after decrypt but before provider suppresses stale claim",
+        "scheduler selected active booking rechecks after cancellation before producing reminders",
+        "local application restart continues due reminders without catching up missed windows",
+        "all cancellation callers durably clear pending and processing reminders"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step7jobs",
+      "class": "com.example.jobs.JobsIntegrationTest",
+      "status": "PASS",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "invalid token revokes the current registration but cannot revoke a replacement",
+        "nearby delivery cancels stale consent and never forwards a private proposal target",
+        "media failure stays pending and an expired lease cannot acknowledge completion",
+        "push provider failures are retried only for an enabled platform and stop at the limit",
+        "reminder is deduplicated and time expiry closes only unbooked proposal",
+        "restart does not send a job whose final lease has expired",
+        "push claim sends once and rebind cancels an old owner job",
+        "missing media is done and stale lease is reclaimed",
+        "retention leaves unresolved avatar erasure available for retry",
+        "expired push claim cannot acknowledge and restart safely recovers the same event"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step3notify",
+      "class": "com.example.persistence.JdbcNotificationWriterIntegrationTest",
+      "status": "PASS",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "event dedupe channel snapshot and device jobs share one transaction",
+        "chat and nearby recipients are selected in the same transaction"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step7notifications",
+      "class": "com.example.api.NotificationHistoryIntegrationTest",
+      "status": "PASS",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "history pages stay stable and private across identical timestamps and new inserts",
+        "read uses one server timestamp across retries and protects foreign and hidden events"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step7notifications",
+      "class": "com.example.api.NotificationRoutesIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "settings center and voluntary location enforce HTTP contract"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step7notifications",
+      "class": "com.example.notifications.NotificationServiceIntegrationTest",
+      "status": "PASS",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "disabling extra waits for in flight event and cancels its pending delivery",
+        "settings location and visible center obey account preferences"
+      ]
+    },
+    {
+      "fixture": "roy_m5t124_settings",
+      "class": "com.example.api.NotificationSettingsIntegrationTest",
+      "status": "PASS",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "quotedBooleanIsRejected",
+        "repeatedV006BackfillPreservesChangedSettings",
+        "unauthorizedRequestsCannotAccessSettings",
+        "concurrentUpdatesReturnWinnerToStaleWriter",
+        "staleReplayAfterNewerUpdateCannotChangeSettings",
+        "malformedJsonIsRejected",
+        "quotedRevisionIsRejected"
+      ]
+    },
+    {
+      "fixture": "roy_m5t125_devices",
+      "class": "com.example.api.DeviceRegistrationSecurityIntegrationTest",
+      "status": "PASS",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "route accepts both provider pairs and rejects noncanonical uuid or another installation token",
+        "older authenticated account cannot reclaim a rebound installation",
+        "failed rebind rolls back job cancellation and token history",
+        "logout after route authentication prevents in-flight registration",
+        "retired token cannot undo rotation after account switch or within a session"
+      ]
+    },
+    {
+      "fixture": "roy_m5t126_crypto",
+      "class": "com.example.api.PushTokenEncryptionIntegrationTest",
+      "status": "PASS",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "configured registration stores ciphertext and digest with one stable result on retry",
+        "authenticated registration without a key is unavailable and does not store a device",
+        "malformed key rejects application startup with a safe configuration error",
+        "worker hands decrypted token to sender only with the correct key"
+      ]
+    },
+    {
+      "fixture": "roy_m5t119_avatar",
+      "class": "com.example.api.AvatarSwapRoutesIntegrationTest",
+      "status": "PASS",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "provider failures before and after object write preserve the previous avatar",
+        "an older stalled multipart body cannot replace a newer committed avatar",
+        "delivering an earlier response after a new avatar commit preserves the new pointer",
+        "a staged object already due for cleanup cannot become current",
+        "rejected swap rolls back reference and old job and removes staged file",
+        "delete clears the pointer and queues one job even when repeated",
+        "legacy access session can delete an avatar",
+        "legacy access session can upload an avatar",
+        "stalled multipart bodies time out and release both upload permits",
+        "same processed upload reuses current object and replacements queue each old key once",
+        "an earlier cleanup claim prevents publication after the worker schedules a retry",
+        "failed compensation leaves durable intent for the unbound object",
+        "mutation rejects absent wrong and revoked sessions",
+        "upload rechecks the session after provider write",
+        "resetting attempts cannot extend the original staging deadline",
+        "multipart byte limit accepts five MiB and rejects one extra byte",
+        "older upload finishing storage late cannot overwrite a newer avatar",
+        "a committed swap survives an error receiving commit confirmation"
+      ]
+    },
+    {
+      "fixture": "roy_m5t120_read",
+      "class": "com.example.api.AvatarReadRoutesIntegrationTest",
+      "status": "PASS",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "viewer leaving during provider read cannot receive a cached or fresh representation",
+        "revocation during provider read rejects even a matching cached representation",
+        "missing foreign and departed avatars are indistinguishable without storage reads",
+        "authentication precedes lookup and a revoked session cannot revalidate",
+        "missing object and storage fault have safe distinct responses for an authorized viewer",
+        "conditional GET requires current access and returns the new representation after a swap",
+        "a reference swapped during provider read cannot return the old image",
+        "owner and active peer get the same bytes and validators without writes",
+        "legacy access only sessions remain active until expiry"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step8delete",
+      "class": "com.example.auth.ProfileServiceIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "password change from a legacy session revokes every access and refresh session"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step8delete",
+      "class": "com.example.api.AccountDeletionRoutesIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "confirmation and password are required and old token is rejected after deletion"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step8delete",
+      "class": "com.example.accounts.AccountDeletionPrivateCleanupIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "deletion removes empty point and private rows while preserving report tombstone"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step8delete",
+      "class": "com.example.accounts.AccountDeletionFanoutConcurrencyIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "deletion waits for in flight notification then removes it"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step8delete",
+      "class": "com.example.accounts.AccountDeletionServiceIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "overlapping deletions anonymize the shared graph and revoke sessions once"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step8delete",
+      "class": "com.example.devices.DeviceRebindDeliveryConcurrencyIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "rebind during provider call cancels claim without using new owners token"
+      ]
+    },
+    {
+      "fixture": "roy_m2t2_nearby",
+      "class": "com.example.api.PointCreationContextRoutesIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "creation context is authenticated read only and post rechecks nearby"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step4routesfinal",
+      "class": "com.example.api.PointRoutesIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "create replay map and last leave use one stored point lifecycle"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_step6routes",
+      "class": "com.example.api.MeetingRoutesIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "proposal voting booking and close are reachable only to members"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_b6login",
+      "class": "com.example.auth.JdbcLoginRepositoryIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "login session and rehash are atomic and stale credential is rejected"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_b6register",
+      "class": "com.example.auth.JdbcRegistrationRepositoryIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "transaction unique race and rollback use isolated postgres"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_b6session",
+      "class": "com.example.auth.JdbcSessionRepositoryIntegrationTest",
+      "status": "PASS",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "revocation affects only one jti and version or deletion blocks access"
+      ]
+    },
+    {
+      "fixture": "roy_m1t2_b6refresh",
+      "class": "com.example.auth.JdbcRefreshRepositoryIntegrationTest",
+      "status": "PASS",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "concurrent reuse rotates once then revokes session",
+        "version change expiry deletion and legacy sessions cannot refresh",
+        "rotation preserves fixed expiry and replay revokes only its session"
+      ]
+    }
+  ]
+}
