@@ -29,8 +29,9 @@ internal class YandexAvatarStore(
     private val client: S3Client = createClient(config, ENDPOINT),
 ) : AvatarStore, AutoCloseable {
 
-    override suspend fun save(image: AvatarImage): String = storageIo {
-        val key = UUID.randomUUID().toString()
+    override suspend fun save(image: AvatarImage, objectId: UUID): String = storageIo {
+        val key = objectId.toString()
+        require(OBJECT_KEY.matches(key)) { "Invalid avatar object key" }
         val request = PutObjectRequest.builder()
             .bucket(config.bucket)
             .key(key)

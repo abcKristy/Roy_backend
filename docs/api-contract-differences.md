@@ -8,11 +8,11 @@ M0.T4 §3.1 and M0.T5 §1 describe a single access JWT lasting 30 days with no r
 
 Evidence: `auth/Registration.kt`, `Login.kt`, `Refresh.kt`, `SessionAccess.kt`; `auth/RegistrationRouteTest.kt`, `LoginRouteTest.kt`, `RefreshRouteTest.kt`, `SessionRouteTest.kt`, `JdbcRefreshRepositoryIntegrationTest.kt`.
 
-## Avatar routes are future M0 scope
+## Avatar upload and removal
 
-M0.T5 §3 lists `PUT /api/v1/me/avatar`, `DELETE /api/v1/me/avatar`, and `GET /api/v1/users/{userId}/avatar`. No corresponding Ktor routes exist. They therefore do not appear as implemented OpenAPI operations. `UserSelf.avatarUrl` remains a nullable field in the actual DTO; profile projection can construct `/api/v1/users/{id}/avatar` for an existing stored object key, but this backend has no downloader at that URL. This gap is explicit rather than represented by a fictional endpoint. Account deletion still schedules deletion of a stored avatar object if one exists.
+T119 implements authenticated `PUT /api/v1/me/avatar` and `DELETE /api/v1/me/avatar`. PUT stores the normalized image in private storage and returns the profile's `avatarUrl`. DELETE clears that reference and returns `204`, including on a repeated request. Both mutations durably queue cleanup of the previous object. Account deletion queues its current avatar object in the account transaction.
 
-Evidence: `api/ProfileRoutes.kt`, `api/Routing.kt`, `auth/ProfileService.kt`, `accounts/AccountDeletionService.kt`; no avatar route in `src/main/kotlin`.
+The authorized `GET /api/v1/users/{userId}/avatar` route belongs to T120. Cleanup worker composition belongs to T123. Live acceptance of the dedicated private Yandex bucket and its KMS key remains an external dependency. The [T119 verification](m5-t119-avatar-swap.md) exercises PostgreSQL and the real local file adapter.
 
 ## Privacy publication is local-draft only
 

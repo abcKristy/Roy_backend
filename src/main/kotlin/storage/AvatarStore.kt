@@ -1,6 +1,7 @@
 package com.example.storage
 
 import java.io.IOException
+import java.util.UUID
 
 enum class AvatarContentType(val mimeType: String) {
     JPEG("image/jpeg"),
@@ -20,8 +21,8 @@ class AvatarStorageException(cause: Throwable? = null) : IOException("Avatar sto
 
 /** Private object I/O. Call outside database transactions. Keys are for server use only. */
 interface AvatarStore {
-    /** Creates a new object and returns its generated key. Failures throw [AvatarStorageException]. */
-    suspend fun save(image: AvatarImage): String
+    /** Creates a new object under a server-allocated UUID v4. An existing object is never overwritten. */
+    suspend fun save(image: AvatarImage, objectId: UUID = UUID.randomUUID()): String
 
     /** Returns null for a missing object. Storage failures throw [AvatarStorageException]. */
     suspend fun read(objectKey: String): AvatarImage?

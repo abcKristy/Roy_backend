@@ -35,7 +35,9 @@ class LocalAvatarStore(directory: Path) : AvatarStore {
         root
     }
 
-    override suspend fun save(image: AvatarImage): String = storageIo {
+    override suspend fun save(image: AvatarImage, objectId: UUID): String = storageIo {
+        val key = objectId.toString()
+        require(OBJECT_KEY.matches(key)) { "Invalid avatar object key" }
         val directory = checkedDirectory()
         val staged = Files.createTempFile(directory, ".avatar-", ".tmp")
         try {
@@ -47,7 +49,6 @@ class LocalAvatarStore(directory: Path) : AvatarStore {
                 })
                 output.write(image.bytes)
             }
-            val key = UUID.randomUUID().toString()
             // Link the complete file atomically. A collision cannot replace an existing object.
             val published = Files.createLink(directory.resolve(key), staged)
             try {

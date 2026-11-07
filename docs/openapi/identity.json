@@ -1841,6 +1841,438 @@
         ]
       }
     },
+    "/api/v1/me/avatar": {
+      "put": {
+        "tags": [
+          "Профиль"
+        ],
+        "operationId": "identity_put_api_v1_me_avatar",
+        "summary": "Загрузить или заменить аватар",
+        "description": "JWT и активный сеанс обязательны. Принимает одно поле file с JPEG или PNG размером до 5 242 880 байт включительно. Приём тела ограничен 60 секундами. Сервер проверяет содержимое и перекодирует изображение без метаданных. Повтор того же обработанного изображения сохраняет текущую ссылку. Если профиль изменился после допуска запроса, включая время приёма тела, запрос возвращает 409 и текущее поле avatarUrl. Ответ содержит только серверный путь чтения аватара.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG или PNG, до 5 МиБ."
+                  }
+                }
+              },
+              "encoding": {
+                "file": {
+                  "contentType": "image/jpeg, image/png"
+                }
+              },
+              "examples": {
+                "image": {
+                  "summary": "Выберите локальный файл в Swagger UI",
+                  "value": {
+                    "file": "<байты JPEG или PNG>"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Обработанное изображение привязано к профилю.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "avatarUrl"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "avatarUrl": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "avatarUrl": "/api/v1/users/00000000-0000-4000-8000-000000000001/avatar"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\nSESSION_EXPIRED: Заголовок Authorization не соответствует точному формату Bearer <непустой JWT>; подпись, утверждения или срок действия недействительны, сеанс отозван или истёк, authVersion изменена либо аккаунт удалён.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Заголовок Authorization не соответствует точному формату Bearer <непустой JWT>; подпись, утверждения или срок действия недействительны, сеанс отозван или истёк, authVersion изменена либо аккаунт удалён.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "REQUEST_TIMEOUT: Сервер не получил полное тело multipart за 60 секунд после начала чтения.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "REQUEST_TIMEOUT": {
+                    "summary": "Сервер не получил полное тело multipart за 60 секунд после начала чтения.",
+                    "value": {
+                      "error": {
+                        "code": "REQUEST_TIMEOUT",
+                        "message": "Время загрузки фотографии истекло",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "STALE_STATE: Профиль изменился во время загрузки. details.avatarUrl содержит текущий путь либо null.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "STALE_STATE": {
+                    "summary": "Профиль изменился во время загрузки. details.avatarUrl содержит текущий путь либо null.",
+                    "value": {
+                      "error": {
+                        "code": "STALE_STATE",
+                        "message": "Профиль уже изменился",
+                        "details": {
+                          "avatarUrl": "/api/v1/users/00000000-0000-4000-8000-000000000001/avatar"
+                        },
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "INVALID_FIELD: Загрузка превысила 5 МиБ или допустимый размер multipart-запроса.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Загрузка превысила 5 МиБ или допустимый размер multipart-запроса.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Фотография должна быть не больше 5 МиБ",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_FIELD: Multipart-запрос, заявленный тип или изображение не прошли проверку.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INVALID_FIELD": {
+                    "summary": "Multipart-запрос, заявленный тип или изображение не прошли проверку.",
+                    "value": {
+                      "error": {
+                        "code": "INVALID_FIELD",
+                        "message": "Выберите корректное изображение JPEG или PNG",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная внутренняя ошибка, в том числе сбой БД, транзакции или сериализации; безопасный ответ скрывает внутренние детали.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная внутренняя ошибка, в том числе сбой БД, транзакции или сериализации; безопасный ответ скрывает внутренние детали.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AVATAR_STORAGE_UNAVAILABLE: Хранилище недоступно или истёк срок подтверждения подготовленного объекта.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AVATAR_STORAGE_UNAVAILABLE": {
+                    "summary": "Хранилище недоступно или истёк срок подтверждения подготовленного объекта.",
+                    "value": {
+                      "error": {
+                        "code": "AVATAR_STORAGE_UNAVAILABLE",
+                        "message": "Хранилище фотографий недоступно",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Профиль"
+        ],
+        "operationId": "identity_delete_api_v1_me_avatar",
+        "summary": "Удалить аватар",
+        "description": "JWT и активный сеанс обязательны. Сервер удаляет ссылку текущего профиля и ставит объект в очередь очистки. Если аватара уже нет, сервер также возвращает 204. После удаления профиль отображает инициалы.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content: тело ответа отсутствует.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\nSESSION_EXPIRED: Заголовок Authorization не соответствует точному формату Bearer <непустой JWT>; подпись, утверждения или срок действия недействительны, сеанс отозван или истёк, authVersion изменена либо аккаунт удалён.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Заголовок Authorization не соответствует точному формату Bearer <непустой JWT>; подпись, утверждения или срок действия недействительны, сеанс отозван или истёк, authVersion изменена либо аккаунт удалён.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная внутренняя ошибка, в том числе сбой БД, транзакции или сериализации; безопасный ответ скрывает внутренние детали.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная внутренняя ошибка, в том числе сбой БД, транзакции или сериализации; безопасный ответ скрывает внутренние детали.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/password": {
       "post": {
         "tags": [

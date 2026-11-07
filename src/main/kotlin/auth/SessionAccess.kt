@@ -12,7 +12,12 @@ import java.time.Clock
 import java.time.Instant
 import java.util.UUID
 
-data class SessionIdentity(val userId: UUID, val sessionId: UUID, val authVersion: Int)
+data class SessionIdentity(
+    val userId: UUID,
+    val sessionId: UUID,
+    val authVersion: Int,
+    val accessExpiresAt: Instant = Instant.MAX,
+)
 
 interface SessionRepository {
     suspend fun findActive(identity: SessionIdentity, now: Instant): UserSelf?
@@ -77,7 +82,7 @@ class SessionAccessService(
         val expiresAt = jwt.expiresAt?.toInstant() ?: expired()
         val now = clock.instant()
         if (issuedAt.isAfter(now) || !expiresAt.isAfter(now) || !expiresAt.isAfter(issuedAt)) expired()
-        return SessionIdentity(userId, sessionId, version)
+        return SessionIdentity(userId, sessionId, version, expiresAt)
     }
 
     private fun parseUuid(raw: String): UUID? = try {

@@ -11,10 +11,12 @@ import io.ktor.server.request.receiveChannel
 import io.ktor.utils.io.readTo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 import java.io.IOException
 
+internal const val AVATAR_BODY_TIMEOUT_MILLIS = 60_000L
 private const val MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 private const val MAX_PART_HEADERS_BYTES = 8 * 1024
 private const val MAX_MULTIPART_BYTES = MAX_UPLOAD_BYTES + MAX_PART_HEADERS_BYTES + 160
@@ -30,9 +32,12 @@ private val quotedPair = Regex("""\\($QUOTED_PAIR_CHAR)""")
 private val avatarDecoding = Dispatchers.Default.limitedParallelism(2)
 
 /** The profile route calls this before handing an image to the storage/DB swap. */
-internal suspend fun ApplicationCall.receiveAvatarImage(): AvatarImage {
+internal suspend fun ApplicationCall.receiveAvatarImage(
+    bodyTimeoutMillis: Long = AVATAR_BODY_TIMEOUT_MILLIS,
+): AvatarImage {
     val boundary = avatarBoundary()
-    val (bytes, type) = readAvatarPart(boundary)
+    val (bytes, type) = withTimeoutOrNull(bodyTimeoutMillis) { readAvatarPart(boundary) }
+        ?: throw ApiException(HttpStatusCode.RequestTimeout, "REQUEST_TIMEOUT", "Время загрузки фотографии истекло")
     return try {
         withContext(avatarDecoding) { AvatarImageProcessor.process(bytes, type) }
     } catch (_: InvalidAvatarImageException) {

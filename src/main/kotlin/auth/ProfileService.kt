@@ -7,8 +7,15 @@ import com.example.storage.AvatarImage
 import com.example.storage.AvatarStorageException
 import com.example.storage.AvatarStore
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import org.slf4j.LoggerFactory
 import java.sql.Connection
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -20,6 +27,12 @@ data class ChangePasswordRequest(val currentPassword: String, val newPassword: S
     override fun toString(): String = "ChangePasswordRequest(redacted)"
 }
 
+@Serializable
+data class AvatarUpdateResponse(val avatarUrl: String)
+
+private const val STAGED_AVATAR_GRACE_SECONDS = 15 * 60
+private val avatarLog = LoggerFactory.getLogger(ProfileService::class.java)
+
 /** Profile mutations use the same users-first lock order as login and refresh. */
 class ProfileService(
     private val database: DatabaseRuntime,
@@ -29,12 +42,188 @@ class ProfileService(
     /** Stages a processed object before any profile transaction. The key stays server-side. */
     internal suspend fun stageAvatar(image: AvatarImage): String {
         val store = avatarStore ?: avatarStorageUnavailable()
-        return try {
-            store.save(image)
-        } catch (_: AvatarStorageException) {
-            avatarStorageUnavailable()
+        return storageOperation { store.save(image) }
+    }
+
+    private inline fun <T> storageOperation(block: () -> T): T = try {
+        block()
+    } catch (_: AvatarStorageException) {
+        avatarStorageUnavailable()
+    }
+
+    /** Capture before reading the body so a slow upload cannot adopt a newer profile state. */
+    internal suspend fun captureAvatarState(identity: SessionIdentity): AvatarState =
+        database.withRetryingJdbcTransaction { lockedAvatarState(it, identity) }
+
+    /** The durable intent exists before a provider can create the object. */
+    internal suspend fun replaceAvatar(
+        identity: SessionIdentity,
+        current: AvatarState,
+        image: AvatarImage,
+    ): AvatarUpdateResponse {
+        val store = avatarStore ?: avatarStorageUnavailable()
+        val response = AvatarUpdateResponse(avatarUrl(identity.userId))
+        val existing = current.objectKey?.let { key -> storageOperation { store.read(key) } }
+        if (existing != null && existing.contentType == image.contentType && existing.bytes.contentEquals(image.bytes)) {
+            database.withRetryingJdbcTransaction { requireCurrentAvatar(it, identity, current) }
+            return response
+        }
+
+        val stagedId = UUID.randomUUID()
+        val newKey = stagedId.toString()
+        database.withRetryingJdbcTransaction { connection ->
+            requireCurrentAvatar(connection, identity, current)
+            enqueueAvatarCleanup(connection, stagedId, newKey, STAGED_AVATAR_GRACE_SECONDS)
+            // A staged object uses its UUID as the job PK. The post-insert check also
+            // covers an earlier owner consuming that UUID's intent concurrently.
+            check(!avatarReferenced(connection, newKey))
+        }
+
+        var writeAcknowledged = false
+        try {
+            storageOperation { store.save(image, stagedId) }
+            writeAcknowledged = true
+            database.withRetryingJdbcTransaction { connection ->
+                requireCurrentAvatar(connection, identity, current)
+                val consumed = connection.prepareStatement(
+                    """DELETE FROM media_deletion_jobs WHERE id=? AND object_key=? AND status='PENDING'
+                       AND attempts=0 AND claim_token IS NULL AND lease_until IS NULL
+                       AND created_at+(? * interval '1 second')>clock_timestamp()
+                       AND next_attempt_at>clock_timestamp()"""
+                ).use {
+                    it.setObject(1, stagedId)
+                    it.setString(2, newKey)
+                    it.setInt(3, STAGED_AVATAR_GRACE_SECONDS)
+                    it.executeUpdate() == 1
+                }
+                // A retry can move next_attempt_at or reset attempts after a worker touched the object.
+                if (!consumed) avatarStorageUnavailable()
+                writeAvatarKey(connection, identity.userId, newKey)
+                current.objectKey?.let { enqueueAvatarCleanup(connection, UUID.randomUUID(), it) }
+            }
+        } catch (failure: Exception) {
+            compensateAvatar(store, stagedId, newKey, writeAcknowledged)
+            throw failure
+        }
+        return response
+    }
+
+    suspend fun removeAvatar(identity: SessionIdentity) {
+        database.withRetryingJdbcTransaction { connection ->
+            val current = lockedAvatarState(connection, identity)
+            val oldKey = current.objectKey ?: return@withRetryingJdbcTransaction
+            writeAvatarKey(connection, identity.userId, null)
+            enqueueAvatarCleanup(connection, UUID.randomUUID(), oldKey)
         }
     }
+
+    private suspend fun compensateAvatar(store: AvatarStore, id: UUID, key: String, writeAcknowledged: Boolean) {
+        withContext(NonCancellable) {
+            try {
+                // The update waits for an in-flight swap to settle. A committed swap
+                // consumed the row, even if the request never received commit confirmation.
+                val unbound = database.withRetryingJdbcTransaction { connection ->
+                    val pending = connection.prepareStatement(
+                        """UPDATE media_deletion_jobs
+                           SET status='PENDING', attempts=0, claim_token=NULL, lease_until=NULL, completed_at=NULL,
+                               next_attempt_at=clock_timestamp()+(? * interval '1 second')
+                           WHERE id=? AND object_key=?"""
+                    ).use {
+                        it.setInt(1, STAGED_AVATAR_GRACE_SECONDS)
+                        it.setObject(2, id)
+                        it.setString(3, key)
+                        it.executeUpdate() == 1
+                    }
+                    if (pending && avatarReferenced(connection, key)) {
+                        // Do not leave an executable delete job for a referenced object.
+                        deleteAvatarIntent(connection, id, key)
+                        false
+                    } else pending
+                }
+                if (!unbound) return@withContext
+                store.delete(key)
+                if (writeAcknowledged) {
+                    database.withRetryingJdbcTransaction { deleteAvatarIntent(it, id, key) }
+                }
+                // Keep the delayed intent after a failed PUT even if delete reports success.
+                // The provider might still finish the PUT after losing its response.
+            } catch (_: Exception) {
+                avatarLog.warn("Avatar compensation could not finish")
+            }
+        }
+    }
+
+    private fun deleteAvatarIntent(connection: Connection, id: UUID, key: String) {
+        connection.prepareStatement(
+            "DELETE FROM media_deletion_jobs WHERE id=? AND object_key=? AND status='PENDING'"
+        ).use {
+            it.setObject(1, id)
+            it.setString(2, key)
+            it.executeUpdate()
+        }
+    }
+
+    private fun avatarReferenced(connection: Connection, key: String): Boolean =
+        connection.prepareStatement("SELECT 1 FROM users WHERE avatar_object_key=? LIMIT 1").use {
+            it.setString(1, key)
+            it.executeQuery().use { rows -> rows.next() }
+        }
+
+    private fun lockedAvatarState(connection: Connection, identity: SessionIdentity): AvatarState {
+        val current = connection.prepareStatement(
+            """SELECT avatar_object_key, updated_at FROM users
+               WHERE id=? AND deleted_at IS NULL AND auth_version=? FOR NO KEY UPDATE"""
+        ).use {
+            it.setObject(1, identity.userId)
+            it.setInt(2, identity.authVersion)
+            it.executeQuery().use { rows ->
+                if (!rows.next()) sessionExpired()
+                AvatarState(rows.getString(1), rows.getObject(2, OffsetDateTime::class.java))
+            }
+        }
+        // V004 kept existing access JWTs valid without assigning a session auth version.
+        if (!sessionActive(connection, identity, allowLegacy = true) ||
+            !identity.accessExpiresAt.isAfter(Instant.now())
+        ) sessionExpired()
+        return current
+    }
+
+    private fun requireCurrentAvatar(connection: Connection, identity: SessionIdentity, expected: AvatarState) {
+        val current = lockedAvatarState(connection, identity)
+        if (current != expected) throw ApiException(
+            HttpStatusCode.Conflict, "STALE_STATE", "Профиль уже изменился",
+            details = buildJsonObject {
+                put("avatarUrl", current.objectKey?.let { JsonPrimitive(avatarUrl(identity.userId)) } ?: JsonNull)
+            },
+        )
+    }
+
+    private fun writeAvatarKey(connection: Connection, userId: UUID, key: String?) {
+        connection.prepareStatement(
+            "UPDATE users SET avatar_object_key=?,updated_at=clock_timestamp() WHERE id=?"
+        ).use {
+            it.setString(1, key)
+            it.setObject(2, userId)
+            check(it.executeUpdate() == 1)
+        }
+    }
+
+    private fun enqueueAvatarCleanup(connection: Connection, id: UUID, key: String, delaySeconds: Int = 0) {
+        connection.prepareStatement(
+            """INSERT INTO media_deletion_jobs (id,object_key,status,attempts,next_attempt_at,created_at)
+               VALUES (?,?,'PENDING',0,clock_timestamp()+(? * interval '1 second'),clock_timestamp())"""
+        ).use {
+            it.setObject(1, id)
+            it.setString(2, key)
+            it.setInt(3, delaySeconds)
+            check(it.executeUpdate() == 1)
+        }
+    }
+
+    private fun avatarUrl(userId: UUID): String = "/api/v1/users/$userId/avatar"
+
+    internal data class AvatarState(val objectKey: String?, val updatedAt: OffsetDateTime)
+
 
     suspend fun updateName(identity: SessionIdentity, request: UpdateProfileRequest): UserSelf {
         val name = request.displayName.trim()
@@ -122,7 +311,7 @@ class ProfileService(
             statement.executeQuery().use { rows -> if (!rows.next()) null else UserSelf(
                 id = identity.userId.toString(),
                 displayName = rows.getString("display_name"),
-                avatarUrl = if (rows.getString("avatar_object_key") == null) null else "/api/v1/users/${identity.userId}/avatar",
+                avatarUrl = if (rows.getString("avatar_object_key") == null) null else avatarUrl(identity.userId),
                 phone = rows.getString("phone_e164"),
                 ageYears = rows.getInt("age_years"),
                 messageMutedUntil = rows.getObject("message_muted_until", OffsetDateTime::class.java)?.toInstant()?.toString(),
@@ -130,14 +319,19 @@ class ProfileService(
             ) }
         }
 
-    private fun sessionActive(connection: Connection, identity: SessionIdentity): Boolean =
+    private fun sessionActive(
+        connection: Connection,
+        identity: SessionIdentity,
+        allowLegacy: Boolean = false,
+    ): Boolean =
         connection.prepareStatement(
             """SELECT 1 FROM auth_sessions WHERE id=? AND user_id=? AND revoked_at IS NULL
-               AND expires_at>clock_timestamp() AND auth_version=? FOR UPDATE"""
+               AND expires_at>clock_timestamp() AND (auth_version=? OR (auth_version IS NULL AND ?)) FOR UPDATE"""
         ).use { statement ->
             statement.setObject(1, identity.sessionId)
             statement.setObject(2, identity.userId)
             statement.setInt(3, identity.authVersion)
+            statement.setBoolean(4, allowLegacy)
             statement.executeQuery().use { it.next() }
         }
 
