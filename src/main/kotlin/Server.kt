@@ -52,8 +52,10 @@ import io.ktor.server.application.ApplicationStopped
 import java.nio.file.Path
 
 /** Ktor composition root. Migrations must succeed before routes are installed. */
-fun Application.module() {
-    val config = ServerConfig.fromEnvironment()
+fun Application.module() = configuredModule(ServerConfig.fromEnvironment())
+
+internal fun Application.configuredModule(config: ServerConfig) {
+    val deviceTokenCipher = config.pushTokenEncryptionKeyBase64?.let(DeviceTokenCipher::fromBase64)
     val database = HikariDatabaseBootstrap(config).start()
     try {
         configureTransport()
@@ -142,9 +144,7 @@ fun Application.module() {
             notificationService = NotificationService(
                 database, config.jwtSecret, locationPrivacyVersion = draftPolicy?.version,
             ),
-            deviceService = config.pushTokenEncryptionKeyBase64?.let { key ->
-                DeviceService(database, DeviceTokenCipher.fromBase64(key))
-            },
+            deviceService = deviceTokenCipher?.let { DeviceService(database, it) },
             profileService = ProfileService(
                 database, passwordHashing,
                 avatarStore = if (config.appEnvironment == AppEnvironment.LOCAL) {

@@ -186,8 +186,9 @@ class BookingReminderCancellationIntegrationTest {
                 }
                 runBlocking {
                     val registry = DeviceService(db, cipher)
+                    val recipientSession = SessionIdentity(recipient, sessions.getValue(recipient), 0)
                     for (installation in installations) assertIs<RegisterDeviceResult.Registered>(registry.register(
-                        RegisterDeviceCommand(recipient, installation, "IOS_APNS", tokens.getValue(installation))))
+                        RegisterDeviceCommand(recipientSession, installation, "IOS_APNS", tokens.getValue(installation))))
                 }
             } catch (failure: Throwable) { db.close(); throw failure }
         }

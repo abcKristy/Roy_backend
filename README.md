@@ -73,9 +73,10 @@ Reverse proxy должен проксировать корень origin, вкл�
 [/docs/websocket](http://127.0.0.1:8080/docs/websocket); WS не представлен REST-операцией.
 [Различия с ранним M0 и границы реализации](docs/api-contract-differences.md)
 доступны по [/docs/contract-differences](http://127.0.0.1:8080/docs/contract-differences).
-Аватары и production-публикация политики пока не реализованы. Push-device маршруты
-включаются только при настройке `PUSH_TOKEN_ENCRYPTION_KEY_BASE64` (32 байта в Base64);
-без ключа возвращается `404`. Не используйте реальные пользовательские данные для примеров.
+Аватары и production-публикация политики пока не реализованы. При отсутствии
+`PUSH_TOKEN_ENCRYPTION_KEY_BASE64` (32 байта в Base64) аутентифицированный PUT
+с корректным ID установки возвращает `503 PUSH_REGISTRATION_FAILED`, а DELETE
+возвращает `404 RESOURCE_GONE`. Не используйте реальные пользовательские данные для примеров.
 
 Исходники спецификации: `docs/openapi/*.json`; `docs/openapi.json` — проверяемый
 собранный файл, именно его backend включает в ресурсы. После правки фрагментов:

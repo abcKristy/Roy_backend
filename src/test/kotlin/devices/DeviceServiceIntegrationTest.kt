@@ -27,11 +27,13 @@ class DeviceServiceIntegrationTest {
         val firstUser = UUID.randomUUID()
         val secondUser = UUID.randomUUID()
         val installation = UUID.randomUUID()
-        DriverManager.getConnection(url, user, password).use { connection ->
+        val (firstSession, secondSession) = DriverManager.getConnection(url, user, password).use { connection ->
             connection.autoCommit = false
             seedUser(connection, firstUser)
             seedUser(connection, secondUser)
+            val sessions = connection.seedDeviceSession(firstUser) to connection.seedDeviceSession(secondUser)
             connection.commit()
+            sessions
         }
         val cipher = DeviceTokenCipher.fromBase64(Base64.getEncoder().encodeToString(ByteArray(32) { it.toByte() }))
         assertFails { cipher.decrypt(installation, "IOS_APNS", cipher.encrypt(installation, "ANDROID_RUSTORE", "token")) }
@@ -40,9 +42,9 @@ class DeviceServiceIntegrationTest {
         try {
             val service = DeviceService(database, cipher)
             val initial = assertIs<RegisterDeviceResult.Registered>(service.register(
-                RegisterDeviceCommand(firstUser, installation, "ANDROID_RUSTORE", "token-first"))).value
+                RegisterDeviceCommand(firstSession, installation, "ANDROID_RUSTORE", "token-first"))).value
             val again = assertIs<RegisterDeviceResult.Registered>(service.register(
-                RegisterDeviceCommand(firstUser, installation, "ANDROID_RUSTORE", "token-first"))).value
+                RegisterDeviceCommand(firstSession, installation, "ANDROID_RUSTORE", "token-first"))).value
             assertEquals(initial, again)
             val event = UUID.randomUUID()
             val job = UUID.randomUUID()
@@ -74,9 +76,9 @@ class DeviceServiceIntegrationTest {
                 }
             }
             assertIs<RegisterDeviceResult.TokenInUse>(service.register(RegisterDeviceCommand(
-                secondUser, UUID.randomUUID(), "ANDROID_RUSTORE", "token-first")))
+                secondSession, UUID.randomUUID(), "ANDROID_RUSTORE", "token-first")))
             val rotated = assertIs<RegisterDeviceResult.Registered>(service.register(
-                RegisterDeviceCommand(firstUser, installation, "ANDROID_RUSTORE", "token-rotated"))).value
+                RegisterDeviceCommand(firstSession, installation, "ANDROID_RUSTORE", "token-rotated"))).value
             assertEquals(initial.registeredAt, rotated.registeredAt)
             DriverManager.getConnection(url, user, password).use { connection ->
                 connection.prepareStatement("SELECT token_ciphertext FROM device_registrations WHERE installation_id=?")
@@ -89,7 +91,7 @@ class DeviceServiceIntegrationTest {
                     }
             }
             val rebind = assertIs<RegisterDeviceResult.Registered>(service.register(
-                RegisterDeviceCommand(secondUser, installation, "ANDROID_RUSTORE", "token-second"))).value
+                RegisterDeviceCommand(secondSession, installation, "ANDROID_RUSTORE", "token-second"))).value
             assertTrue(!rebind.registeredAt.isBefore(initial.registeredAt))
             DriverManager.getConnection(url, user, password).use { connection ->
                 connection.prepareStatement(
@@ -113,14 +115,14 @@ class DeviceServiceIntegrationTest {
                 }
                 assertEquals("token-second", cipher.decrypt(installation, "ANDROID_RUSTORE", ciphertext))
             }
-            service.revoke(firstUser, installation)
+            service.revoke(firstSession, installation)
             DriverManager.getConnection(url, user, password).use { connection ->
                 connection.prepareStatement("SELECT revoked_at FROM device_registrations WHERE installation_id=?")
                     .use { statement -> statement.setObject(1, installation)
                         statement.executeQuery().use { rows -> assertTrue(rows.next()); assertNull(rows.getObject(1)) } }
             }
-            service.revoke(secondUser, installation)
-            service.revoke(secondUser, installation)
+            service.revoke(secondSession, installation)
+            service.revoke(secondSession, installation)
             DriverManager.getConnection(url, user, password).use { connection ->
                 connection.prepareStatement("SELECT revoked_at FROM device_registrations WHERE installation_id=?")
                     .use { statement -> statement.setObject(1, installation)

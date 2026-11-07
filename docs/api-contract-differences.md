@@ -22,9 +22,9 @@ Evidence: `auth/DraftPrivacyPolicy.kt`, `config/ServerConfig.kt`, `api/Routing.k
 
 ## Push-device registration does not call the push provider
 
-The M0.T5 scenario matrix mentions `503 PUSH_REGISTRATION_FAILED`. The actual `PUT /api/v1/me/push-devices/{installationId}` validates the platform/provider pair and token syntax, encrypts/stores the token and checks local uniqueness. It does not contact RuStore/APNs; provider availability is handled later by delivery workers. Consequently OpenAPI lists the implemented `409 DEVICE_TOKEN_IN_USE`, validation/authentication/transport failures and generic `500 INTERNAL_ERROR`, and does not invent a synchronous `PUSH_REGISTRATION_FAILED` response.
+The authenticated `PUT /api/v1/me/push-devices/{installationId}` returns `503 PUSH_REGISTRATION_FAILED` when the backend has no encryption key. With a configured key it validates the platform/provider pair and token syntax, encrypts the token and checks local uniqueness. It returns `409 DEVICE_TOKEN_IN_USE` for a duplicate active token and `409 STALE_STATE` for an older session or a previously replaced token. Calls to RuStore/APNs are deferred until the provider adapters and push worker are wired into the server runtime.
 
-Evidence: `api/DeviceRoutes.kt`, `devices/DeviceService.kt`, `jobs/PushDeliveryWorker.kt`; `api/DeviceRoutesIntegrationTest.kt`.
+Evidence includes `api/DeviceRoutes.kt`, `devices/DeviceService.kt`, `jobs/PushDeliveryWorker.kt`, `api/DeviceRegistrationSecurityIntegrationTest.kt`, and `api/PushTokenEncryptionIntegrationTest.kt`.
 
 ## Transport limits and notification location add implementation detail
 
