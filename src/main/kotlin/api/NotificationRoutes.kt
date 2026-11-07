@@ -82,6 +82,7 @@ internal fun Route.notificationRoutes(service: NotificationService, sessions: Se
         }
     }
     get("/api/v1/me/notifications") {
+        call.response.header(HttpHeaders.CacheControl, "no-store")
         val actor = notificationActor(sessions, call.request.headers[HttpHeaders.Authorization])
         val limit = notificationLimit(call.request.queryParameters["limit"])
         val page = try { service.list(actor, call.request.queryParameters["cursor"], limit) }
