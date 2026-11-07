@@ -24,6 +24,7 @@ data class ReminderTick(val bookingsVisited: Int, val eventsCreated: Int, val mi
 
 private const val REMINDER_LEAD_SECONDS = 3600L
 private const val REMINDER_WINDOW_SECONDS = 120L
+private const val REMINDER_DEDUPE_PREFIX = "reminder_1h:"
 
 internal fun isReminderEligible(active: Boolean, startsAt: Instant, bookedAt: Instant, now: Instant): Boolean {
     val dueAt = startsAt.minusSeconds(REMINDER_LEAD_SECONDS)
@@ -53,11 +54,21 @@ class ReminderScheduler(
                    WHERE b.status='ACTIVE' AND p.lifecycle='OPEN'
                      AND p.starts_at>? AND p.starts_at<=?
                      AND b.created_at<=p.starts_at-interval '1 hour'
+                     AND EXISTS (
+                         SELECT 1 FROM chat_memberships AS member
+                         JOIN users AS recipient ON recipient.id=member.user_id AND recipient.deleted_at IS NULL
+                         WHERE member.chat_id=p.chat_id AND member.left_at IS NULL
+                           AND NOT EXISTS (
+                               SELECT 1 FROM notification_events AS event
+                               WHERE event.recipient_user_id=member.user_id AND event.dedupe_key=? || b.id::text
+                           )
+                     )
                    ORDER BY p.starts_at,b.id LIMIT ?"""
             ).use { statement ->
                 statement.setObject(1, now.plusSeconds(REMINDER_LEAD_SECONDS - REMINDER_WINDOW_SECONDS).atOffset(ZoneOffset.UTC))
                 statement.setObject(2, now.plusSeconds(REMINDER_LEAD_SECONDS).atOffset(ZoneOffset.UTC))
-                statement.setInt(3, limit)
+                statement.setString(3, REMINDER_DEDUPE_PREFIX)
+                statement.setInt(4, limit)
                 statement.executeQuery().use { rows -> buildList {
                     while (rows.next()) add(rows.getObject(1, UUID::class.java))
                 } }
@@ -113,9 +124,13 @@ class ReminderScheduler(
         val recipientIds = recipients.activeChatMembers(connection, proposal.chatId)
         val barrier = RecipientBarrier.acquire(connection,
             recipientIds.map { RecipientLockClaim(it, RecipientLockMode.SHARED) })
+        // Waiting for recipient barriers can carry a claim past the end of the due window.
+        if (!isReminderEligible(proposal.active, proposal.startsAt, proposal.bookedAt, now(connection))) {
+            return@withRetryingJdbcTransaction 0
+        }
         recipientIds.count { recipientId ->
             notifications.write(connection, barrier, NotificationEventDraft(
-                recipientId, NotificationEventType.REMINDER_1H, "reminder_1h:$bookingId",
+                recipientId, NotificationEventType.REMINDER_1H, "$REMINDER_DEDUPE_PREFIX$bookingId",
                 buildJsonObject { put("title", "Встреча через час"); put("body", "Напоминание о встрече") },
                 pointId = pointId, chatId = proposal.chatId, proposalId = proposal.proposalId,
                 bookingId = bookingId,
