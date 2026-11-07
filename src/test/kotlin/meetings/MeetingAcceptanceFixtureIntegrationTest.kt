@@ -112,6 +112,7 @@ class MeetingAcceptanceFixtureIntegrationTest {
 
     @Test
     fun `failure after committed fixture seed removes only its UUID namespace`() {
+        val database = com.example.testing.testDatabaseUrl()
         val failure = IllegalStateException("synthetic fixture setup failure")
         var point: UUID? = null
         var people = emptyList<UUID>()
@@ -119,7 +120,7 @@ class MeetingAcceptanceFixtureIntegrationTest {
             MeetingAcceptanceFixture { f -> point = f.point; people = f.people; throw failure }
         }
         assertSame(failure, thrown)
-        DriverManager.getConnection(System.getenv("TEST_DATABASE_URL"), System.getenv("DATABASE_USER"), System.getenv("DATABASE_PASSWORD")).use { c ->
+        DriverManager.getConnection(database, System.getenv("DATABASE_USER"), System.getenv("DATABASE_PASSWORD")).use { c ->
             c.prepareStatement("SELECT (SELECT count(*) FROM points WHERE id=?)+(SELECT count(*) FROM users WHERE id IN (?,?,?,?))").use { s ->
                 (listOf(checkNotNull(point)) + people).forEachIndexed { index, id -> s.setObject(index + 1, id) }
                 s.executeQuery().use { rows -> assertTrue(rows.next()); assertEquals(0, rows.getInt(1)) }

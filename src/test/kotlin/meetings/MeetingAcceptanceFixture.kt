@@ -21,7 +21,7 @@ internal class MeetingAcceptanceFixture(
     afterSeed: (MeetingAcceptanceFixture) -> Unit = {},
 ) : AutoCloseable {
     private val url = testDatabaseUrl().also {
-        require(it == "jdbc:postgresql://127.0.0.1:55485/roy_m4_acceptance_fixture")
+        require(java.net.URI(it.removePrefix("jdbc:")).path == "/roy_m4_acceptance_fixture")
     }
     private val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER required")
     private val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD required")
