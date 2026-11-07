@@ -2,6 +2,9 @@ package com.example.jobs
 
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
+import com.example.notifications.NotificationService
+import com.example.notifications.NotificationSettingsChange
+import com.example.notifications.SettingsUpdateResult
 import com.example.persistence.DatabaseRuntime
 import com.example.persistence.HikariDatabaseBootstrap
 import com.example.testing.testDatabaseUrl
@@ -18,6 +21,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class ReminderSchedulerIntegrationTest {
     @Test
@@ -73,6 +77,31 @@ class ReminderSchedulerIntegrationTest {
         }
     }
 
+    @Test
+    fun `reminder channel keeps in app history and fans out only to active opted in devices`() = runBlocking<Unit> {
+        Fixture().use { fixture ->
+            val booking = fixture.booking(secondsUntilStart = 3540)
+            fixture.preferences(fixture.owner, reminders = false, personal = true)
+            fixture.preferences(fixture.peer, reminders = true, personal = false)
+            fixture.device(fixture.owner)
+            val peerInstallation = fixture.device(fixture.peer)
+            fixture.device(fixture.peer, revoked = true)
+
+            assertEquals(2, fixture.scheduler().tick().eventsCreated)
+            val ids = fixture.reminders(booking)
+            assertEquals(ids.getValue(fixture.owner), fixture.notifications.list(fixture.owner, null, 20).items.single().id)
+            assertEquals(ids.getValue(fixture.peer), fixture.notifications.list(fixture.peer, null, 20).items.single().id)
+            assertEquals(mapOf(fixture.owner to false, fixture.peer to true), fixture.pushFlags(booking))
+            assertEquals(setOf(peerInstallation), fixture.jobInstallations(booking))
+
+            fixture.preferences(fixture.owner, reminders = true, personal = true)
+            assertEquals(0, fixture.scheduler().tick().eventsCreated)
+            assertEquals(ids, fixture.reminders(booking))
+            assertEquals(mapOf(fixture.owner to false, fixture.peer to true), fixture.pushFlags(booking))
+            assertEquals(setOf(peerInstallation), fixture.jobInstallations(booking))
+        }
+    }
+
     private class AfterDiscovery(private val database: DatabaseRuntime) : DatabaseRuntime by database {
         private val reads = AtomicInteger()
         private val bothSelected = CyclicBarrier(2)
@@ -92,6 +121,7 @@ class ReminderSchedulerIntegrationTest {
             "local-reminder-fixture-jwt-secret-of-sufficient-length", appEnvironment = AppEnvironment.LOCAL,
             databaseLockTimeoutMs = 5_000, databaseStatementTimeoutMs = 15_000,
         )).start()
+        val notifications = NotificationService(database, "local-reminder-fixture-cursor-secret-of-sufficient-length")
         val owner = UUID.randomUUID()
         val peer = UUID.randomUUID()
         private val former = UUID.randomUUID()
@@ -161,6 +191,49 @@ class ReminderSchedulerIntegrationTest {
                             check(prior == null) { "Duplicate logical reminder" }
                         }
                     }
+                }
+            }
+        }
+
+        suspend fun preferences(user: UUID, reminders: Boolean, personal: Boolean) {
+            val revision = checkNotNull(notifications.settings(user)).revision
+            assertIs<SettingsUpdateResult.Updated>(
+                notifications.updateSettings(user, NotificationSettingsChange(reminders, personal, false, false, revision)),
+            )
+        }
+
+        suspend fun device(user: UUID, revoked: Boolean = false): UUID = database.withJdbcTransaction { connection ->
+            val installation = UUID.randomUUID()
+            connection.execute(
+                """INSERT INTO device_registrations(installation_id,user_id,platform,token_ciphertext,token_digest,
+                   created_at,updated_at,revoked_at)
+                   VALUES (?,?,'IOS_APNS','synthetic-encrypted-token',?,clock_timestamp(),clock_timestamp(),?)""",
+                installation, user, installation.toString().replace("-", "").repeat(2),
+                if (revoked) now.atOffset(ZoneOffset.UTC) else null,
+            )
+            installation
+        }
+
+        suspend fun pushFlags(booking: UUID): Map<UUID, Boolean> = database.withReadOnlyJdbcTransaction { connection ->
+            connection.prepareStatement(
+                "SELECT recipient_user_id,push_requested FROM notification_events WHERE booking_id=? AND event_type='reminder_1h'",
+            ).use { statement ->
+                statement.setObject(1, booking)
+                statement.executeQuery().use { rows ->
+                    buildMap { while (rows.next()) put(rows.getObject(1, UUID::class.java), rows.getBoolean(2)) }
+                }
+            }
+        }
+
+        suspend fun jobInstallations(booking: UUID): Set<UUID> = database.withReadOnlyJdbcTransaction { connection ->
+            connection.prepareStatement(
+                """SELECT j.installation_id FROM push_delivery_jobs AS j
+                   JOIN notification_events AS e ON e.id=j.notification_event_id
+                   WHERE e.booking_id=? AND e.event_type='reminder_1h' AND j.status='PENDING'""",
+            ).use { statement ->
+                statement.setObject(1, booking)
+                statement.executeQuery().use { rows ->
+                    buildSet { while (rows.next()) check(add(rows.getObject(1, UUID::class.java))) }
                 }
             }
         }
