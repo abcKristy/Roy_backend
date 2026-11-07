@@ -247,6 +247,178 @@ class JobsIntegrationTest {
         }
     }
 
+    @Test
+    fun `expired push claim cannot acknowledge and restart safely recovers the same event`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val fixture = seedPushJob(dbUrl)
+        runtime(dbUrl).use { db ->
+            val first = PushDeliveryWorker(db, PushSender { _, _, payload ->
+                assertEquals(fixture.event, payload.notificationId)
+                connection(dbUrl).use { c ->
+                    c.prepareStatement("UPDATE push_delivery_jobs SET lease_until=clock_timestamp() WHERE id=?")
+                        .use { it.setObject(1, fixture.job); it.executeUpdate() }
+                }
+                PushSendResult.Delivered
+            }, PushTokenDecoder { _, _, _ -> "token" })
+            assertEquals(1, first.processBatch())
+            assertEquals(0, first.snapshot().delivered)
+            assertEquals("PROCESSING" to 1, pushState(dbUrl, fixture.job))
+
+            val restarted = PushDeliveryWorker(db, PushSender { _, _, payload ->
+                assertEquals(fixture.event, payload.notificationId)
+                PushSendResult.Delivered
+            }, PushTokenDecoder { _, _, _ -> "token" })
+            assertEquals(1, restarted.processBatch())
+            assertEquals(1, restarted.snapshot().reclaimed)
+            assertEquals("SENT" to 2, pushState(dbUrl, fixture.job))
+        }
+    }
+
+    @Test
+    fun `push provider failures are retried only for an enabled platform and stop at the limit`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val fixture = seedPushJob(dbUrl)
+        runtime(dbUrl).use { db ->
+            val sender = PushSender { _, _, _ -> PushSendResult.Retryable(PushFailureCode.UNAVAILABLE) }
+            val decoder = PushTokenDecoder { _, _, _ -> "token" }
+            val disabled = PushDeliveryWorker(db, sender, decoder, enabledPlatforms = setOf("IOS_APNS"))
+            assertEquals(0, disabled.processBatch())
+            assertEquals("PENDING" to 0, pushState(dbUrl, fixture.job))
+
+            val worker = PushDeliveryWorker(db, sender, decoder, maxAttempts = 2)
+            assertEquals(1, worker.processBatch())
+            assertEquals("PENDING" to 1, pushState(dbUrl, fixture.job))
+            connection(dbUrl).use { c ->
+                c.prepareStatement("UPDATE push_delivery_jobs SET next_attempt_at=clock_timestamp() WHERE id=?")
+                    .use { it.setObject(1, fixture.job); it.executeUpdate() }
+            }
+            assertEquals(1, worker.processBatch())
+            assertEquals("FAILED" to 2, pushState(dbUrl, fixture.job))
+            assertEquals(0, worker.processBatch())
+        }
+    }
+
+    @Test
+    fun `invalid token revokes the current registration but cannot revoke a replacement`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        for (rotated in listOf(true, false)) {
+            val fixture = seedPushJob(dbUrl)
+            runtime(dbUrl).use { db ->
+                val worker = PushDeliveryWorker(db, PushSender { _, _, _ ->
+                    if (rotated) connection(dbUrl).use { c ->
+                        c.prepareStatement("UPDATE device_registrations SET token_ciphertext='replacement' WHERE installation_id=?")
+                            .use { it.setObject(1, fixture.installation); it.executeUpdate() }
+                    }
+                    PushSendResult.Permanent(PushFailureCode.INVALID_TOKEN)
+                }, PushTokenDecoder { _, _, _ -> "token" })
+                assertEquals(1, worker.processBatch())
+                assertEquals("FAILED" to 1, pushState(dbUrl, fixture.job))
+                connection(dbUrl).use { c ->
+                    c.prepareStatement("SELECT revoked_at IS NOT NULL FROM device_registrations WHERE installation_id=?")
+                        .use { s -> s.setObject(1, fixture.installation); s.executeQuery().use { r ->
+                            assertTrue(r.next()); assertEquals(!rotated, r.getBoolean(1))
+                        } }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `nearby delivery cancels stale consent and never forwards a private proposal target`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val stale = seedPushJob(dbUrl, nearbyConsent = "test")
+        val allowed = seedPushJob(dbUrl, nearbyConsent = "location-current")
+        runtime(dbUrl).use { db ->
+            val worker = PushDeliveryWorker(db, PushSender { _, _, payload ->
+                assertEquals(allowed.event, payload.notificationId)
+                assertEquals("nearby_meeting", payload.kind)
+                assertNotNull(payload.pointId)
+                assertEquals(null, payload.chatId)
+                assertEquals(null, payload.proposalId)
+                PushSendResult.Delivered
+            }, PushTokenDecoder { _, _, _ -> "token" }, locationPrivacyVersion = "location-current")
+            assertEquals(2, worker.processBatch())
+            assertEquals("CANCELLED" to 1, pushState(dbUrl, stale.job))
+            assertEquals("SENT" to 1, pushState(dbUrl, allowed.job))
+        }
+    }
+
+    @Test
+    fun `restart does not send a job whose final lease has expired`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val fixture = seedPushJob(dbUrl)
+        connection(dbUrl).use { c ->
+            c.prepareStatement("""UPDATE push_delivery_jobs SET status='PROCESSING',attempts=1,
+                claim_token=gen_random_uuid(),lease_until=clock_timestamp() WHERE id=?""")
+                .use { it.setObject(1, fixture.job); it.executeUpdate() }
+        }
+        runtime(dbUrl).use { db ->
+            val restarted = PushDeliveryWorker(db, PushSender { _, _, _ -> error("Unexpected send") },
+                PushTokenDecoder { _, _, _ -> "token" }, maxAttempts = 1)
+            assertEquals(0, restarted.processBatch())
+            assertEquals(1, restarted.snapshot().reclaimed)
+            assertEquals("FAILED" to 1, pushState(dbUrl, fixture.job))
+        }
+    }
+
+    private data class PushFixture(val event: UUID, val job: UUID, val installation: UUID)
+
+    private fun seedPushJob(dbUrl: String, nearbyConsent: String? = null): PushFixture {
+        val account = UUID.randomUUID()
+        val point = UUID.randomUUID()
+        val chat = UUID.randomUUID()
+        val fixture = PushFixture(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID())
+        connection(dbUrl).use { c ->
+            c.autoCommit = false
+            seedUser(c, account)
+            seedChat(c, account, point, chat)
+            c.prepareStatement(
+                """INSERT INTO device_registrations
+                   (installation_id,user_id,platform,token_ciphertext,token_digest,created_at,updated_at)
+                   VALUES (?,?,'ANDROID_RUSTORE','cipher',?,clock_timestamp(),clock_timestamp())"""
+            ).use {
+                it.setObject(1, fixture.installation)
+                it.setObject(2, account)
+                it.setString(3, fixture.installation.toString().replace("-", "").repeat(2))
+                it.executeUpdate()
+            }
+            insertEventJob(c, fixture.event, fixture.job, account, fixture.installation, point, chat)
+            if (nearbyConsent != null) setNearby(c, fixture.event, account, chat, nearbyConsent)
+            c.commit()
+        }
+        return fixture
+    }
+
+    private fun setNearby(c: Connection, event: UUID, account: UUID, chat: UUID, consent: String) {
+        val proposal = UUID.randomUUID()
+        c.prepareStatement(
+            """INSERT INTO meeting_proposals (id,chat_id,proposer_user_id,starts_at,ends_at,created_at,updated_at)
+               VALUES (?,?,?,clock_timestamp()+interval '1 hour',clock_timestamp()+interval '2 hours',
+                 clock_timestamp(),clock_timestamp())"""
+        ).use { it.setObject(1, proposal); it.setObject(2, chat); it.setObject(3, account); it.executeUpdate() }
+        c.prepareStatement(
+            "UPDATE notification_events SET channel='EXTRA',event_type='nearby_meeting',proposal_id=? WHERE id=?"
+        ).use { it.setObject(1, proposal); it.setObject(2, event); it.executeUpdate() }
+        c.prepareStatement("UPDATE users SET accepted_privacy_version=? WHERE id=?")
+            .use { it.setString(1, consent); it.setObject(2, account); it.executeUpdate() }
+        c.prepareStatement("UPDATE notification_settings SET extra_push_enabled=true WHERE user_id=?")
+            .use { it.setObject(1, account); it.executeUpdate() }
+        c.prepareStatement(
+            """INSERT INTO notification_locations (user_id,position,updated_at)
+               VALUES (?,ST_SetSRID(ST_MakePoint(37.62,55.75),4326),clock_timestamp())"""
+        ).use { it.setObject(1, account); it.executeUpdate() }
+    }
+
+    private fun pushState(dbUrl: String, job: UUID): Pair<String, Int> = connection(dbUrl).use { c ->
+        c.prepareStatement("SELECT status,attempts FROM push_delivery_jobs WHERE id=?").use { s ->
+            s.setObject(1, job)
+            s.executeQuery().use { rows ->
+                assertTrue(rows.next())
+                rows.getString(1) to rows.getInt(2)
+            }
+        }
+    }
+
     private fun checkedUrl(): String? {
         val value = url
         require(value.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step7jobs$")))
