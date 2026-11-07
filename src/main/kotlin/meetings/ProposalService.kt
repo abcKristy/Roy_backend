@@ -175,8 +175,8 @@ class ProposalService(
 
     private fun enqueueNearby(connection: Connection, proposalId: UUID, pointId: UUID, startsAt: Instant) {
         val policyVersion = locationPrivacyVersion ?: return
-        val recipientIds = recipients.nearbyForProposal(connection, proposalId, policyVersion)
-        if (recipientIds.isEmpty()) return
+        val candidateIds = recipients.nearbyForProposal(connection, proposalId, policyVersion)
+        if (candidateIds.isEmpty()) return
 
         val address = connection.prepareStatement("SELECT address FROM points WHERE id=?").use { statement ->
             statement.setObject(1, pointId)
@@ -186,7 +186,8 @@ class ProposalService(
             put("title", "Встреча рядом")
             put("body", "$address · $startsAt")
         }
-        val barrier = RecipientBarrier.acquire(connection, recipientIds.map { RecipientLockClaim(it, RecipientLockMode.SHARED) })
+        val barrier = RecipientBarrier.acquire(connection, candidateIds.map { RecipientLockClaim(it, RecipientLockMode.SHARED) })
+        val recipientIds = recipients.recheckNearbyForProposal(connection, proposalId, policyVersion, candidateIds)
         recipientIds.forEach { recipientId ->
             notifications.write(connection, barrier, NotificationEventDraft(
                 recipientId, NotificationEventType.NEARBY_MEETING, "nearby:$proposalId", snapshot,

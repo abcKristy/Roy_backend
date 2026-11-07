@@ -1,6 +1,7 @@
 package com.example.persistence
 
 import java.sql.Connection
+import java.sql.Array as SqlArray
 import java.util.UUID
 
 /** Select recipients inside the business transaction, before acquiring recipient barriers. */
@@ -30,6 +31,41 @@ class JdbcNotificationRecipients {
     /** The GiST prefilter leaves the exact 1000 m boundary to ST_Distance, as in point lookup. */
     fun nearbyForProposal(connection: Connection, proposalId: UUID, policyVersion: String): List<UUID> {
         requireTransaction(connection)
+        return selectNearby(connection, proposalId, policyVersion)
+    }
+
+    /** Call after acquiring the recipient barriers for this fixed candidate set. */
+    fun recheckNearbyForProposal(
+        connection: Connection,
+        proposalId: UUID,
+        policyVersion: String,
+        candidateIds: List<UUID>,
+    ): List<UUID> {
+        requireTransaction(connection)
+        if (candidateIds.isEmpty()) return emptyList()
+        val candidates = connection.createArrayOf("uuid", candidateIds.toTypedArray())
+        try {
+            connection.prepareStatement(
+                "SELECT user_id FROM notification_settings WHERE user_id=ANY (?) ORDER BY user_id FOR SHARE"
+            ).use { statement ->
+                statement.setArray(1, candidates)
+                // Fetch all rows so every settings lock is held before the next statement.
+                statement.fetchSize = 0
+                statement.executeQuery().close()
+            }
+            return selectNearby(connection, proposalId, policyVersion, candidates)
+        } finally {
+            candidates.free()
+        }
+    }
+
+    private fun selectNearby(
+        connection: Connection,
+        proposalId: UUID,
+        policyVersion: String,
+        candidates: SqlArray? = null,
+    ): List<UUID> {
+        val candidateFilter = if (candidates == null) "" else "AND l.user_id = ANY (?)"
         return connection.prepareStatement(
             """SELECT l.user_id
                FROM meeting_proposals AS proposal
@@ -52,10 +88,12 @@ class JdbcNotificationRecipients {
                        AND membership.user_id = l.user_id
                        AND membership.left_at IS NULL
                  )
+                 $candidateFilter
                ORDER BY l.user_id"""
         ).use { statement ->
             statement.setObject(1, proposalId)
             statement.setString(2, policyVersion)
+            if (candidates != null) statement.setArray(3, candidates)
             statement.executeQuery().use { rows -> buildList {
                 while (rows.next()) add(rows.getObject(1, UUID::class.java))
             } }

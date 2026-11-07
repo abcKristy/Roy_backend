@@ -3,13 +3,11 @@ package com.example.api
 import com.example.auth.JwtTokenIssuer
 import com.example.auth.DraftPrivacyPolicy
 import com.example.auth.SessionAccessService
-import com.example.auth.SessionIdentity
-import com.example.auth.SessionRepository
-import com.example.auth.UserSelf
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
 import com.example.notifications.NotificationService
 import com.example.persistence.HikariDatabaseBootstrap
+import com.example.persistence.JdbcSessionRepository
 import io.ktor.client.request.get
 import io.ktor.client.request.delete
 import io.ktor.client.request.header
@@ -45,6 +43,8 @@ class NotificationRoutesIntegrationTest {
         val dbPassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
         val actor = UUID.randomUUID()
         val other = UUID.randomUUID()
+        val sessionIds = listOf(actor, other).associateWith { UUID.randomUUID() }
+        val secondActorSession = UUID.randomUUID()
         val visible = UUID.randomUUID()
         val hidden = UUID.randomUUID()
         DriverManager.getConnection(url, dbUser, dbPassword).use { connection ->
@@ -63,6 +63,16 @@ class NotificationRoutesIntegrationTest {
                     "INSERT INTO notification_settings (user_id,extra_push_enabled,updated_at) VALUES (?,?,clock_timestamp())"
                 ).use { statement ->
                     statement.setObject(1, id); statement.setBoolean(2, id == other); statement.executeUpdate()
+                }
+            }
+            connection.prepareStatement(
+                """INSERT INTO auth_sessions (id,user_id,created_at,expires_at)
+                   VALUES (?,?,clock_timestamp(),clock_timestamp()+interval '1 hour')"""
+            ).use { statement ->
+                for ((userId, sessionId) in sessionIds.toList() + (actor to secondActorSession)) {
+                    statement.setObject(1, sessionId)
+                    statement.setObject(2, userId)
+                    statement.executeUpdate()
                 }
             }
             for ((id, channel, kind, show) in listOf(
@@ -87,19 +97,13 @@ class NotificationRoutesIntegrationTest {
         val runtime = HikariDatabaseBootstrap(ServerConfig(url, dbUser, dbPassword, secret,
             appEnvironment = AppEnvironment.LOCAL)).start()
         try {
-            val sessionIds = listOf(actor, other).associateWith { UUID.randomUUID() }
-            val sessions = SessionAccessService(secret, object : SessionRepository {
-                override suspend fun findActive(identity: SessionIdentity, now: Instant): UserSelf? =
-                    if (identity.sessionId == sessionIds[identity.userId])
-                        UserSelf(identity.userId.toString(), "Test", null, "+79990000000", 20, null, now.toString()) else null
-                override suspend fun revoke(identity: SessionIdentity, now: Instant) = false
-            })
+            val sessions = SessionAccessService(secret, JdbcSessionRepository(runtime))
             application {
                 configureTransport()
                 routing { notificationRoutes(NotificationService(runtime, secret, DraftPrivacyPolicy.VERSION), sessions) }
             }
             val now = Instant.now()
-            fun tokenFor(id: UUID) = "Bearer " + JwtTokenIssuer(secret).issue(id, sessionIds.getValue(id), 0,
+            fun tokenFor(id: UUID, sessionId: UUID = sessionIds.getValue(id)) = "Bearer " + JwtTokenIssuer(secret).issue(id, sessionId, 0,
                 now.minusSeconds(10), now.plusSeconds(3600))
             val token = tokenFor(actor)
             val locationPath = "/api/v1/me/notification-location"
@@ -153,10 +157,28 @@ class NotificationRoutesIntegrationTest {
             assertEquals(HttpStatusCode.OK, client.put("/api/v1/me/notifications/$visible/read") {
                 header(HttpHeaders.Authorization, token)
             }.status)
-            val disable = settings("""{"remindersPushEnabled":true,"personalPushEnabled":true,"extraPushEnabled":false,"extraInAppEnabled":false,"expectedRevision":1}""")
-            assertEquals(HttpStatusCode.OK, disable.status)
-            val cleared = client.get("/api/v1/me/notification-location") { header(HttpHeaders.Authorization, token) }
-            assertEquals("null", Json.parseToJsonElement(cleared.bodyAsText()).jsonObject["position"].toString())
+            suspend fun extra(push: Boolean, inApp: Boolean, revision: Int) = settings(
+                """{"remindersPushEnabled":true,"personalPushEnabled":true,"extraPushEnabled":$push,"extraInAppEnabled":$inApp,"expectedRevision":$revision}"""
+            )
+            val retainedCenter = getLocation()
+            assertEquals(HttpStatusCode.OK, extra(push = true, inApp = true, revision = 1).status)
+            assertEquals(retainedCenter, getLocation())
+            assertEquals(HttpStatusCode.OK, extra(push = false, inApp = true, revision = 2).status)
+            assertEquals(retainedCenter, getLocation())
+            assertEquals(HttpStatusCode.Conflict, extra(push = false, inApp = false, revision = 2).status)
+            assertEquals(retainedCenter, getLocation())
+            assertEquals(HttpStatusCode.OK, extra(push = false, inApp = false, revision = 3).status)
+            assertEquals(JsonNull, getLocation().getValue("position"))
+            assertEquals(HttpStatusCode.UnprocessableEntity, putLocation("55.80").status)
+            assertEquals(HttpStatusCode.OK, extra(push = true, inApp = false, revision = 4).status)
+            assertEquals(JsonNull, getLocation().getValue("position"))
+            assertEquals(HttpStatusCode.OK, putLocation("55.81").status)
+            val centerBeforeLogout = getLocation()
+            sessions.logout(token)
+            assertEquals(HttpStatusCode.Unauthorized, client.get(locationPath) {
+                header(HttpHeaders.Authorization, token)
+            }.status)
+            assertEquals(centerBeforeLogout, getLocation(tokenFor(actor, secondActorSession)))
         } finally { runtime.close() }
     }
 }

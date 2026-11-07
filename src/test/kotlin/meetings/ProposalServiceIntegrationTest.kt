@@ -7,7 +7,14 @@ import com.example.notifications.NotificationService
 import com.example.notifications.NotificationSettingsChange
 import com.example.notifications.SettingsUpdateResult
 import com.example.persistence.HikariDatabaseBootstrap
+import com.example.persistence.RecipientBarrier
+import com.example.persistence.RecipientLockClaim
+import com.example.persistence.RecipientLockMode
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.sql.Connection
@@ -32,12 +39,13 @@ class ProposalServiceIntegrationTest {
         val voter = UUID.randomUUID()
         val nearby = UUID.randomUUID()
         val late = UUID.randomUUID()
+        val newCenter = UUID.randomUUID()
         val pointId = UUID.randomUUID()
         val topicId = UUID.randomUUID()
         val chatId = UUID.randomUUID()
         DriverManager.getConnection(url, user, password).use { connection ->
             connection.autoCommit = false
-            listOf(creator, voter, nearby, late).forEach { addUser(connection, it) }
+            listOf(creator, voter, nearby, late, newCenter).forEach { addUser(connection, it) }
             connection.prepareStatement(
                 """UPDATE notification_settings SET extra_in_app_enabled=true WHERE user_id=?"""
             ).use { statement -> statement.setObject(1, nearby); statement.executeUpdate() }
@@ -64,7 +72,8 @@ class ProposalServiceIntegrationTest {
         }
         val secret = "proposal-integration-secret-at-least-32-bytes"
         val database = HikariDatabaseBootstrap(ServerConfig(url, user, password, secret,
-            appEnvironment = AppEnvironment.PRODUCTION)).start()
+            appEnvironment = AppEnvironment.PRODUCTION, databaseStatementTimeoutMs = 15_000,
+            databaseLockTimeoutMs = 10_000)).start()
         try {
             val service = ProposalService(database, secret, locationPrivacyVersion = "test")
             val start = Instant.now().plusSeconds(7_200)
@@ -139,9 +148,61 @@ class ProposalServiceIntegrationTest {
                 assertEquals(1, count(connection, "notification_events", "recipient_user_id", nearby))
                 assertEquals(0, count(connection, "notification_events", "recipient_user_id", late))
             }
+
+            // Hold the barrier until the create transaction has selected nearby candidates.
+            val afterToggle = DriverManager.getConnection(url, user, password).use { blocker ->
+                blocker.autoCommit = false
+                RecipientBarrier.acquire(blocker, listOf(RecipientLockClaim(nearby, RecipientLockMode.EXCLUSIVE)))
+                coroutineScope {
+                    val creating = async {
+                        service.create(command.copy(idempotencyKey = UUID.randomUUID())) { _, view ->
+                            buildJsonObject { put("id", view.id.toString()) }
+                        }
+                    }
+                    try {
+                        withTimeout(5_000) {
+                            while (!hasBlockedRecipientClaim(blocker)) delay(10)
+                        }
+                        assertIs<SettingsUpdateResult.Updated>(locations.updateSettings(nearby,
+                            NotificationSettingsChange(true, true, false, false, 0)))
+                        assertIs<SettingsUpdateResult.Updated>(locations.updateSettings(nearby,
+                            NotificationSettingsChange(true, true, false, true, 1)))
+                        assertNull(locations.location(nearby).latitude)
+                        assertIs<SettingsUpdateResult.Updated>(locations.updateSettings(newCenter,
+                            NotificationSettingsChange(true, true, false, true, 0)))
+                        assertIs<LocationWriteResult.Updated>(locations.setLocation(newCenter, 55.75, 37.62))
+                    } finally {
+                        blocker.rollback()
+                    }
+                    assertIs<CreateProposalResult.Created>(creating.await())
+                }
+            }
+            DriverManager.getConnection(url, user, password).use { connection ->
+                connection.prepareStatement(
+                    "SELECT recipient_user_id FROM notification_events WHERE proposal_id=? AND recipient_user_id IN (?,?,?)"
+                ).use { statement ->
+                    statement.setObject(1, afterToggle.proposal.id)
+                    statement.setObject(2, nearby)
+                    statement.setObject(3, late)
+                    statement.setObject(4, newCenter)
+                    statement.executeQuery().use { rows ->
+                        val recipients = buildSet {
+                            while (rows.next()) add(rows.getObject(1, UUID::class.java))
+                        }
+                        assertEquals(setOf(late), recipients)
+                    }
+                }
+            }
         } finally {
             database.close()
         }
+    }
+
+    private fun hasBlockedRecipientClaim(blocker: Connection): Boolean = blocker.createStatement().use { statement ->
+        statement.executeQuery(
+            """SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype='advisory' AND NOT granted
+               AND pg_backend_pid()=ANY(pg_blocking_pids(pid)))"""
+        ).use { rows -> rows.next(); rows.getBoolean(1) }
     }
 
     private fun addUser(connection: Connection, id: UUID) {
