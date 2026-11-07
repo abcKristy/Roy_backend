@@ -24,10 +24,13 @@ class ProfileService(
 ) {
     suspend fun updateName(identity: SessionIdentity, request: UpdateProfileRequest): UserSelf {
         val name = request.displayName.trim()
-        if (name.codePointCount(0, name.length) !in 1..80) invalidField()
+        if (name.codePointCount(0, name.length) !in 1..80 ||
+            name.codePoints().anyMatch { codePoint -> codePoint == 0 || codePoint in 0xD800..0xDFFF }
+        ) invalidField()
         return database.withRetryingJdbcTransaction { connection ->
             val current = lockUser(connection, identity) ?: sessionExpired()
             if (!sessionActive(connection, identity)) sessionExpired()
+            if (current.displayName == name) return@withRetryingJdbcTransaction current
             connection.prepareStatement(
                 "UPDATE users SET display_name=?,updated_at=clock_timestamp() WHERE id=?"
             ).use { statement ->
