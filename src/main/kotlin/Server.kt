@@ -47,6 +47,7 @@ import java.util.UUID
 import com.example.realtime.installRealtimeTransport
 import com.example.geocoding.DaDataReverseGeocoder
 import com.example.storage.LocalAvatarStore
+import com.example.storage.YandexAvatarStore
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
 import java.nio.file.Path
@@ -57,7 +58,9 @@ fun Application.module() = configuredModule(ServerConfig.fromEnvironment())
 internal fun Application.configuredModule(config: ServerConfig) {
     val deviceTokenCipher = config.pushTokenEncryptionKeyBase64?.let(DeviceTokenCipher::fromBase64)
     val database = HikariDatabaseBootstrap(config).start()
+    var cloudAvatarStore: YandexAvatarStore? = null
     try {
+        cloudAvatarStore = config.avatarObjectStorage?.let { YandexAvatarStore(it) }
         configureTransport()
         installRealtimeTransport()
         val passwordHashing = PasswordHashingWork(Argon2idPasswordHasher())
@@ -149,18 +152,29 @@ internal fun Application.configuredModule(config: ServerConfig) {
                 database, passwordHashing,
                 avatarStore = if (config.appEnvironment == AppEnvironment.LOCAL) {
                     LocalAvatarStore(Path.of(".local", "avatars"))
-                } else null,
+                } else cloudAvatarStore,
             ),
             accountDeletionService = AccountDeletionService(database, passwordHashing),
             realtimeHub = realtimeHub,
         )
         jobs.start()
         monitor.subscribe(ApplicationStopped) {
-            jobs.close()
-            database.close()
+            try {
+                jobs.close()
+            } finally {
+                try {
+                    cloudAvatarStore?.close()
+                } finally {
+                    database.close()
+                }
+            }
         }
     } catch (failure: Throwable) {
-        database.close()
+        try {
+            cloudAvatarStore?.close()
+        } finally {
+            database.close()
+        }
         throw failure
     }
 }

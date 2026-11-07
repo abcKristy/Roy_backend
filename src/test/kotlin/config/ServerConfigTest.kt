@@ -19,6 +19,32 @@ class ServerConfigTest {
         assertFalse(failure.stackTraceToString().contains("secret value"))
     }
 
+    @Test
+    fun `production storage is optional and requires complete private configuration`() {
+        val avatar = mapOf(
+            "AVATAR_STORAGE_BUCKET" to "private-test",
+            "AVATAR_STORAGE_KMS_KEY_ID" to "kms-fixture",
+            "AVATAR_STORAGE_ACCESS_KEY_ID" to "fixture-id",
+            "AVATAR_STORAGE_SECRET_ACCESS_KEY" to "fixture-secret",
+        )
+        assertEquals(null, ServerConfig.fromEnvironment(required).avatarObjectStorage)
+        val config = requireNotNull(ServerConfig.fromEnvironment(required + avatar).avatarObjectStorage)
+        assertEquals("private-test", config.bucket)
+        assertFalse(config.toString().contains("fixture-secret"))
+        for (missing in avatar.keys) {
+            val failure = assertFailsWith<IllegalStateException> {
+                ServerConfig.fromEnvironment(required + (avatar - missing))
+            }
+            assertFalse(failure.stackTraceToString().contains("fixture-secret"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(required + avatar + ("AVATAR_STORAGE_BUCKET" to "https://example.test"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(required + avatar + ("APP_ENV" to "local"))
+        }
+    }
+
     private val required = mapOf(
         "DATABASE_URL" to "jdbc:postgresql://127.0.0.1:5432/roy",
         "DATABASE_USER" to "test",

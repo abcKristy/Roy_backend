@@ -43,6 +43,8 @@ dependencies {
     implementation(libs.exposed.jdbc)
     implementation(libs.password4j)
     implementation(libs.java.jwt)
+    implementation(libs.aws.s3)
+    implementation(libs.aws.apache5.client)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.server.testHost)

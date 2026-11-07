@@ -26,8 +26,12 @@ class ServerConfig(
     val databaseLockTimeoutMs: Long = 1_000,
     val pushTokenEncryptionKeyBase64: String? = null,
     val dadataApiKey: String? = null,
+    val avatarObjectStorage: AvatarObjectStorageConfig? = null,
 ) {
     init {
+        require(avatarObjectStorage == null || appEnvironment == AppEnvironment.PRODUCTION) {
+            "Object Storage configuration requires APP_ENV=production"
+        }
         require((migrationUser == null) == (migrationPassword == null)) { "Migration credentials must be provided together" }
         require(databaseMaxPoolSize in 1..100) { "DATABASE_MAX_POOL_SIZE must be between 1 and 100" }
         require(databaseConnectionTimeoutMs in 500..60_000) { "DATABASE_CONNECTION_TIMEOUT_MS must be between 500 and 60000" }
@@ -100,6 +104,18 @@ class ServerConfig(
             fun longSetting(name: String, default: Long): Long = environment[name]?.let {
                 it.toLongOrNull() ?: throw IllegalArgumentException("$name must be an integer")
             } ?: default
+            val avatarStorageSettings = listOf(
+                "AVATAR_STORAGE_BUCKET",
+                "AVATAR_STORAGE_KMS_KEY_ID",
+                "AVATAR_STORAGE_ACCESS_KEY_ID",
+                "AVATAR_STORAGE_SECRET_ACCESS_KEY",
+            )
+            val avatarObjectStorage = if (avatarStorageSettings.any { !environment[it].isNullOrBlank() }) AvatarObjectStorageConfig(
+                bucket = required("AVATAR_STORAGE_BUCKET"),
+                kmsKeyId = required("AVATAR_STORAGE_KMS_KEY_ID"),
+                accessKeyId = required("AVATAR_STORAGE_ACCESS_KEY_ID"),
+                secretAccessKey = required("AVATAR_STORAGE_SECRET_ACCESS_KEY"),
+            ) else null
             return ServerConfig(
                 databaseUrl = databaseUrl,
                 databaseUser = required("DATABASE_USER"),
@@ -119,6 +135,7 @@ class ServerConfig(
                 databaseLockTimeoutMs = longSetting("DATABASE_LOCK_TIMEOUT_MS", 1_000),
                 pushTokenEncryptionKeyBase64 = environment["PUSH_TOKEN_ENCRYPTION_KEY_BASE64"]?.takeIf { it.isNotBlank() },
                 dadataApiKey = environment["DADATA_API_KEY"]?.takeIf { it.isNotBlank() },
+                avatarObjectStorage = avatarObjectStorage,
             )
         }
     }

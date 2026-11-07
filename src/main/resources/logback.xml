@@ -9,4 +9,6 @@
     </root>
     <logger name="org.eclipse.jetty" level="INFO"/>
     <logger name="io.netty" level="INFO"/>
+    <logger name="software.amazon.awssdk" level="OFF"/>
+    <logger name="org.apache.hc" level="OFF"/>
 </configuration>
