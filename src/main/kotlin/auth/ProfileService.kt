@@ -33,12 +33,61 @@ data class AvatarUpdateResponse(val avatarUrl: String)
 private const val STAGED_AVATAR_GRACE_SECONDS = 15 * 60
 private val avatarLog = LoggerFactory.getLogger(ProfileService::class.java)
 
+internal fun avatarNotFound(): Nothing = throw ApiException(
+    HttpStatusCode.NotFound, "RESOURCE_GONE", "Ресурс не найден",
+)
+
 /** Profile mutations use the same users-first lock order as login and refresh. */
 class ProfileService(
     private val database: DatabaseRuntime,
     private val passwordHashing: PasswordHashingWork,
     private val avatarStore: AvatarStore? = null,
 ) {
+    internal suspend fun readAvatar(identity: SessionIdentity, targetId: UUID): AvatarImage {
+        val key = accessibleAvatarKey(identity, targetId)
+        val store = avatarStore ?: avatarStorageUnavailable()
+        val read = try {
+            Result.success(store.read(key))
+        } catch (failure: AvatarStorageException) {
+            Result.failure(failure)
+        }
+        // The provider call holds no database connection. Recheck even on failure so
+        // a request that lost access while waiting cannot distinguish storage outcomes.
+        if (accessibleAvatarKey(identity, targetId) != key) avatarNotFound()
+        return storageOperation { read.getOrThrow() } ?: avatarNotFound()
+    }
+
+    private suspend fun accessibleAvatarKey(identity: SessionIdentity, targetId: UUID): String =
+        database.withReadOnlyJdbcTransaction { connection ->
+            // One snapshot distinguishes a dead viewer session from an inaccessible target.
+            connection.prepareStatement(
+                """SELECT target.avatar_object_key
+                   FROM auth_sessions AS session
+                   JOIN users AS viewer ON viewer.id=session.user_id
+                   LEFT JOIN users AS target ON target.id=? AND target.deleted_at IS NULL
+                       AND (target.id=viewer.id OR EXISTS (
+                           SELECT 1 FROM chat_memberships AS viewer_membership
+                           JOIN chat_memberships AS target_membership
+                             ON target_membership.chat_id=viewer_membership.chat_id
+                            AND target_membership.user_id=target.id AND target_membership.left_at IS NULL
+                           WHERE viewer_membership.user_id=viewer.id AND viewer_membership.left_at IS NULL
+                       ))
+                   WHERE session.id=? AND viewer.id=? AND viewer.auth_version=?
+                     AND (session.auth_version IS NULL OR session.auth_version=viewer.auth_version)
+                     AND viewer.deleted_at IS NULL
+                     AND session.revoked_at IS NULL AND session.expires_at>clock_timestamp()"""
+            ).use { statement ->
+                statement.setObject(1, targetId)
+                statement.setObject(2, identity.sessionId)
+                statement.setObject(3, identity.userId)
+                statement.setInt(4, identity.authVersion)
+                statement.executeQuery().use { rows ->
+                    if (!rows.next() || !identity.accessExpiresAt.isAfter(Instant.now())) sessionExpired()
+                    rows.getString(1) ?: avatarNotFound()
+                }
+            }
+        }
+
     /** Stages a processed object before any profile transaction. The key stays server-side. */
     internal suspend fun stageAvatar(image: AvatarImage): String {
         val store = avatarStore ?: avatarStorageUnavailable()

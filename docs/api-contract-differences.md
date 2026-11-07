@@ -8,11 +8,13 @@ M0.T4 §3.1 and M0.T5 §1 describe a single access JWT lasting 30 days with no r
 
 Evidence: `auth/Registration.kt`, `Login.kt`, `Refresh.kt`, `SessionAccess.kt`; `auth/RegistrationRouteTest.kt`, `LoginRouteTest.kt`, `RefreshRouteTest.kt`, `SessionRouteTest.kt`, `JdbcRefreshRepositoryIntegrationTest.kt`.
 
-## Avatar upload and removal
+## Avatar upload, removal and protected reads
 
 T119 implements authenticated `PUT /api/v1/me/avatar` and `DELETE /api/v1/me/avatar`. PUT stores the normalized image in private storage and returns the profile's `avatarUrl`. DELETE clears that reference and returns `204`, including on a repeated request. Both mutations durably queue cleanup of the previous object. Account deletion queues its current avatar object in the account transaction.
 
-The authorized `GET /api/v1/users/{userId}/avatar` route belongs to T120. Cleanup worker composition belongs to T123. Live acceptance of the dedicated private Yandex bucket and its KMS key remains an external dependency. The [T119 verification](m5-t119-avatar-swap.md) exercises PostgreSQL and the real local file adapter.
+T120 implements `GET /api/v1/users/{userId}/avatar`. Access requires a live session and an active target account. The viewer is the owner or an active member of a chat in which the target is also active. The server checks those conditions and the avatar reference on both sides of the storage read. Missing and inaccessible avatars share `404 RESOURCE_GONE`. An authorized viewer receives `503 AVATAR_STORAGE_UNAVAILABLE` for a storage failure.
+
+Successful reads return JPEG or PNG with a strong `ETag`, `Cache-Control: private, no-cache` and `Vary: Authorization`. A matching `If-None-Match` yields an empty `304` after access is checked. Cleanup worker composition belongs to T123. Live acceptance of the dedicated private Yandex bucket and its KMS key remains an external dependency. The [T119 verification](m5-t119-avatar-swap.md) and [T120 verification](m5-t120-avatar-read.md) use PostgreSQL and the real local file adapter.
 
 ## Privacy publication is local-draft only
 

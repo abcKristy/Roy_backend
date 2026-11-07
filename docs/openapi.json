@@ -5965,6 +5965,341 @@
         ]
       }
     },
+    "/api/v1/users/{userId}/avatar": {
+      "get": {
+        "tags": [
+          "Профиль"
+        ],
+        "operationId": "identity_get_api_v1_users_userId_avatar",
+        "summary": "Прочитать приватный аватар",
+        "description": "Требуются JWT и активный сеанс. Аватар доступен владельцу или пользователю, который вместе с владельцем активно состоит в одном чате. Сервер проверяет сеанс, доступ и ссылку до и после чтения из хранилища. Передавайте Accept: */*, чтобы принимать JPEG/PNG и JSON-ошибки.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "Полный UUID пользователя из avatarUrl. Регистр шестнадцатеричных букв не важен.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "00000000-0000-4000-8000-000000000001"
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "Валидатор из предыдущего ответа, список валидаторов или *. Для GET действует слабое сравнение.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "\"5af3c74d5dd8d33dbd8a97e80cf1e759262c1a08c288fc97d72a27cda69e6109\""
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "description": "Необязательный идентификатор запроса. Канонический UUID отражается в заголовке ответа; отсутствующее или некорректное значение заменяется UUID, созданным сервером.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Текущее изображение в исходных байтах JPEG или PNG.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "ETag": {
+                "description": "Сильный валидатор, полученный из формата и байтов изображения.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"5af3c74d5dd8d33dbd8a97e80cf1e759262c1a08c288fc97d72a27cda69e6109\""
+              },
+              "Cache-Control": {
+                "description": "Разрешён приватный кэш с обязательной перепроверкой каждого использования.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-cache"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "const": "Authorization"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            },
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "examples": {
+                  "signature": {
+                    "summary": "Начальные байты формата в Base64 для примера. Ответ содержит исходные байты.",
+                    "value": "/9j/"
+                  }
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                },
+                "examples": {
+                  "signature": {
+                    "summary": "Начальные байты формата в Base64 для примера. Ответ содержит исходные байты.",
+                    "value": "iVBORw0KGgo="
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Валидатор совпадает, доступ подтверждён. Тело отсутствует.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "ETag": {
+                "description": "Сильный валидатор, полученный из формата и байтов изображения.",
+                "schema": {
+                  "type": "string"
+                },
+                "example": "\"5af3c74d5dd8d33dbd8a97e80cf1e759262c1a08c288fc97d72a27cda69e6109\""
+              },
+              "Cache-Control": {
+                "description": "Разрешён приватный кэш с обязательной перепроверкой каждого использования.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-cache"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "const": "Authorization"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "const": "nosniff"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTH_REQUIRED: Заголовок Authorization отсутствует.\nSESSION_EXPIRED: Заголовок Authorization не соответствует точному формату Bearer <непустой JWT>; подпись, утверждения или срок действия недействительны, сеанс отозван или истёк, authVersion изменена либо аккаунт удалён.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "const": "Authorization"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AUTH_REQUIRED": {
+                    "summary": "Заголовок Authorization отсутствует.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Требуется вход в аккаунт",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  },
+                  "SESSION_EXPIRED": {
+                    "summary": "Заголовок Authorization не соответствует точному формату Bearer <непустой JWT>; подпись, утверждения или срок действия недействительны, сеанс отозван или истёк, authVersion изменена либо аккаунт удалён.",
+                    "value": {
+                      "error": {
+                        "code": "SESSION_EXPIRED",
+                        "message": "Сеанс истёк. Войдите снова",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "RESOURCE_GONE: Аватар отсутствует или недоступен. Причины включают неверный UUID, удалённый аккаунт, отсутствие активного общего чата и изменение ссылки во время чтения.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "const": "Authorization"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "RESOURCE_GONE": {
+                    "summary": "Аватар отсутствует или недоступен. Причины включают неверный UUID, удалённый аккаунт, отсутствие активного общего чата и изменение ссылки во время чтения.",
+                    "value": {
+                      "error": {
+                        "code": "RESOURCE_GONE",
+                        "message": "Ресурс не найден",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR: Непредвиденная внутренняя ошибка, в том числе сбой БД, транзакции или сериализации; безопасный ответ скрывает внутренние детали.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "Непредвиденная внутренняя ошибка, в том числе сбой БД, транзакции или сериализации; безопасный ответ скрывает внутренние детали.",
+                    "value": {
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Внутренняя ошибка сервера",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AVATAR_STORAGE_UNAVAILABLE: Приватное хранилище не настроено или чтение завершилось ошибкой.",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Канонический UUID клиента либо UUID, созданный сервером.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string",
+                  "const": "Authorization"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "AVATAR_STORAGE_UNAVAILABLE": {
+                    "summary": "Приватное хранилище не настроено или чтение завершилось ошибкой.",
+                    "value": {
+                      "error": {
+                        "code": "AVATAR_STORAGE_UNAVAILABLE",
+                        "message": "Хранилище фотографий недоступно",
+                        "details": null,
+                        "retryAfterSeconds": null
+                      },
+                      "requestId": "00000000-0000-4000-8000-000000000099"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          }
+        }
+      }
+    },
     "/api/v1/me/password": {
       "post": {
         "tags": [

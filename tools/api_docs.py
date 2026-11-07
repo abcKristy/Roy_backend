@@ -155,7 +155,7 @@ def validate(document):
                 media_examples(media, f"{method} {path} request {kind}")
             for status, response in operation["responses"].items():
                 assert response.get("description"), f"Missing condition: {method} {path} {status}"
-                if status in {"204", "406"}:
+                if status in {"204", "304", "406"}:
                     assert "content" not in response, f"{status} must not declare a body"
                 else:
                     assert response.get("content"), f"Missing response body: {method} {path} {status}"
