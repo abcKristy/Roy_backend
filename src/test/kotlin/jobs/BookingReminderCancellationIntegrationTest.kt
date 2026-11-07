@@ -8,6 +8,9 @@ import com.example.auth.PasswordHashingWork
 import com.example.auth.SessionIdentity
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
+import com.example.configuredModule
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
 import com.example.devices.DeviceService
 import com.example.devices.DeviceTokenCipher
 import com.example.devices.RegisterDeviceCommand
@@ -147,6 +150,27 @@ class BookingReminderCancellationIntegrationTest {
         }
     }
 
+    @Test
+    fun `local application restart continues due reminders without catching up missed windows`() = runBlocking<Unit> {
+        Fixture().use { original ->
+            original.runApplicationUntilReminder()
+            val originalEvents = original.reminderRows()
+            assertEquals(3, originalEvents.size)
+
+            Fixture(startsInSeconds = 55 * 60).use { missed ->
+                val missedTick = ReminderScheduler(missed.db).tick()
+                assertEquals(0, missedTick.eventsCreated)
+                assertEquals(1L, missedTick.missedWindowGauge)
+                Fixture().use { next ->
+                    next.runApplicationUntilReminder()
+                    assertEquals(3, next.reminderRows().size)
+                    assertTrue(missed.reminderRows().isEmpty())
+                    assertEquals(originalEvents, original.reminderRows())
+                }
+            }
+        }
+    }
+
     private enum class CancelPath { UNVOTE, LEAVE, DELETE_ACCOUNT, AUTHOR_CLOSE }
     /** Pause after an actual committed read; no JDBC transaction/lock is held while the test cancels. */
     private class AfterFirstRead(private val delegate: DatabaseRuntime, private val selected: CountDownLatch,
@@ -162,7 +186,7 @@ class BookingReminderCancellationIntegrationTest {
         override fun close() = Unit
     }
 
-    private class Fixture : AutoCloseable {
+    private class Fixture(startsInSeconds: Int = 59 * 60 + 30) : AutoCloseable {
         private val url = testDatabaseUrl().also { require(Regex("^jdbc:postgresql://[^/]+/roy_m4_cancel_jobs$").matches(it)) }
         private val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER required")
         private val databasePassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD required")
@@ -196,7 +220,8 @@ class BookingReminderCancellationIntegrationTest {
                     execute(c, "INSERT INTO chats(id,point_topic_id,created_at) VALUES (?,?,clock_timestamp())", chat, topic)
                     for (id in people) execute(c, "INSERT INTO chat_memberships(chat_id,user_id,joined_at) VALUES (?,?,clock_timestamp())", chat, id)
                     execute(c, """INSERT INTO meeting_proposals(id,chat_id,proposer_user_id,starts_at,ends_at,revision,created_at,updated_at)
-                        VALUES (?,?,?,clock_timestamp()+interval '59 minutes 30 seconds',clock_timestamp()+interval '119 minutes 30 seconds',3,clock_timestamp()-interval '2 hours',clock_timestamp()-interval '2 hours')""", proposal, chat, owner)
+                        VALUES (?,?,?,clock_timestamp()+(? * interval '1 second'),
+                        clock_timestamp()+(? * interval '1 second'),3,clock_timestamp()-interval '2 hours',clock_timestamp()-interval '2 hours')""", proposal, chat, owner, startsInSeconds, startsInSeconds + 3600)
                     for (id in listOf(owner, actor)) execute(c, "INSERT INTO votes(proposal_id,user_id,created_at) VALUES (?,?,clock_timestamp()-interval '2 hours')", proposal, id)
                     execute(c, "INSERT INTO bookings(id,proposal_id,booked_by_user_id,created_at) VALUES (?,?,?,clock_timestamp()-interval '2 hours')", booking, proposal, actor)
                     c.commit()
@@ -210,6 +235,19 @@ class BookingReminderCancellationIntegrationTest {
             } catch (failure: Throwable) { db.close(); throw failure }
         }
         fun connection(): Connection = DriverManager.getConnection(url, user, databasePassword)
+        suspend fun runApplicationUntilReminder() {
+            val config = ServerConfig(url, user, databasePassword, secret, appEnvironment = AppEnvironment.LOCAL)
+            val server = embeddedServer(Netty, host = "127.0.0.1", port = 0) { configuredModule(config) }
+            server.start(wait = false)
+            try {
+                withTimeout(10_000) {
+                    while (reminderRows().isEmpty()) delay(25)
+                }
+            } finally {
+                server.stop(0, 5_000)
+            }
+        }
+
         suspend fun schedule() {
             assertEquals(3, ReminderScheduler(db).tick().eventsCreated)
             assertEquals(0, ReminderScheduler(db).tick().eventsCreated)
