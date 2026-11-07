@@ -1,0 +1,3347 @@
+{
+  "info": {
+    "_postman_id": "ec6bb393-84ca-4e8c-a560-405b38a58366",
+    "name": "Рой",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "49201081",
+    "_collection_link": "https://go.postman.co/collection/49201081-ec6bb393-84ca-4e8c-a560-405b38a58366?source=collection_link",
+    "description": "Рабочая HTTP-коллекция действующего Ktor backend «Рой». Изменяется исходная коллекция; сохранены её ID, имя, schema и export metadata. Исходный пустой first без URL удалён. Все примеры синтетические.\n\nНачало работы: baseUrl — origin без /api/v1; запустите backend с БД. Выполните health, прочитайте metadata/текст политики, зарегистрируйте отдельный тестовый аккаунт или войдите. Register/login/refresh сохраняют оба токена и userId только при 2xx. Используется access JWT + rotating refresh, в отличие от раннего M0. Токены в файле пустые; после запуска не публикуйте экспорт с секретами. Environment/local overrides Postman имеют приоритет над переменными коллекции: удалите одноимённые overrides для автоматической цепочки.\n\nДля новой точки: квота → creation-context → reverse (при доступном геокодере) либо ручной address → create. Создание сохраняет pointId/topicId/chatId; добавление темы переключает chatId на новый чат. GET точки выбирает первый чат; GET моих чатов выбирает первый элемент. При необходимости выберите нужный ID вручную. Список карты не перезаписывает выбранный ресурс. Курсовые параметры выключены на первой странице; успешный ответ сохраняет отдельный nextCursor. Включите cursor для продолжения, не меняя ресурс/фильтры/limit. История использует beforeSeq ИЛИ afterSeq. Не запускайте всю коллекцию вслепую: logout/смена пароля/удаление/выход из последнего чата меняют условия последующих запросов. Папки предназначены для ручных сценариев.\n\nСемь операций имеют отдельные постоянные *Key. Скрипты никогда не меняют ключи. Для проверки replay сохраняйте ключ и бизнес-поля; для новой операции вручную замените ключ новым UUID. startsAt/endsAt инициализируются один раз при первом создании встречи и остаются стабильными. До нового booking/close выполните GET proposal: он копирует revision в отдельные bookingExpectedRevision/closeExpectedRevision. Ответ booking/close сохраняет revision результата, но не меняет отправляемую expectedRevision. При STALE_STATE перечитайте ресурс. Предварительные подтверждения nearby/overlap можно повторить тем же ключом с изменённым флагом.\n\nJSON: UTF-8, максимум 65536 байт; camelCase, UUID, RFC3339 UTC. Неизвестные/пропущенные/неверно типизированные поля → 422 INVALID_FIELD; синтаксис/UTF-8 → 400 INVALID_JSON; превышение размера → 413 INVALID_FIELD. Общая ошибка: {error:{code,message,details,retryAfterSeconds},requestId}. X-Request-Id возвращается сервером; при желании можно передать свой UUID. 401 AUTH_REQUIRED означает отсутствие входа, SESSION_EXPIRED — недействительный сеанс. 429 учитывает Retry-After. Ошибки не перезаписывают сохранённые ID и токены.\n\nУсловия окружения: публикация draft и регистрация доступны только при локальном draft-policy режиме; иначе 503. В APP_ENV=local корректный авторизованный запрос возвращает 503 GEOCODER_UNAVAILABLE. DaData подключается только в APP_ENV=production с DADATA_API_KEY. Для регистрации push-устройства нужен PUSH_TOKEN_ENCRYPTION_KEY_BASE64. Без ключа авторизованный PUT возвращает 503 PUSH_REGISTRATION_FAILED, а DELETE — 404. Синтетический pushToken используется для локальной регистрации. Реальная доставка включается в APP_ENV=production при наличии ключа шифрования и полной конфигурации провайдера. Живой приём на устройствах проверяется на целевой среде. Запись notification-location требует принятую текущую policy и включённый extra-канал. Аватары доступны в папке профиля. Для загрузки выберите локальный JPEG или PNG в поле file.\n\nWebSocket хранится отдельно от HTTP: формат этой коллекции Postman v2.1 не представляет WS-запросы. Точный URL: {{wsBaseUrl}}/api/v1/ws (локально ws://127.0.0.1:8080/api/v1/ws; для HTTPS — wss://<host>/api/v1/ws). В WS-клиенте Postman передайте handshake header Authorization: Bearer {{accessToken}}. Query-токен и subprotocol-auth не поддержаны. Подписка текстовым frame: {\"v\":1,\"type\":\"subscribe\",\"requestId\":\"11111111-1111-4111-8111-111111111111\",\"chatIds\":[\"{{chatId}}\"]}; unsubscribe использует тот же формат с type=unsubscribe. До 100 chatIds, frame до 16 KiB, heartbeat Ping/Pong 30 секунд, без replay. Бизнес-мутации выполняются HTTP. Контракт: [действующий WS](http://127.0.0.1:8080/docs/websocket), project/backend/docs/websocket-api.md; [M0.T5 §7](../../spec/plans/roadmap/MO/M0-T5-api-events.md). После reconnect перечитайте REST и подпишитесь заново.\n\nИсточники: project/backend/src/main/kotlin/api, realtime/RealtimeRoutes.kt, auth DTO/services, Server.kt; project/backend/docs/openapi.json и api-contract-differences.md; M0.T4/M0.T5. GET /docs и /docs/ сохранены как два реально зарегистрированных пути. /docs/assets/:docsAsset представляет параметризованную раздачу bundled файлов, а не конечный перечень каждого CSS/JS файла."
+  },
+  "item": [
+    {
+      "name": "Авторизация и сессия",
+      "item": [
+        {
+          "name": "Версия политики",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/legal/privacy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "legal",
+                "privacy"
+              ]
+            },
+            "description": "Returns the configured local draft version, immutable publication time and absolute document URL. Enabled only with APP_ENV=local, AUTH_DRAFT_POLICY_ENABLED=true and loopback SERVER_HOST/PUBLIC_BASE_URL. Production policy publication is not implemented.\n\nЛокальный draft доступен только при APP_ENV=local, AUTH_DRAFT_POLICY_ENABLED=true и loopback SERVER_HOST/PUBLIC_BASE_URL; иначе 503. Сначала прочитайте политику, затем регистрируйтесь."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.version !== undefined && d.version !== null) pm.collectionVariables.set('privacyPolicyVersion', String(d.version));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Текст политики",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/markdown"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/legal/privacy/document",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "legal",
+                "privacy",
+                "document"
+              ]
+            },
+            "description": "Возвращает Markdown текущей локальной draft-политики, text/markdown; до регистрации ознакомьтесь с документом. При отключённой draft-публикации возвращает 503 SERVICE_UNAVAILABLE. Не требует авторизации."
+          },
+          "response": []
+        },
+        {
+          "name": "Регистрация",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Creates user, privacy consent, initial notification settings and session atomically. Returns Cache-Control: no-store. No Bearer required. Access TTL defaults to 15 minutes; refresh/session TTL defaults to 30 days. No Idempotency-Key support. Policy availability/version is checked before business field constraints.\n\nСоздаёт тестовый аккаунт и сессию. Сначала GET legal/privacy. Возраст >=12, пароль 8–128 символов, имя 1–80. Повтор регистрации того же телефона: 409 DUPLICATE_PHONE.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"password\": \"{{password}}\",\n  \"displayName\": \"{{displayName}}\",\n  \"ageYears\": {{ageYears}},\n  \"acceptedPrivacyPolicyVersion\": \"{{privacyPolicyVersion}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.accessToken !== undefined && d.accessToken !== null) pm.collectionVariables.set('accessToken', String(d.accessToken));",
+                  "if (d.refreshToken !== undefined && d.refreshToken !== null) pm.collectionVariables.set('refreshToken', String(d.refreshToken));",
+                  "if (d.user && d.user.id !== undefined && d.user && d.user.id !== null) pm.collectionVariables.set('userId', String(d.user && d.user.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Вход",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Verifies credentials and creates a new independent session; may rehash password. Cache-Control: no-store. No Idempotency-Key; repeated success creates another session. No published request-rate limiter in this implementation.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.accessToken !== undefined && d.accessToken !== null) pm.collectionVariables.set('accessToken', String(d.accessToken));",
+                  "if (d.refreshToken !== undefined && d.refreshToken !== null) pm.collectionVariables.set('refreshToken', String(d.refreshToken));",
+                  "if (d.user && d.user.id !== undefined && d.user && d.user.id !== null) pm.collectionVariables.set('userId', String(d.user && d.user.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Обновление токенов",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Atomically consumes refresh token and replaces both tokens without extending refreshExpiresAt. Reusing a consumed token revokes the session. Serialize refresh calls per session. A lost successful response makes blind retry unsafe: consumed-token replay may revoke session. Cache-Control: no-store. Bearer/Idempotency-Key not used.\n\nRefresh ротируется. Используйте последний refreshToken; повтор уже использованного токена отзывает сессию. Access по умолчанию 15 минут, сессия до 30 дней.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.accessToken !== undefined && d.accessToken !== null) pm.collectionVariables.set('accessToken', String(d.accessToken));",
+                  "if (d.refreshToken !== undefined && d.refreshToken !== null) pm.collectionVariables.set('refreshToken', String(d.refreshToken));",
+                  "if (d.user && d.user.id !== undefined && d.user && d.user.id !== null) pm.collectionVariables.set('userId', String(d.user && d.user.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Выход из текущей сессии",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Revokes current access/refresh session and closes its WebSocket; other sessions remain active. A repeat with the revoked token returns 401 SESSION_EXPIRED. Empty request body; no Idempotency-Key.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nЗавершает текущую сессию. Выполняйте в конце ручного сценария; успех очищает оба токена коллекции."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "pm.collectionVariables.set('accessToken', '');",
+                  "pm.collectionVariables.set('refreshToken', '');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Пользователь и профиль",
+      "item": [
+        {
+          "name": "Мой профиль",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Returns private current-account profile, including phone and stated age. Nullable avatarUrl/messageMutedUntil are always present. GET does not mutate business state.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.id !== undefined && d.id !== null) pm.collectionVariables.set('userId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Изменить имя",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Trims and saves current-account name. Returns updated private profile. A repeated normalized name returns the current profile without rewriting it. Use 1–80 Unicode code points after trimming. U+0000 and unpaired UTF-16 surrogates return 422 INVALID_FIELD. No revision or idempotency header.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"{{displayName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.id !== undefined && d.id !== null) pm.collectionVariables.set('userId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Загрузить аватар",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/avatar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "avatar"
+              ]
+            },
+            "description": "Выберите один JPEG или PNG не больше 5 МиБ в поле file. Postman формирует multipart boundary сам. Успех возвращает 200 и avatarUrl. Повтор того же изображения сохраняет текущий аватар. При 409 STALE_STATE прочитайте актуальный профиль перед новым действием. Проверки отказа: 413 за файл больше 5 МиБ, 422 за повреждённый файл или неверный формат и 408 за незавершённую загрузку. При ошибке прежний аватар сохраняется.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Выберите локальный тестовый JPEG или PNG."
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Удалить аватар",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/avatar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "avatar"
+              ]
+            },
+            "description": "Очищает ссылку на текущий аватар и ставит прежний объект в очередь удаления. Дважды отправьте DELETE с тем же активным сеансом и ожидайте 204 оба раза. GET профиля затем возвращает avatarUrl: null."
+          },
+          "response": []
+        },
+        {
+          "name": "Прочитать аватар",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "*/*"
+              },
+              {
+                "key": "If-None-Match",
+                "value": "\"replace-with-response-etag\"",
+                "disabled": true,
+                "description": "Скопируйте ETag из успешного ответа и включите заголовок для проверки 304."
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/:userId/avatar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":userId",
+                "avatar"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}",
+                  "description": "По умолчанию текущий аккаунт. Для проверки прав укажите ID владельца аватара из общей тестовой беседы."
+                }
+              ]
+            },
+            "description": "Владелец и активный участник общего чата получают JPEG или PNG с ETag и Cache-Control: private, no-cache. Повтор с актуальным If-None-Match возвращает 304 только после проверки доступа. Для проверки изоляции повторите запрос с тем же ID и ETag после выхода из общего чата или с посторонним аккаунтом. Ожидается 404 с тем же кодом, что при отсутствии фото."
+          },
+          "response": []
+        },
+        {
+          "name": "Сменить пароль",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "password"
+              ]
+            },
+            "description": "Verifies current password, hashes replacement, increments authVersion and revokes all sessions, including current session; affected sockets close. No automatic mutation replay. Empty success response.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nУспех отзывает ВСЕ сеансы, очищает токены и копирует newPassword в password; затем выполните вход заново.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "pm.collectionVariables.set('accessToken', '');",
+                  "pm.collectionVariables.set('refreshToken', '');",
+                  "pm.collectionVariables.set('password', pm.variables.get('newPassword')); ",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Удалить аккаунт",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/deletion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "deletion"
+              ]
+            },
+            "description": "Requires confirm=true and current password. Atomically removes private data, memberships/votes, push bindings, notification location/history and idempotency/quota history, and revokes all access/refresh sessions (retaining revoked session rows and token hashes); anonymizes retained shared content and author links. Deletes points with no remaining active members; closes unbooked author proposals and cancels not-yet-started bookings with <=1 vote. Emits committed lifecycle updates and closes sessions. Cache-Control: no-store. Lost-response deletion is not automatically replayed; recheck by login. No Idempotency-Key.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nУдаляет текущий тестовый аккаунт, отзывает сессии и может удалить опустевшие точки. Требует текущий пароль и confirm=true. Запускайте отдельно после остальных сценариев.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"confirm\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "pm.collectionVariables.set('accessToken', '');",
+                  "pm.collectionVariables.set('refreshToken', '');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Карта, точки и темы",
+      "item": [
+        {
+          "name": "Каталог тем",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/topics/presets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "topics",
+                "presets"
+              ]
+            },
+            "description": "Public stable topic preset keys ordered by catalog sort order. No auth or state mutation."
+          },
+          "response": []
+        },
+        {
+          "name": "Точки на карте",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/points?west={{west}}&south={{south}}&east={{east}}&north={{north}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "points"
+              ],
+              "query": [
+                {
+                  "key": "west",
+                  "value": "{{west}}",
+                  "description": "Required WGS84 bbox component. west < east and south < north; exactly one value."
+                },
+                {
+                  "key": "south",
+                  "value": "{{south}}",
+                  "description": "Required WGS84 bbox component. west < east and south < north; exactly one value."
+                },
+                {
+                  "key": "east",
+                  "value": "{{east}}",
+                  "description": "Required WGS84 bbox component. west < east and south < north; exactly one value."
+                },
+                {
+                  "key": "north",
+                  "value": "{{north}}",
+                  "description": "Required WGS84 bbox component. west < east and south < north; exactly one value."
+                },
+                {
+                  "key": "topicKey",
+                  "value": "{{topicKey}}",
+                  "description": "Optional topic filter.",
+                  "disabled": true
+                },
+                {
+                  "key": "customTopicLabel",
+                  "value": "{{customTopicLabel}}",
+                  "description": "Only with topicKey=other; trim and case-insensitive exact match. The 40 Unicode code point limit applies after trimming, not to raw query length.",
+                  "disabled": true
+                },
+                {
+                  "key": "peopleMin",
+                  "value": "{{peopleMin}}",
+                  "description": "Inclusive participant count of a matching topic, not total unique people.",
+                  "disabled": true
+                },
+                {
+                  "key": "peopleMax",
+                  "value": "{{peopleMax}}",
+                  "description": "Inclusive participant count; must be >= peopleMin.",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}",
+                  "description": "Page size, bound into cursor fingerprint."
+                },
+                {
+                  "key": "cursor",
+                  "value": "{{pointListCursor}}",
+                  "description": "Copy nextCursor unchanged; all filters and limit must remain identical.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Public. createdAt DESC, id DESC keyset pagination. A point passes if at least one topic matches topic/custom-label and inclusive people range. All topics of each matching point are returned. peopleCount is distinct active people across all point chats. GET does not change quota or business state.\n\nКарта публична: west/south/east/north обязательны. customTopicLabel включайте только с topicKey=other. Для POST сначала проверьте creation-context и quota. При NEARBY_CONFIRM_REQUIRED изучите nearby и установите confirmNearby=true, сохранив ключ; превышение квоты может вызвать блок на 30 суток."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "pm.collectionVariables.set('pointListCursor', d.nextCursor || '');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Точка и её темы",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/points/:pointId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "points",
+                ":pointId"
+              ],
+              "variable": [
+                {
+                  "key": "pointId",
+                  "value": "{{pointId}}",
+                  "description": "UUID of the resource."
+                }
+              ]
+            },
+            "description": "Public current point snapshot. Coordinates are immutable after creation. Deleted/absent point cannot be read."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.id !== undefined && d.id !== null) pm.collectionVariables.set('pointId', String(d.id));",
+                  "if (d.topics && d.topics.length) {",
+                  "if (d.topics[0].id !== undefined && d.topics[0].id !== null) pm.collectionVariables.set('topicId', String(d.topics[0].id));",
+                  "if (d.topics[0].chatId !== undefined && d.topics[0].chatId !== null) pm.collectionVariables.set('chatId', String(d.topics[0].chatId));",
+                  "}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Квота создания точек",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/point-quota",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "point-quota"
+              ]
+            },
+            "description": "Authenticated. Counts successful creations in rolling 7×24h (limit 3) and 30×24h (limit 10), including subsequently deleted points. Available windows have nextAvailableAt=null; otherwise oldest included event expiry. blockedUntil is null outside an active block. lastAvailableWarning=true when an unblocked actor has one remaining in either window. Reading neither reserves quota nor starts a block."
+          },
+          "response": []
+        },
+        {
+          "name": "Ближайшие точки и квота",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/points/creation-context?lat={{lat}}&lon={{lon}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "points",
+                "creation-context"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "{{lat}}",
+                  "description": "Exactly one WGS84 latitude."
+                },
+                {
+                  "key": "lon",
+                  "value": "{{lon}}",
+                  "description": "Exactly one WGS84 longitude."
+                }
+              ]
+            },
+            "description": "Authenticated preview only. Returns points at exact geodesic distance <=100 metres, ordered by distance then id; rounded distanceMeters is display-only. No quota reservation and no new block. POST rechecks proximity and quota in its transaction."
+          },
+          "response": []
+        },
+        {
+          "name": "Определить адрес",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/geocoding/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "geocoding",
+                "reverse"
+              ]
+            },
+            "description": "В APP_ENV=local корректный авторизованный запрос возвращает 503 GEOCODER_UNAVAILABLE. DaData подключается только в APP_ENV=production с DADATA_API_KEY.\n\nAuthenticated external provider lookup outside point creation transaction. No Idempotency-Key. Provider miss is a successful address=null/source=none. Client may supply a manual address if lookup misses or is unavailable. Provider calls are capped process-wide at 30 per rolling second; exceeding this uses the same 503 GEOCODER_UNAVAILABLE response, with no Retry-After header. Connect timeout is 2 seconds and request timeout 3 seconds.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"position\": {\n    \"lat\": {{lat}},\n    \"lon\": {{lon}}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Создать точку и первый чат",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{pointCreateKey}}",
+                "description": "Required UUID, scoped to actor and operation. Retry a lost response with the SAME key and canonical business payload. Existing completed response is replayed (same status/body); a different payload returns 409. Confirmation flags are excluded from hash. Retained at least 30 days; never recycle old keys."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/points",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "points"
+              ]
+            },
+            "description": "Authenticated; mute does not block creation. Atomically creates point, first topic, chat, creator membership and member_joined system message; sets read cursor after own join, charges quota once, saves durable response and emits best-effort committed membership event. Address/topic are trimmed; custom topics are unique case-insensitively. Max 3 points/7 days and 10/30 days, counting deleted points. Exceeding starts a 30×24h UTC block. Existing active block is checked before proximity; quota exhaustion is checked before proximity. If confirmNearby=false and any point is <=100m away, return confirmation conflict (nearest 20 previews at most). Repeat same key with confirmNearby=true. confirmNearby is excluded from business hash. Completed replay does not create or charge again; terminal quota refusal is replayed with original requestId and blockedUntil. Geocoder is not called by this operation.\n\nКарта публична: west/south/east/north обязательны. customTopicLabel включайте только с topicKey=other. Для POST сначала проверьте creation-context и quota. При NEARBY_CONFIRM_REQUIRED изучите nearby и установите confirmNearby=true, сохранив ключ; превышение квоты может вызвать блок на 30 суток.\n\nКлюч pointCreateKey: оставьте неизменным для replay; для новой операции вручную задайте новый UUID. Не меняйте бизнес-поля при replay.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"position\": {\n    \"lat\": {{lat}},\n    \"lon\": {{lon}}\n  },\n  \"topic\": {\n    \"presetKey\": \"football\"\n  },\n  \"address\": \"Учебная площадка\",\n  \"addressSource\": \"manual\",\n  \"confirmNearby\": {{confirmNearby}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.point && d.point.id !== undefined && d.point && d.point.id !== null) pm.collectionVariables.set('pointId', String(d.point && d.point.id));",
+                  "if (d.chat && d.chat.id !== undefined && d.chat && d.chat.id !== null) pm.collectionVariables.set('chatId', String(d.chat && d.chat.id));",
+                  "if (d.point && d.point.topics && d.point.topics[0] && d.point.topics[0].id !== undefined && d.point && d.point.topics && d.point.topics[0] && d.point.topics[0].id !== null) pm.collectionVariables.set('topicId', String(d.point && d.point.topics && d.point.topics[0] && d.point.topics[0].id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Добавить тему и чат",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{pointTopicCreateKey}}",
+                "description": "Required UUID, scoped to actor and operation. Retry a lost response with the SAME key and canonical business payload. Existing completed response is replayed (same status/body); a different payload returns 409. Confirmation flags are excluded from hash. Retained at least 30 days; never recycle old keys."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/points/:pointId/topics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "points",
+                ":pointId",
+                "topics"
+              ],
+              "variable": [
+                {
+                  "key": "pointId",
+                  "value": "{{pointId}}",
+                  "description": "UUID of the resource."
+                }
+              ]
+            },
+            "description": "Authenticated; no existing membership required. Atomically creates topic/chat, creator membership and member_joined system message, advances own read cursor, touches point updatedAt and saves response. Emits best-effort committed membership event. Does not consume point creation quota. Non-other presets permit no custom label; other label is trimmed 1–40 Unicode code points and duplicate check is case-insensitive. Replay returns saved resources without recreating them.\n\nКлюч pointTopicCreateKey: оставьте неизменным для replay; для новой операции вручную задайте новый UUID. Не меняйте бизнес-поля при replay.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": {\n    \"presetKey\": \"other\",\n    \"customLabel\": \"Тестовая игра\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.topic && d.topic.id !== undefined && d.topic && d.topic.id !== null) pm.collectionVariables.set('topicId', String(d.topic && d.topic.id));",
+                  "if (d.chat && d.chat.id !== undefined && d.chat && d.chat.id !== null) pm.collectionVariables.set('chatId', String(d.chat && d.chat.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Чаты и сообщения",
+      "item": [
+        {
+          "name": "Мои чаты",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/chats?limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "chats"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}",
+                  "description": "Размер страницы; при cursor сохранять тот же limit."
+                },
+                {
+                  "key": "cursor",
+                  "value": "{{listMyChatsCursor}}",
+                  "description": "Непрозрачный подписанный (HMAC-SHA256, base64url; не шифрование) nextCursor из предыдущей страницы; связан с пользователем, операцией, ресурсом, limit и фильтрами. Не изменять и не переносить между запросами.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Только активные членства; сортировка chats.created_at DESC,id DESC. unreadCount — точное число видимых сообщений после read-cursor; UI может отображать 99+. lastMessage/currentProposal присутствуют и могут быть null. Побочных эффектов нет. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений. currentProposal выбирается из lifecycle OPEN и startsAt > now, ближайший startsAt ASC,id ASC; отсутствует после начала (null)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.items && d.items.length) {",
+                  "if (d.items[0].id !== undefined && d.items[0].id !== null) pm.collectionVariables.set('chatId', String(d.items[0].id));",
+                  "if (d.items[0].pointId !== undefined && d.items[0].pointId !== null) pm.collectionVariables.set('pointId', String(d.items[0].pointId));",
+                  "}",
+                  "pm.collectionVariables.set('listMyChatsCursor', d.nextCursor || '');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Вступить в чат",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chats/:chatId/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chats",
+                ":chatId",
+                "membership"
+              ],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "{{chatId}}",
+                  "description": "UUID of the resource."
+                }
+              ]
+            },
+            "description": "Authenticated; no mute/point quota restriction. Empty body; Idempotency-Key not required. First/rejoin appends member_joined system message and advances actor read cursor through it; old history stays readable and not newly unread. Rejoin resets joinedAt and clears leftAt. Already-active membership returns same membership without duplicate join message. Updates point and active counts; emits membership event only on a new join.\n\nPUT вступает без тела и ключа; DELETE выходит. Последний участник может удалить точку и все чаты; повтор после такого удаления даёт 404."
+          },
+          "response": []
+        },
+        {
+          "name": "Карточка чата",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chats/:chatId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chats",
+                ":chatId"
+              ],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "{{chatId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "Детали своего чата, членство и текущий последний seq. Нет побочных эффектов. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.lastMessageSeq !== undefined && d.lastMessageSeq !== null) pm.collectionVariables.set('lastReadMessageSeq', String(d.lastMessageSeq));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "История сообщений",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chats/:chatId/messages?limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chats",
+                ":chatId",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}",
+                  "description": "Размер страницы; при cursor сохранять тот же limit."
+                },
+                {
+                  "key": "beforeSeq",
+                  "value": "{{beforeSeq}}",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "afterSeq",
+                  "value": "{{afterSeq}}",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "{{chatId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "Без seq: последние сообщения DESC. beforeSeq: строго меньше, DESC. afterSeq: строго больше, ASC для resync. Параметры взаимоисключающие. Продолжать по nextBeforeSeq/nextAfterSeq, null означает конец. Читает всю доступную историю, в том числе до вступления; read-cursor не меняется. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений.\n\nДля чтения/отправки нужно активное членство. История: beforeSeq и afterSeq взаимоисключающие, по умолчанию оба выключены. 1–4096 символов text; mute, запрещённые шаблоны и flood могут отклонить отправку."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.items && d.items.length) pm.collectionVariables.set('lastReadMessageSeq', String(Math.max(...d.items.map(x => x.messageSeq))));",
+                  "if (d.nextBeforeSeq !== undefined && d.nextBeforeSeq !== null) pm.collectionVariables.set('beforeSeq', String(d.nextBeforeSeq));",
+                  "if (d.nextAfterSeq !== undefined && d.nextAfterSeq !== null) pm.collectionVariables.set('afterSeq', String(d.nextAfterSeq));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить сообщение",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{sendMessageKey}}",
+                "description": "UUID операции. Повтор с тем же актором, операцией и каноническим телом возвращает сохранённый status/body без повторных эффектов. Другой путь/бизнес-поля с тем же ключом дают 409. expectedRevision и confirmOverlap исключены из хеша."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chats/:chatId/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chats",
+                ":chatId",
+                "messages"
+              ],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "{{chatId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "Отправка только text: trim, 1–4096 code points, без NUL. Атомарно создаёт сообщение с монотонным messageSeq, rate-event, повышает cursor отправителя, обновляет точку и создаёт уведомления другим участникам. После commit best-effort WS chat.message.created. Replay проверяется до membership/mute/flood, но после базовой нормализации text. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений.\n\nДля чтения/отправки нужно активное членство. История: beforeSeq и afterSeq взаимоисключающие, по умолчанию оба выключены. 1–4096 символов text; mute, запрещённые шаблоны и flood могут отклонить отправку.\n\nКлюч sendMessageKey: оставьте неизменным для replay; для новой операции вручную задайте новый UUID. Не меняйте бизнес-поля при replay.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"{{messageText}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.id !== undefined && d.id !== null) pm.collectionVariables.set('messageId', String(d.id));",
+                  "if (d.messageSeq !== undefined && d.messageSeq !== null) pm.collectionVariables.set('lastReadMessageSeq', String(d.messageSeq));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Поиск сообщений",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chats/:chatId/messages/search?q={{searchQuery}}&limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chats",
+                ":chatId",
+                "messages",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{searchQuery}}",
+                  "description": " Trimmed first; normalized query must contain 3–256 Unicode code points; U+0000 is rejected."
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}",
+                  "description": "Размер страницы; при cursor сохранять тот же limit."
+                },
+                {
+                  "key": "cursor",
+                  "value": "{{searchMessagesCursor}}",
+                  "description": "Непрозрачный подписанный (HMAC-SHA256, base64url; не шифрование) nextCursor из предыдущей страницы; связан с пользователем, операцией, ресурсом, limit и фильтрами. Не изменять и не переносить между запросами.",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "{{chatId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "Поиск только TEXT, case-insensitive literal substring (SQL wildcard %/_ экранируются), по trimmed q 3–256 Unicode code points без NUL. Сортировка createdAt DESC,id DESC, cursor фиксирует верхнюю границу seq первой страницы. Не меняет read-cursor. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "pm.collectionVariables.set('searchMessagesCursor', d.nextCursor || '');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отметить сообщения прочитанными",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chats/:chatId/read-cursor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chats",
+                ":chatId",
+                "read-cursor"
+              ],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "{{chatId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "Активный участник повышает cursor до max(старый, переданный). Повтор/меньшее значение не уменьшает cursor. Влияет на unreadCount. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений.\n\nlastReadMessageSeq >=0 и не больше последнего seq чата; GET chat, история и успешная отправка обновляют переменную. Cursor движется только вперёд.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lastReadMessageSeq\": {{lastReadMessageSeq}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Покинуть чат",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chats/:chatId/membership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chats",
+                ":chatId",
+                "membership"
+              ],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "{{chatId}}",
+                  "description": "UUID of the resource."
+                }
+              ]
+            },
+            "description": "Authenticated, allowed during mute. No request body or Idempotency-Key. Marks own membership left, removes own votes in this chat, revises proposals; before meeting start cancels active bookings when <=1 vote remains, with system messages, reminders cancellation and participant notifications. Leaving final active membership across every point chat deletes point and dependent chats. Commits before best-effort membership/proposal/booking/point.deleted WebSocket events. Already-left or never-member on a still-existing chat returns 204 without mutation. A retry after final point deletion returns 404.\n\nPUT вступает без тела и ключа; DELETE выходит. Последний участник может удалить точку и все чаты; повтор после такого удаления даёт 404."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Встречи и бронирования",
+      "item": [
+        {
+          "name": "Предложения встреч",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chats/:chatId/proposals?limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chats",
+                ":chatId",
+                "proposals"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}",
+                  "description": "Размер страницы; при cursor сохранять тот же limit."
+                },
+                {
+                  "key": "cursor",
+                  "value": "{{listProposalsCursor}}",
+                  "description": "Непрозрачный подписанный (HMAC-SHA256, base64url; не шифрование) nextCursor из предыдущей страницы; связан с пользователем, операцией, ресурсом, limit и фильтрами. Не изменять и не переносить между запросами.",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "{{chatId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "История и актуальные предложения своего чата; createdAt DESC,id DESC. Не меняет состояние. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений.\n\nДля создания нужны активное членство и будущий интервал startsAt < endsAt. Новое предложение возвращает goingCount=0. Автор голосует отдельным запросом PUT /api/v1/proposals/:proposalId/vote. Для повтора создания сохраните исходные даты и ключ."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "pm.collectionVariables.set('listProposalsCursor', d.nextCursor || '');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Предложить встречу",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{createProposalKey}}",
+                "description": "UUID операции. Повтор с тем же актором, операцией и каноническим телом возвращает сохранённый status/body без повторных эффектов. Другой путь/бизнес-поля с тем же ключом дают 409. expectedRevision и confirmOverlap исключены из хеша."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chats/:chatId/proposals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chats",
+                ":chatId",
+                "proposals"
+              ],
+              "variable": [
+                {
+                  "key": "chatId",
+                  "value": "{{chatId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "Активный участник создаёт будущий полуоткрытый интервал [startsAt,endsAt); верхний предел длительности/срока маршрутом не задан. Атомарно добавляет системное meeting_proposed и уведомления nearby_meeting, после commit WS message/proposal. Mute не запрещает эту операцию. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений.\n\nДля создания нужны активное членство и будущий интервал startsAt < endsAt. Новое предложение возвращает goingCount=0. Автор голосует отдельным запросом PUT /api/v1/proposals/:proposalId/vote. Для повтора создания сохраните исходные даты и ключ.\n\nКлюч createProposalKey: оставьте неизменным для replay; для новой операции вручную задайте новый UUID. Не меняйте бизнес-поля при replay.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startsAt\": \"{{startsAt}}\",\n  \"endsAt\": \"{{endsAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get('startsAt') && !pm.variables.get('endsAt')) {",
+                  " const start = Date.now() + 24 * 60 * 60 * 1000;",
+                  " pm.collectionVariables.set('startsAt', new Date(start).toISOString());",
+                  " pm.collectionVariables.set('endsAt', new Date(start + 60 * 60 * 1000).toISOString());",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.id !== undefined && d.id !== null) pm.collectionVariables.set('proposalId', String(d.id));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('proposalRevision', String(d.revision));",
+                  "if (d.booking && d.booking.id !== undefined && d.booking && d.booking.id !== null) pm.collectionVariables.set('bookingId', String(d.booking && d.booking.id));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('bookingExpectedRevision', String(d.revision));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('closeExpectedRevision', String(d.revision));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Состояние встречи",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/proposals/:proposalId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "proposals",
+                ":proposalId"
+              ],
+              "variable": [
+                {
+                  "key": "proposalId",
+                  "value": "{{proposalId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "Актуальная персональная проекция предложения, число голосов, viewerGoing и выбранная бронь (active имеет приоритет над последней cancelled). При active booking статус booked; иначе lifecycle CLOSED/начало -> closed; >1 голос -> ready_to_book, иначе voting. Не меняет состояние. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.id !== undefined && d.id !== null) pm.collectionVariables.set('proposalId', String(d.id));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('proposalRevision', String(d.revision));",
+                  "if (d.booking && d.booking.id !== undefined && d.booking && d.booking.id !== null) pm.collectionVariables.set('bookingId', String(d.booking && d.booking.id));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('bookingExpectedRevision', String(d.revision));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('closeExpectedRevision', String(d.revision));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Установить голос участия",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/proposals/:proposalId/vote",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "proposals",
+                ":proposalId",
+                "vote"
+              ],
+              "variable": [
+                {
+                  "key": "proposalId",
+                  "value": "{{proposalId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "going=true добавляет один голос (proposal,user), false снимает. Изменение повышает revision; переход с <=1 на >1 голосов создаёт meeting_ready. Если активная бронь падает до <=1 голосов, атомарно отменяет бронь/напоминания, создаёт системное сообщение и уведомления. После commit WS proposal.updated/message/booking.changed. Повтор без изменения оставляет revision прежним. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"going\": {{going}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.id !== undefined && d.id !== null) pm.collectionVariables.set('proposalId', String(d.id));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('proposalRevision', String(d.revision));",
+                  "if (d.booking && d.booking.id !== undefined && d.booking && d.booking.id !== null) pm.collectionVariables.set('bookingId', String(d.booking && d.booking.id));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('bookingExpectedRevision', String(d.revision));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('closeExpectedRevision', String(d.revision));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Участники встречи",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/proposals/:proposalId/votes?limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "proposals",
+                ":proposalId",
+                "votes"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}",
+                  "description": "Размер страницы; при cursor сохранять тот же limit."
+                },
+                {
+                  "key": "cursor",
+                  "value": "{{listProposalVotesCursor}}",
+                  "description": "Непрозрачный подписанный (HMAC-SHA256, base64url; не шифрование) nextCursor из предыдущей страницы; связан с пользователем, операцией, ресурсом, limit и фильтрами. Не изменять и не переносить между запросами.",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "proposalId",
+                  "value": "{{proposalId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "Действующие голоса участников; createdAt DESC,userId DESC. Не меняет состояние. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "pm.collectionVariables.set('listProposalVotesCursor', d.nextCursor || '');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Забронировать встречу",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{bookProposalKey}}",
+                "description": "UUID операции. Повтор с тем же актором, операцией и каноническим телом возвращает сохранённый status/body без повторных эффектов. Другой путь/бизнес-поля с тем же ключом дают 409. expectedRevision и confirmOverlap исключены из хеша."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/proposals/:proposalId/booking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "proposals",
+                ":proposalId",
+                "booking"
+              ],
+              "variable": [
+                {
+                  "key": "proposalId",
+                  "value": "{{proposalId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "Активный участник с собственным going и >1 общих голосов бронирует до начала. confirmOverlap=true разрешает вторую пересекающуюся бронь той же точки. Интервалы [start,end), касание границ не конфликт. Меньший bookingOrder задаёт приоритет каждой пары прямых пересечений. Атомарно создаёт ACTIVE бронь, revision, meeting_booked и уведомления, после commit WS. overlaps только прямые активные пересечения, sorted bookingOrder. Повторить нетерминальный отказ тем же ключом после актуализации revision/подтверждения. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений.\n\nНужны свой going, минимум 2 голоса, будущее открытое предложение и свежая revision: перед новой операцией выполните GET состояния. Для второго участника войдите другим тестовым аккаунтом, вступите и проголосуйте; затем вернитесь первым. STALE_STATE: GET и повтор тем же ключом; OVERLAP_CONFIRM_REQUIRED: изучите overlaps и установите confirmOverlap=true. Успешный replay сохраняет тело отправленного запроса.\n\nКлюч bookProposalKey: оставьте неизменным для replay; для новой операции вручную задайте новый UUID. Не меняйте бизнес-поля при replay.\n\nПоля ответа: bookingOrder — порядок успешных броней точки; меньший номер имеет приоритет при прямом пересечении. booking.overlappingActive содержит текущие активные брони той же точки, напрямую пересекающие интервал, по возрастанию bookingOrder. После отмены список пуст, а cancelReason показывает insufficient_votes, point_deleted или closed_by_author.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirmOverlap\": {{confirmOverlap}},\n  \"expectedRevision\": {{bookingExpectedRevision}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.id !== undefined && d.id !== null) pm.collectionVariables.set('proposalId', String(d.id));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('proposalRevision', String(d.revision));",
+                  "if (d.booking && d.booking.id !== undefined && d.booking && d.booking.id !== null) pm.collectionVariables.set('bookingId', String(d.booking && d.booking.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Закрыть предложение",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{closeProposalKey}}",
+                "description": "UUID операции. Повтор с тем же актором, операцией и каноническим телом возвращает сохранённый status/body без повторных эффектов. Другой путь/бизнес-поля с тем же ключом дают 409. expectedRevision и confirmOverlap исключены из хеша."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/proposals/:proposalId/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "proposals",
+                ":proposalId",
+                "close"
+              ],
+              "variable": [
+                {
+                  "key": "proposalId",
+                  "value": "{{proposalId}}",
+                  "description": "UUID ресурса. Синтетический пример; замените ID существующим."
+                }
+              ]
+            },
+            "description": "Только активный участник-автор, до startsAt. Атомарно закрывает lifecycle, повышает revision; отменяет активную бронь с closed_by_author, её напоминания, создаёт meeting_closed/meeting_booking_cancelled и уведомления. После commit WS. expectedRevision не входит в idempotency hash; актуализировать и повторить тем же ключом. Требуется Authorization: Bearer <accessToken>. JWT проверяется вместе с активностью сессии в БД. Чтение доступно при mute; mute ограничивает только отправку текстовых сообщений.\n\nТолько автор до начала встречи. Перед новой операцией GET состояния; closeExpectedRevision хранится отдельно от revision результата. Закрытие отменяет активную бронь.\n\nКлюч closeProposalKey: оставьте неизменным для replay; для новой операции вручную задайте новый UUID. Не меняйте бизнес-поля при replay.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedRevision\": {{closeExpectedRevision}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.id !== undefined && d.id !== null) pm.collectionVariables.set('proposalId', String(d.id));",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('proposalRevision', String(d.revision));",
+                  "if (d.booking && d.booking.id !== undefined && d.booking && d.booking.id !== null) pm.collectionVariables.set('bookingId', String(d.booking && d.booking.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Жалобы и модерация",
+      "item": [
+        {
+          "name": "Пожаловаться на участника",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{identity_post_api_v1_reportsKey}}",
+                "description": "Required UUID, scoped to actor and report operation."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports"
+              ]
+            },
+            "description": "Current actor must be active member of context chat. Target must be active account and current member or author of a TEXT message in that chat. Self-report prohibited. Reason trimmed, 1–1000 code points, no U+0000. Creates one lifetime complaint per reporter/target. At 16 distinct lifetime reporters, target receives a one-time 7-day message mute; report does not reveal moderation counter. Same actor/operation/key and normalized business body replays saved 201; changed body gives IDEMPOTENCY_KEY_REUSED. Both route/resource and body identity belong in idempotency semantics; retain UUID key on retry.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nНужен другой существующий тестовый targetUserId, который состоит в текущем чате или писал в нём. Автор жалобы должен состоять в чате. Синтетический targetUserId замените вручную. Административных маршрутов модерации нет.\n\nКлюч identity_post_api_v1_reportsKey: оставьте неизменным для replay; для новой операции вручную задайте новый UUID. Не меняйте бизнес-поля при replay.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contextChatId\": \"{{chatId}}\",\n  \"targetUserId\": \"{{targetUserId}}\",\n  \"reasonText\": \"{{reportReason}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.id !== undefined && d.id !== null) pm.collectionVariables.set('reportId', String(d.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Уведомления и устройства",
+      "item": [
+        {
+          "name": "Настройки уведомлений",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/notification-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "notification-settings"
+              ]
+            },
+            "description": "Reads four current-account channel flags and revision. No mutation.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nGET получает revision; PUT использует settingsRevision и включает extraInAppEnabled, чтобы затем разрешить запись notification-location. При STALE_STATE повторите GET."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('settingsRevision', String(d.revision));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Изменить настройки уведомлений",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/notification-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "notification-settings"
+              ]
+            },
+            "description": "Compare-and-swap expectedRevision; increments revision. Disabling channels cancels queued push jobs for those channels. Disabling both extra flags deletes notification location. 409 STALE_STATE returns the current four flags and revision in error.details. No Idempotency-Key; repeating old revision gives conflict.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nGET получает revision; PUT использует settingsRevision и включает extraInAppEnabled, чтобы затем разрешить запись notification-location. Для проверки повтора сохраните expectedRevision до первого успешного PUT и подставьте старое число в повторный запрос. Ожидается 409 STALE_STATE с актуальным состоянием в error.details. Для нового изменения возьмите актуальную revision через GET.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"remindersPushEnabled\": true,\n  \"personalPushEnabled\": true,\n  \"extraPushEnabled\": false,\n  \"extraInAppEnabled\": true,\n  \"expectedRevision\": {{settingsRevision}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.revision !== undefined && d.revision !== null) pm.collectionVariables.set('settingsRevision', String(d.revision));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Место для уведомлений",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/notification-location",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "notification-location"
+              ]
+            },
+            "description": "Returns saved voluntary map center. With no saved position returns position:null, updatedAt:null. Separate from device location and Point coordinates.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nPUT требует принятый актуальный policy и хотя бы один extra-канал в настройках; иначе 403/422/503. DELETE отзывает добровольно сохранённую позицию.\n\nОтветы содержат Cache-Control: no-store."
+          },
+          "response": []
+        },
+        {
+          "name": "Задать место для уведомлений",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/notification-location",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "notification-location"
+              ]
+            },
+            "description": "Saves finite WGS84 coordinates and server updatedAt. Requires configured privacy version accepted by user and at least one extra channel enabled. No Idempotency-Key; retry overwrites position and updatedAt.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nPUT требует принятый актуальный policy и хотя бы один extra-канал в настройках; иначе 403/422/503. DELETE отзывает добровольно сохранённую позицию.\n\nОтветы содержат Cache-Control: no-store.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"position\": {\n    \"lat\": {{lat}},\n    \"lon\": {{lon}}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Удалить место для уведомлений",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/notification-location",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "notification-location"
+              ]
+            },
+            "description": "Deletes own saved map center; repeated deletion returns 204. No body or Idempotency-Key.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nPUT требует принятый актуальный policy и хотя бы один extra-канал в настройках; иначе 403/422/503. DELETE отзывает добровольно сохранённую позицию.\n\nОтветы содержат Cache-Control: no-store."
+          },
+          "response": []
+        },
+        {
+          "name": "Зарегистрировать push-устройство",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/push-devices/:installationId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "push-devices",
+                ":installationId"
+              ],
+              "variable": [
+                {
+                  "key": "installationId",
+                  "value": "{{installationId}}",
+                  "description": "Stable UUID generated for this app installation."
+                }
+              ]
+            },
+            "description": "Registers, rotates or rebinds this installation to current account. Exactly (android,rustore) or (ios,apns). Token nonempty, <=4096 UTF-8 bytes, no whitespace/control characters. Identical repeat returns original registeredAt. Rebind cancels former owner queued deliveries. A request from an older session or a replay of a replaced token returns 409 STALE_STATE without changing the installation. Sign in to the other account before testing the switch, then repeat with the previous session and expect 409. The request does not call the push provider. Without a configured encryption key, an authenticated request returns 503 PUSH_REGISTRATION_FAILED without persisting the token. No Idempotency-Key.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nДля регистрации настройте PUSH_TOKEN_ENCRYPTION_KEY_BASE64 вне Git. Без ключа ожидается 503 PUSH_REGISTRATION_FAILED для авторизованного PUT. Пары: android/rustore или ios/apns. Синтетический token пригоден только для локальной регистрации, не доставки.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"android\",\n  \"provider\": \"rustore\",\n  \"token\": \"{{pushToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Мои уведомления",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/notifications?limit={{limit}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}",
+                  "description": "Page size; default 30."
+                },
+                {
+                  "key": "cursor",
+                  "value": "{{identity_get_api_v1_me_notificationsCursor}}",
+                  "description": "Use opaque nextCursor exactly; omit for first page.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lists only own visible_in_app notifications by createdAt DESC, id DESC. Opaque authenticated cursor is bound to account and limit: do not change limit during pagination. nextCursor=null means end. For nearby_meeting, chatId/proposalId are redacted to null. GET does not mark read.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "let d = {};",
+                  "try { d = pm.response.json(); } catch (_) {}",
+                  "if (d.items && d.items.length) {",
+                  "if (d.items[0].id !== undefined && d.items[0].id !== null) pm.collectionVariables.set('notificationId', String(d.items[0].id));",
+                  "}",
+                  "pm.collectionVariables.set('identity_get_api_v1_me_notificationsCursor', d.nextCursor || '');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Прочитать уведомление",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/notifications/:notificationId/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "notifications",
+                ":notificationId",
+                "read"
+              ],
+              "variable": [
+                {
+                  "key": "notificationId",
+                  "value": "{{notificationId}}",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Sets readAt once using server time; repeated request preserves first readAt. Only own visible in-app notification; missing or another owner returns 404. No body or Idempotency-Key.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token)."
+          },
+          "response": []
+        },
+        {
+          "name": "Отозвать push-устройство",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/push-devices/:installationId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "push-devices",
+                ":installationId"
+              ],
+              "variable": [
+                {
+                  "key": "installationId",
+                  "value": "{{installationId}}",
+                  "description": "Stable UUID generated for this app installation."
+                }
+              ]
+            },
+            "description": "Revokes own installation and cancels queued deliveries. Missing, already revoked or another owner installation returns 204 without revealing existence. A session older than the recorded binding cannot revoke it. Idempotent; no request body or Idempotency-Key.\nAuthorization: Bearer <access JWT>. Only the current account is affected; JWT and active session are checked on every request. Example header: Authorization: Bearer SYNTHETIC_ACCESS_TOKEN_NOT_VALID (replace with your own token).\n\nDELETE подключается при настроенном PUSH_TOKEN_ENCRYPTION_KEY_BASE64. Без ключа DELETE возвращает 404. Пары: android/rustore или ios/apns. Синтетический token пригоден только для локальной регистрации, не доставки."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Служебные запросы",
+      "item": [
+        {
+          "name": "Приветствие",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/plain"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                ""
+              ]
+            },
+            "description": "Returns the literal service greeting; no business side effects."
+          },
+          "response": []
+        },
+        {
+          "name": "Готовность сервера и БД",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Checks mandatory database readiness; returns ok only while ready. No business mutation."
+          },
+          "response": []
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/html"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/docs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docs"
+              ]
+            },
+            "description": "Swagger UI"
+          },
+          "response": []
+        },
+        {
+          "name": "Swagger UI с завершающим слешем",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/html"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/docs/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docs",
+                ""
+              ]
+            },
+            "description": "Swagger UI с завершающим слешем"
+          },
+          "response": []
+        },
+        {
+          "name": "OpenAPI действующего API",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/openapi.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "openapi.json"
+              ]
+            },
+            "description": "OpenAPI действующего API"
+          },
+          "response": []
+        },
+        {
+          "name": "Контракт WebSocket",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/plain"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/docs/websocket",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docs",
+                "websocket"
+              ]
+            },
+            "description": "Контракт WebSocket"
+          },
+          "response": []
+        },
+        {
+          "name": "Расхождения с M0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/plain"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/docs/contract-differences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docs",
+                "contract-differences"
+              ]
+            },
+            "description": "Расхождения с M0"
+          },
+          "response": []
+        },
+        {
+          "name": "Ресурс Swagger UI",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "*/*"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/docs/assets/:docsAsset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "docs",
+                "assets",
+                ":docsAsset"
+              ],
+              "variable": [
+                {
+                  "key": "docsAsset",
+                  "value": "{{docsAsset}}",
+                  "description": "Путь wildcard версии/файла; например 5.30.3/swagger-ui.css, как в HTML GET /docs."
+                }
+              ]
+            },
+            "description": "Раздаёт существующий bundled ресурс Swagger UI без авторизации. docsAsset включает версию и имя файла: 5.30.3/swagger-ui.css; реальный URL /docs/assets/5.30.3/swagger-ui.css. Версию сверяйте с GET /docs или Version Catalog backend."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8080",
+      "type": "string",
+      "description": "HTTP origin без завершающего / и без /api/v1. Для удалённого сервера используйте HTTPS."
+    },
+    {
+      "key": "wsBaseUrl",
+      "value": "ws://127.0.0.1:8080",
+      "type": "string",
+      "description": "WS origin; для HTTPS-сервера используйте wss:// с тем же host."
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Пусто в файле. Автоматически сохраняется только после успешного register/login/refresh; не экспортируйте заполненную коллекцию с секретами."
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string",
+      "description": "Пусто в файле. Автоматически сохраняется только после успешного register/login/refresh; не экспортируйте заполненную коллекцию с секретами."
+    },
+    {
+      "key": "phone",
+      "value": "+12025550123",
+      "type": "string",
+      "description": "Синтетический E.164 из диапазона примеров; используйте только отдельную тестовую БД."
+    },
+    {
+      "key": "password",
+      "value": "ExamplePasswordOnly123!",
+      "type": "string",
+      "description": "Вымышленный пароль тестового аккаунта."
+    },
+    {
+      "key": "newPassword",
+      "value": "AnotherExampleOnly123!",
+      "type": "string",
+      "description": "Вымышленный новый пароль; после успешной смены password обновляется, сеанс очищается."
+    },
+    {
+      "key": "displayName",
+      "value": "Тестовый участник",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "ageYears",
+      "value": "18",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "privacyPolicyVersion",
+      "value": "",
+      "type": "string",
+      "description": "Заполняется GET legal/privacy; регистрация требует актуальную версию."
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "Заполняется успешным ответом; при пустом значении сначала получите/создайте ресурс."
+    },
+    {
+      "key": "pointId",
+      "value": "",
+      "type": "string",
+      "description": "Заполняется успешным ответом; при пустом значении сначала получите/создайте ресурс."
+    },
+    {
+      "key": "topicId",
+      "value": "",
+      "type": "string",
+      "description": "Заполняется успешным ответом; при пустом значении сначала получите/создайте ресурс."
+    },
+    {
+      "key": "chatId",
+      "value": "",
+      "type": "string",
+      "description": "Заполняется успешным ответом; при пустом значении сначала получите/создайте ресурс."
+    },
+    {
+      "key": "proposalId",
+      "value": "",
+      "type": "string",
+      "description": "Заполняется успешным ответом; при пустом значении сначала получите/создайте ресурс."
+    },
+    {
+      "key": "bookingId",
+      "value": "",
+      "type": "string",
+      "description": "Заполняется успешным ответом; при пустом значении сначала получите/создайте ресурс."
+    },
+    {
+      "key": "notificationId",
+      "value": "",
+      "type": "string",
+      "description": "Заполняется успешным ответом; при пустом значении сначала получите/создайте ресурс."
+    },
+    {
+      "key": "messageId",
+      "value": "",
+      "type": "string",
+      "description": "Заполняется успешным ответом; при пустом значении сначала получите/создайте ресурс."
+    },
+    {
+      "key": "reportId",
+      "value": "",
+      "type": "string",
+      "description": "Заполняется успешным ответом; при пустом значении сначала получите/создайте ресурс."
+    },
+    {
+      "key": "targetUserId",
+      "value": "00000000-0000-4000-8000-000000000002",
+      "type": "string",
+      "description": "Синтетический UUID: замените ID другого тестового участника текущего chatId. В БД автоматически не создаётся."
+    },
+    {
+      "key": "installationId",
+      "value": "00000000-0000-4000-8000-000000000010",
+      "type": "string",
+      "description": "Стабильный синтетический UUID тестовой установки; PUT/DELETE используют один ID."
+    },
+    {
+      "key": "pushToken",
+      "value": "SYNTHETIC_PUSH_TOKEN_NOT_VALID",
+      "type": "string",
+      "description": "Проходит локальную проверку формата RuStore, но не обеспечивает доставку push."
+    },
+    {
+      "key": "lat",
+      "value": "55.7512",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "lon",
+      "value": "37.6184",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "west",
+      "value": "37.58",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "south",
+      "value": "55.73",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "east",
+      "value": "37.64",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "north",
+      "value": "55.77",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "limit",
+      "value": "30",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "peopleMin",
+      "value": "0",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "peopleMax",
+      "value": "50",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "lastReadMessageSeq",
+      "value": "0",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "beforeSeq",
+      "value": "1",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "afterSeq",
+      "value": "0",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "proposalRevision",
+      "value": "0",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "bookingExpectedRevision",
+      "value": "0",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "closeExpectedRevision",
+      "value": "0",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "settingsRevision",
+      "value": "0",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "topicKey",
+      "value": "football",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "customTopicLabel",
+      "value": "Тестовая игра",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "searchQuery",
+      "value": "площадке",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "confirmNearby",
+      "value": "false",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "confirmOverlap",
+      "value": "false",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "going",
+      "value": "true",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "startsAt",
+      "value": "",
+      "type": "string",
+      "description": "При первом createProposal задаётся завтра в UTC; сохраняется для replay. Для новой встречи задайте новые времена и новый ключ."
+    },
+    {
+      "key": "endsAt",
+      "value": "",
+      "type": "string",
+      "description": "На час позже startsAt; автоматическая инициализация только при пустых обоих временах."
+    },
+    {
+      "key": "messageText",
+      "value": "Предлагаю встретиться на площадке",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "reportReason",
+      "value": "Тестовая жалоба на нарушение правил общения",
+      "type": "string",
+      "description": ""
+    },
+    {
+      "key": "docsAsset",
+      "value": "5.30.3/swagger-ui.css",
+      "type": "string",
+      "description": "Путь внутри bundled Swagger UI: версия/файл. 5.30.3 взята из project/backend/gradle/libs.versions.toml; после обновления библиотеки сверяйте GET /docs."
+    },
+    {
+      "key": "pointCreateKey",
+      "value": "875a8f08-7a95-50b5-a4d2-70bc1c4f6a26",
+      "type": "string",
+      "description": "Постоянный синтетический UUID. Сохраните для replay; вручную замените новым UUID перед новой бизнес-операцией. Скрипты ключ не меняют."
+    },
+    {
+      "key": "pointTopicCreateKey",
+      "value": "9f57e43e-236f-5be8-8119-a142fd58e17f",
+      "type": "string",
+      "description": "Постоянный синтетический UUID. Сохраните для replay; вручную замените новым UUID перед новой бизнес-операцией. Скрипты ключ не меняют."
+    },
+    {
+      "key": "sendMessageKey",
+      "value": "3490a5d0-fbe1-5b7c-92ba-862195eb2645",
+      "type": "string",
+      "description": "Постоянный синтетический UUID. Сохраните для replay; вручную замените новым UUID перед новой бизнес-операцией. Скрипты ключ не меняют."
+    },
+    {
+      "key": "createProposalKey",
+      "value": "6871ee7a-7cff-5163-8842-b685971e3252",
+      "type": "string",
+      "description": "Постоянный синтетический UUID. Сохраните для replay; вручную замените новым UUID перед новой бизнес-операцией. Скрипты ключ не меняют."
+    },
+    {
+      "key": "bookProposalKey",
+      "value": "92ebc126-8e74-54ca-bd29-a3e1b4494c7b",
+      "type": "string",
+      "description": "Постоянный синтетический UUID. Сохраните для replay; вручную замените новым UUID перед новой бизнес-операцией. Скрипты ключ не меняют."
+    },
+    {
+      "key": "closeProposalKey",
+      "value": "d1dfd807-ab43-5986-ac6a-5193c7eb2217",
+      "type": "string",
+      "description": "Постоянный синтетический UUID. Сохраните для replay; вручную замените новым UUID перед новой бизнес-операцией. Скрипты ключ не меняют."
+    },
+    {
+      "key": "identity_post_api_v1_reportsKey",
+      "value": "e2ba2593-5ed6-58fa-8c69-5ad28d9d9af7",
+      "type": "string",
+      "description": "Постоянный синтетический UUID. Сохраните для replay; вручную замените новым UUID перед новой бизнес-операцией. Скрипты ключ не меняют."
+    },
+    {
+      "key": "pointListCursor",
+      "value": "",
+      "type": "string",
+      "description": "Последний nextCursor только этого запроса. Параметр cursor выключен на первой странице; включите для следующей. При смене ресурса/фильтров выключите и начните заново."
+    },
+    {
+      "key": "listMyChatsCursor",
+      "value": "",
+      "type": "string",
+      "description": "Последний nextCursor только этого запроса. Параметр cursor выключен на первой странице; включите для следующей. При смене ресурса/фильтров выключите и начните заново."
+    },
+    {
+      "key": "searchMessagesCursor",
+      "value": "",
+      "type": "string",
+      "description": "Последний nextCursor только этого запроса. Параметр cursor выключен на первой странице; включите для следующей. При смене ресурса/фильтров выключите и начните заново."
+    },
+    {
+      "key": "listProposalsCursor",
+      "value": "",
+      "type": "string",
+      "description": "Последний nextCursor только этого запроса. Параметр cursor выключен на первой странице; включите для следующей. При смене ресурса/фильтров выключите и начните заново."
+    },
+    {
+      "key": "listProposalVotesCursor",
+      "value": "",
+      "type": "string",
+      "description": "Последний nextCursor только этого запроса. Параметр cursor выключен на первой странице; включите для следующей. При смене ресурса/фильтров выключите и начните заново."
+    },
+    {
+      "key": "identity_get_api_v1_me_notificationsCursor",
+      "value": "",
+      "type": "string",
+      "description": "Последний nextCursor только этого запроса. Параметр cursor выключен на первой странице; включите для следующей. При смене ресурса/фильтров выключите и начните заново."
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  }
+}
