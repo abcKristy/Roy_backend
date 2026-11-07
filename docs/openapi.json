@@ -4135,6 +4135,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4173,6 +4179,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -4233,6 +4245,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4265,6 +4283,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -4299,6 +4323,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4331,6 +4361,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -4365,6 +4401,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4390,7 +4432,15 @@
             }
           },
           "406": {
-            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -4448,6 +4498,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4487,6 +4543,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4519,6 +4581,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -4553,6 +4621,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4585,6 +4659,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -4619,6 +4699,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4644,7 +4730,15 @@
             }
           },
           "406": {
-            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -4714,6 +4808,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4753,6 +4853,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4785,6 +4891,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -4819,6 +4931,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4851,6 +4969,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -4885,6 +5009,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -4910,7 +5040,15 @@
             }
           },
           "406": {
-            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -6605,6 +6743,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             }
           },
@@ -6616,6 +6760,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -6674,6 +6824,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -6719,6 +6875,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -6751,6 +6913,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -6785,6 +6953,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -6810,7 +6984,15 @@
             }
           },
           "406": {
-            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -8539,6 +8721,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -8566,6 +8754,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -8612,6 +8806,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -8637,7 +8837,15 @@
             }
           },
           "406": {
-            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -8676,6 +8884,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -8706,6 +8920,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -8752,6 +8972,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -8785,6 +9011,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -8817,6 +9049,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -8863,6 +9101,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -8895,6 +9139,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -8929,6 +9179,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -8954,7 +9210,15 @@
             }
           },
           "406": {
-            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -9039,6 +9303,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             }
           },
@@ -9050,6 +9320,12 @@
                 "schema": {
                   "type": "string",
                   "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
                 }
               }
             },
@@ -9096,6 +9372,12 @@
                   "type": "string",
                   "format": "uuid"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
               }
             },
             "content": {
@@ -9121,7 +9403,15 @@
             }
           },
           "406": {
-            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+            "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Ktor возвращает пустое тело без error.code и JSON ошибки. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -10753,7 +11043,7 @@
           "Карта и точки"
         ],
         "summary": "Определить адрес по координатам",
-        "description": "Требуется авторизация. Запрос к внешнему провайдеру выполняется вне транзакции создания точки. Idempotency-Key не нужен. Отсутствие адреса у провайдера — успешный ответ с address=null и source=none. Если адрес не найден или сервис недоступен, клиент может передать адрес вручную. На весь процесс действует ограничение 30 обращений к провайдеру за скользящую секунду; превышение возвращает тот же ответ 503 GEOCODER_UNAVAILABLE без заголовка Retry-After. Тайм-аут подключения — 2 секунды, запроса — 3 секунды.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nPOST /api/v1/geocoding/reverse HTTP/1.1\nHost: 127.0.0.1:8080\nAuthorization: Bearer <access-token-from-login>\nContent-Type: application/json\n\n{\"position\": {\"lat\": 55.7512, \"lon\": 37.6184}}\n```",
+        "description": "В APP_ENV=local корректный авторизованный запрос возвращает 503 GEOCODER_UNAVAILABLE. DaData подключается только в APP_ENV=production с заданным DADATA_API_KEY. Требуется авторизация. Запрос к внешнему провайдеру выполняется вне транзакции создания точки. Idempotency-Key не нужен. Отсутствие адреса у провайдера — успешный ответ с address=null и source=none. Если адрес не найден или сервис недоступен, клиент может передать адрес вручную. На весь процесс действует ограничение 30 обращений к провайдеру за скользящую секунду; превышение возвращает тот же ответ 503 GEOCODER_UNAVAILABLE без заголовка Retry-After. Тайм-аут подключения — 2 секунды, запроса — 3 секунды.\n\nПример запроса (вместо токена указан текстовый заполнитель):\n```http\nPOST /api/v1/geocoding/reverse HTTP/1.1\nHost: 127.0.0.1:8080\nAuthorization: Bearer <access-token-from-login>\nContent-Type: application/json\n\n{\"position\": {\"lat\": 55.7512, \"lon\": 37.6184}}\n```",
         "security": [
           {
             "bearerAuth": []
@@ -10931,7 +11221,7 @@
             }
           },
           "503": {
-            "description": "GEOCODER_UNAVAILABLE: Ключ API провайдера отсутствует, истёк тайм-аут, получен неуспешный ответ или некорректные данные провайдера, произошёл сбой провайдера или сети. Ручной ввод адреса точки остаётся доступен. Также возвращается при исчерпании общего для процесса лимита 30 обращений к провайдеру в секунду.",
+            "description": "В APP_ENV=local корректный авторизованный запрос возвращает 503 GEOCODER_UNAVAILABLE. DaData подключается только в APP_ENV=production с заданным DADATA_API_KEY. GEOCODER_UNAVAILABLE: Ключ API провайдера отсутствует, истёк тайм-аут, получен неуспешный ответ или некорректные данные провайдера, произошёл сбой провайдера или сети. Ручной ввод адреса точки остаётся доступен. Также возвращается при исчерпании общего для процесса лимита 30 обращений к провайдеру в секунду.",
             "content": {
               "application/json": {
                 "schema": {

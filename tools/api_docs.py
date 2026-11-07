@@ -96,6 +96,11 @@ def assemble():
                     "Пример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
                 ),
             }
+            if operation.pop("x-no-store", False):
+                for response in operation["responses"].values():
+                    response.setdefault("headers", {})["Cache-Control"] = {
+                        "schema": {"type": "string", "const": "no-store"},
+                    }
     return document
 
 
