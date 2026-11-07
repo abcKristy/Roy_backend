@@ -130,6 +130,23 @@ class BookingReminderCancellationIntegrationTest {
         }
     }
 
+    @Test
+    fun `closed proposal suppresses a reminder with a stale active booking`() = runBlocking<Unit> {
+        Fixture().use { fixture ->
+            fixture.schedule()
+            fixture.closeProposalWithStaleBooking()
+            val calls = AtomicInteger()
+            val worker = fixture.worker(PushSender { _, _, _ ->
+                calls.incrementAndGet()
+                PushSendResult.Delivered
+            })
+            assertEquals(2, worker.processBatch())
+            assertEquals(0, calls.get())
+            fixture.assertCancelledJobs()
+            assertEquals(1, fixture.visibleReminders(fixture.recipient))
+        }
+    }
+
     private enum class CancelPath { UNVOTE, LEAVE, DELETE_ACCOUNT, AUTHOR_CLOSE }
     /** Pause after an actual committed read; no JDBC transaction/lock is held while the test cancels. */
     private class AfterFirstRead(private val delegate: DatabaseRuntime, private val selected: CountDownLatch,
@@ -219,6 +236,13 @@ class BookingReminderCancellationIntegrationTest {
                     CloseMeetingCommand(owner, proposal, UUID.randomUUID(), 4)) { _, _ -> error("Already closed callback") })
             }
         }
+        fun closeProposalWithStaleBooking() {
+            connection().use { connection ->
+                execute(connection, """UPDATE meeting_proposals
+                    SET lifecycle='CLOSED',updated_at=clock_timestamp(),closed_reason='TIME' WHERE id=?""", proposal)
+            }
+        }
+
         fun jobs(): List<List<String?>> = connection().use { c -> c.prepareStatement("SELECT j.id,j.status,j.claim_token,j.lease_until,j.sent_at,j.completed_at,j.attempts,j.next_attempt_at FROM push_delivery_jobs j JOIN notification_events e ON e.id=j.notification_event_id WHERE e.booking_id=? AND e.event_type='reminder_1h' ORDER BY j.id").use { s ->
             s.setObject(1, booking); s.executeQuery().use { r -> buildList { while (r.next()) add((1..8).map { r.getString(it) }) } }
         } }

@@ -332,7 +332,7 @@ class PushDeliveryWorker(
             "reminder_1h" -> """SELECT EXISTS(
                 SELECT 1 FROM bookings AS b JOIN meeting_proposals AS p ON p.id=b.proposal_id
                 JOIN chat_memberships AS m ON m.chat_id=p.chat_id
-                WHERE b.id=? AND b.status='ACTIVE' AND p.id=? AND p.chat_id=?
+                WHERE b.id=? AND b.status='ACTIVE' AND p.id=? AND p.chat_id=? AND p.lifecycle='OPEN'
                   AND m.user_id=? AND m.left_at IS NULL
                   AND b.created_at<=p.starts_at-interval '1 hour'
                   AND clock_timestamp()>=p.starts_at-interval '1 hour'
