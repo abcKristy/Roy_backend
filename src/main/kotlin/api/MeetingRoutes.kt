@@ -298,7 +298,7 @@ private suspend fun ApplicationCall.publishMeeting(
     } catch (cancel: CancellationException) {
         throw cancel
     } catch (failure: Exception) {
-        application.log.warn("Post-commit meeting WebSocket delivery failed for proposal {}", proposal.id, failure)
+        application.log.warn("Post-commit meeting WebSocket delivery failed for proposal {} exception={}", proposal.id, failure.javaClass.name)
     }
 }
 

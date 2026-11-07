@@ -1,5 +1,7 @@
 package com.example.realtime
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
 import com.example.api.configureRouting
 import com.example.api.configureTransport
 import com.example.auth.JwtTokenIssuer
@@ -19,14 +21,22 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.server.routing.routing
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.net.http.WebSocket
+import java.net.http.WebSocketHandshakeException
 import java.sql.DriverManager
 import java.time.Instant
+import java.util.Date
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
 import java.util.UUID
 import kotlin.test.*
 
@@ -91,28 +101,58 @@ class WebSocketSubscriptionIntegrationTest {
             val now=Instant.now()
             val tokens=sessionIds.mapIndexed { index,id -> "Bearer "+JwtTokenIssuer(secret).issue(if(index<2) actor else neighbor,id,0,now.minusSeconds(1),now.plusSeconds(3600)) }
             val ws=createClient { install(WebSockets) }
-            // Testhost masks non-101 upgrades; native JDK client observes the actual
-            // HTTP status from the same production routes on an ephemeral loopback Netty server.
-            suspend fun deniedHandshake(token:String?=null) {
-                val server=embeddedServer(Netty,host="127.0.0.1",port=0) {
-                    configureTransport(); installRealtimeTransport(); routing { realtimeRoutes(hub) }
+            // Exercise verification on live claims; an unknown JTI would mask a signature bypass.
+            val expiresAt = now.plusSeconds(3600)
+            val forged = "Bearer " + JwtTokenIssuer("different-signing-key-for-b6-fixture-only")
+                .issue(actor, sessionIds[0], 0, now.minusSeconds(1), expiresAt)
+            val unsigned = "Bearer " + JWT.create()
+                .withSubject(actor.toString())
+                .withJWTId(sessionIds[0].toString())
+                .withClaim("authVersion", 0)
+                .withIssuedAt(Date.from(now.minusSeconds(1)))
+                .withExpiresAt(Date.from(expiresAt))
+                .sign(Algorithm.none())
+            val expired = "Bearer " + JwtTokenIssuer(secret)
+                .issue(actor, sessionIds[0], 0, now.minusSeconds(3600), now.minusSeconds(1))
+            suspend fun assertNativeAccess(denials: List<Pair<String?, String>>, validToken: String) {
+                val native = embeddedServer(Netty, host = "127.0.0.1", port = 0) {
+                    configureTransport()
+                    installRealtimeTransport()
+                    configureRouting(db, sessionAccess = access, realtimeHub = hub)
                 }
-                server.start(wait=false)
+                native.start(wait = false)
                 try {
-                    val port=server.engine.resolvedConnectors().single().port
-                    val builder=java.net.http.HttpClient.newHttpClient().newWebSocketBuilder()
-                    token?.let{builder.header(HttpHeaders.Authorization,it)}
-                    val failure=assertFailsWith<java.util.concurrent.ExecutionException> {
-                        builder.buildAsync(java.net.URI("ws://127.0.0.1:$port/api/v1/ws"),object:java.net.http.WebSocket.Listener{})
-                            .get(5,java.util.concurrent.TimeUnit.SECONDS)
+                    val port = native.engine.resolvedConnectors().single().port
+                    val client = HttpClient.newHttpClient()
+                    fun requestMe(token: String?): HttpResponse<String> {
+                        val request = HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/v1/me")).GET()
+                        token?.let { request.header(HttpHeaders.Authorization, it) }
+                        return client.send(request.build(), HttpResponse.BodyHandlers.ofString())
                     }
-                    val rejected=assertIs<java.net.http.WebSocketHandshakeException>(failure.cause)
-                    assertEquals(401,rejected.response.statusCode())
-                } finally { server.stop(0,1000) }
+                    assertEquals(200, requestMe(validToken).statusCode())
+                    for ((token, code) in denials) {
+                        val response = requestMe(token)
+                        assertEquals(401, response.statusCode())
+                        val error = Json.parseToJsonElement(response.body()).jsonObject.getValue("error").jsonObject
+                        assertEquals(code, error.getValue("code").jsonPrimitive.content)
+                        val builder = client.newWebSocketBuilder()
+                        token?.let { builder.header(HttpHeaders.Authorization, it) }
+                        val failure = assertFailsWith<ExecutionException> {
+                            builder.buildAsync(URI("ws://127.0.0.1:$port/api/v1/ws"), object : WebSocket.Listener {})
+                                .get(5, TimeUnit.SECONDS)
+                        }
+                        assertEquals(401, assertIs<WebSocketHandshakeException>(failure.cause).response.statusCode())
+                    }
+                } finally {
+                    native.stop(0, 1000)
+                }
             }
-            deniedHandshake()
-            val expired="Bearer "+JwtTokenIssuer(secret).issue(actor,sessionIds[0],0,now.minusSeconds(3600),now.minusSeconds(1))
-            deniedHandshake(expired)
+            assertNativeAccess(listOf(
+                null to "AUTH_REQUIRED",
+                expired to "SESSION_EXPIRED",
+                forged to "SESSION_EXPIRED",
+                unsigned to "SESSION_EXPIRED",
+            ), tokens[0])
             ws.webSocket("/api/v1/ws",request={header(HttpHeaders.Authorization,tokens[0])}) {
                 val first=this
                 assertEquals("hello",next()["type"]?.jsonPrimitive?.content)
@@ -147,7 +187,7 @@ class WebSocketSubscriptionIntegrationTest {
                     access.logout(tokens[0])
                     assertEquals("session.revoked",first.next()["type"]?.jsonPrimitive?.content)
                     assertEquals(4401,withTimeout(5000){first.closeReason.await()}?.code?.toInt())
-                    deniedHandshake(tokens[0])
+                    assertNativeAccess(listOf(tokens[0] to "SESSION_EXPIRED"), tokens[1])
                     val surviving=UUID.randomUUID(); probe(RealtimeScopeKind.USER,actor,surviving)
                     second.marker(surviving,emptySet())
                     assertEquals(sessionIds[1],access.currentIdentity(tokens[1]).sessionId)

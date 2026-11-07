@@ -56,7 +56,7 @@ class SessionAccessService(
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (failure: Exception) {
-            log.warn("Post-commit session notification failed for {}", identity.sessionId, failure)
+            log.warn("Post-commit session notification failed exception={}", failure.javaClass.name)
         }
     }
 

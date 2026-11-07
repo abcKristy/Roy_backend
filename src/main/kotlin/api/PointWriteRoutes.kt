@@ -201,7 +201,7 @@ private suspend fun io.ktor.server.application.ApplicationCall.publishLeaveEffec
             }
         }
     } catch (failure: Exception) {
-        application.log.warn("Post-commit leave events failed for chat {}", chatId, failure)
+        application.log.warn("Post-commit leave events failed for chat {} exception={}", chatId, failure.javaClass.name)
     }
 }
 
@@ -212,7 +212,7 @@ private suspend fun io.ktor.server.application.ApplicationCall.publishMembership
     try {
         realtime.publishMembershipChanged(chatId, userId, action)
     } catch (failure: Exception) {
-        application.log.warn("Post-commit WebSocket delivery failed for chat {}", chatId, failure)
+        application.log.warn("Post-commit WebSocket delivery failed for chat {} exception={}", chatId, failure.javaClass.name)
     }
 }
 
