@@ -11,7 +11,7 @@ import com.example.points.PointMembership
 import com.example.points.PointPosition
 import com.example.points.PointTopicInput
 import com.example.points.PointWriteService
-import com.example.points.TopicPresetKeys
+import com.example.points.normalizeTopic
 import com.example.points.normalized
 import com.example.realtime.RealtimeHub
 import com.example.realtime.RealtimeEvent
@@ -242,12 +242,10 @@ private fun parseId(raw: String?): UUID {
 
 private fun invalidIdentifier() = ApiException(HttpStatusCode.BadRequest, "INVALID_FIELD", "Некорректный идентификатор")
 
-private fun validateTopic(topic: TopicInput): PointTopicInput {
-    val label = topic.customLabel?.trim()
-    if (topic.presetKey !in TopicPresetKeys.allowed ||
-        (topic.presetKey == "other" && (label.isNullOrBlank() || label.codePointCount(0, label.length) > 40)) ||
-        (topic.presetKey != "other" && label != null)) throw invalidPointField()
-    return PointTopicInput(topic.presetKey, label)
+private fun validateTopic(topic: TopicInput): PointTopicInput = try {
+    PointTopicInput(topic.presetKey, topic.customLabel).normalizeTopic().input
+} catch (_: IllegalArgumentException) {
+    throw invalidPointField()
 }
 
 private fun invalidPointField() = ApiException(HttpStatusCode.UnprocessableEntity, "INVALID_FIELD", "Некорректные данные")

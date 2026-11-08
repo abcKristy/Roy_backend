@@ -183,7 +183,11 @@ class M2QuotaTopicFilterAcceptanceIntegrationTest {
                 contentType(ContentType.Application.Json)
                 setBody("""{"topic":{"presetKey":"other","customLabel":"$topicLabel"}}""")
             }
-            val firstTopic = add(firstId, label, UUID.randomUUID())
+            val firstTopicKey = UUID.randomUUID()
+            val invalidTopic = add(firstId, """A\u0000B""", firstTopicKey)
+            assertEquals(HttpStatusCode.UnprocessableEntity, invalidTopic.status)
+            assertEquals("INVALID_FIELD", errorCode(body(invalidTopic.bodyAsText())))
+            val firstTopic = add(firstId, label, firstTopicKey)
             val secondTopic = add(secondId, label, UUID.randomUUID())
             assertEquals(HttpStatusCode.Created, firstTopic.status)
             assertEquals(HttpStatusCode.Created, secondTopic.status)
