@@ -88,15 +88,14 @@ internal fun Application.configuredModule(config: ServerConfig) {
             config.ruStorePush?.let { put("ANDROID_RUSTORE", RuStorePushSender(it.projectId, it.serviceToken)) }
             config.apnsPush?.let { put("IOS_APNS", ApnsPushSender(it.teamId, it.keyId, it.privateKeyPem, it.topic, it.environment)) }
         }
-        val push = if (deviceTokenCipher != null && pushSenders.isNotEmpty()) {
-            PushDeliveryWorker(
-                database,
-                PushSender { platform, token, payload -> pushSenders.getValue(platform).send(platform, token, payload) },
-                PushTokenDecoder(deviceTokenCipher::decrypt),
-                enabledPlatforms = pushSenders.keys,
-                locationPrivacyVersion = privacyPolicy?.version,
-            )
-        } else null
+        val push = deviceTokenCipher?.let { cipher ->
+            pushSenders.mapValues { (platform, sender) ->
+                PushDeliveryWorker(
+                    database, sender, PushTokenDecoder(cipher::decrypt),
+                    enabledPlatforms = setOf(platform), locationPrivacyVersion = privacyPolicy?.version,
+                )
+            }
+        }.orEmpty()
         val sessionRepository = JdbcSessionRepository(database)
         lateinit var realtimeHub: RealtimeHub
         val sessionAccess = SessionAccessService(config.jwtSecret, sessionRepository,

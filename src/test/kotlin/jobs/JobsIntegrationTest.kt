@@ -3,7 +3,10 @@ package com.example.jobs
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
 import com.example.persistence.HikariDatabaseBootstrap
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.sql.Connection
@@ -449,9 +452,55 @@ class JobsIntegrationTest {
         }
     }
 
+    @Test
+    fun `unresponsive push provider does not block delivery on another platform`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val slow = seedPushJob(dbUrl)
+        val fast = seedPushJob(dbUrl, platform = "IOS_APNS")
+        runtime(dbUrl).use { database ->
+            val slowEntered = CompletableDeferred<UUID>()
+            val fastEntered = CompletableDeferred<UUID>()
+            val releaseSlow = CompletableDeferred<Unit>()
+            val decoder = PushTokenDecoder { _, _, _ -> "token" }
+            val workers = mapOf(
+                "ANDROID_RUSTORE" to PushDeliveryWorker(database, PushSender { _, _, payload ->
+                    slowEntered.complete(payload.notificationId)
+                    releaseSlow.await()
+                    PushSendResult.Delivered
+                }, decoder, enabledPlatforms = setOf("ANDROID_RUSTORE")),
+                "IOS_APNS" to PushDeliveryWorker(database, PushSender { _, _, payload ->
+                    fastEntered.complete(payload.notificationId)
+                    PushSendResult.Delivered
+                }, decoder, enabledPlatforms = setOf("IOS_APNS")),
+            )
+            JobRuntime(
+                ReminderScheduler(database), ProposalExpiryScheduler(database),
+                NotificationBroadcaster(database, publish = { _, _, _, _ -> }), RetentionCleanup(database),
+                push = workers,
+            ).start().use {
+                try {
+                    withTimeout(5_000) {
+                        assertEquals(slow.event, slowEntered.await())
+                        assertEquals(fast.event, fastEntered.await())
+                        while (pushState(dbUrl, fast.job).first != "SENT") delay(10)
+                    }
+                } finally {
+                    releaseSlow.complete(Unit)
+                }
+                withTimeout(5_000) {
+                    while (pushState(dbUrl, slow.job).first != "SENT") delay(10)
+                }
+            }
+        }
+    }
+
     private data class PushFixture(val event: UUID, val job: UUID, val installation: UUID)
 
-    private fun seedPushJob(dbUrl: String, nearbyConsent: String? = null): PushFixture {
+    private fun seedPushJob(
+        dbUrl: String,
+        nearbyConsent: String? = null,
+        platform: String = "ANDROID_RUSTORE",
+    ): PushFixture {
         val account = UUID.randomUUID()
         val point = UUID.randomUUID()
         val chat = UUID.randomUUID()
@@ -463,11 +512,12 @@ class JobsIntegrationTest {
             c.prepareStatement(
                 """INSERT INTO device_registrations
                    (installation_id,user_id,platform,token_ciphertext,token_digest,created_at,updated_at)
-                   VALUES (?,?,'ANDROID_RUSTORE','cipher',?,clock_timestamp(),clock_timestamp())"""
+                   VALUES (?,?,?,'cipher',?,clock_timestamp(),clock_timestamp())"""
             ).use {
                 it.setObject(1, fixture.installation)
                 it.setObject(2, account)
-                it.setString(3, fixture.installation.toString().replace("-", "").repeat(2))
+                it.setString(3, platform)
+                it.setString(4, fixture.installation.toString().replace("-", "").repeat(2))
                 it.executeUpdate()
             }
             insertEventJob(c, fixture.event, fixture.job, account, fixture.installation, point, chat)

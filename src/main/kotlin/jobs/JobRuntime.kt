@@ -17,7 +17,7 @@ class JobRuntime(
     private val expiry: ProposalExpiryScheduler,
     private val broadcaster: NotificationBroadcaster,
     private val cleanup: RetentionCleanup,
-    private val push: PushDeliveryWorker? = null,
+    private val push: Map<String, PushDeliveryWorker> = emptyMap(),
     private val media: MediaDeletionWorker? = null,
     private val onExpired: suspend (List<ExpiredProposal>) -> Unit = {},
 ) : AutoCloseable {
@@ -41,7 +41,7 @@ class JobRuntime(
         loop("proposal-expiry", 30_000) { onExpired(expiry.tick()) }
         loop("notification-broadcast", 2_000) { broadcaster.tick() }
         loop("retention", 3_600_000) { cleanup.runBatch() }
-        if (push != null) loop("push-delivery", 2_000) { push.processBatch() }
+        for ((platform, worker) in push) loop("push-delivery-$platform", 2_000) { worker.processBatch() }
         if (media != null) loop("media-deletion", 10_000) { media.processBatch() }
         return this
     }
