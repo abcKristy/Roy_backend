@@ -2,6 +2,9 @@ package com.example.notifications
 
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
+import com.example.meetings.CreateProposalCommand
+import com.example.meetings.CreateProposalResult
+import com.example.meetings.ProposalService
 import com.example.persistence.HikariDatabaseBootstrap
 import com.example.persistence.JdbcNotificationWriter
 import com.example.persistence.NotificationEventDraft
@@ -9,13 +12,16 @@ import com.example.persistence.NotificationEventType
 import com.example.persistence.RecipientBarrier
 import com.example.persistence.RecipientLockClaim
 import com.example.persistence.RecipientLockMode
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.postgresql.util.PGobject
 import java.sql.Connection
 import java.sql.DriverManager
+import java.time.Instant
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -107,6 +113,90 @@ class NotificationServiceIntegrationTest {
                 releaseWriter.countDown()
                 writer.join(10_000)
             }
+        }
+    }
+
+    @Test
+    fun `deleting a nearby center waits for an eligible proposal to commit`() = runBlocking {
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
+        require(url.matches(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step7notifications$")))
+        val dbUser = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
+        val dbPassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
+        val creator = UUID.randomUUID()
+        val recipient = UUID.randomUUID()
+        val pointId = UUID.randomUUID()
+        val chatId = DriverManager.getConnection(url, dbUser, dbPassword).use { connection ->
+            connection.autoCommit = false
+            seedUser(connection, creator)
+            seedUser(connection, recipient)
+            seedNearbyChat(connection, creator, pointId).also { connection.commit() }
+        }
+        val secret = "notification-location-test-secret-at-least-32-bytes"
+        val runtime = HikariDatabaseBootstrap(ServerConfig(url, dbUser, dbPassword, secret,
+            appEnvironment = AppEnvironment.LOCAL, databaseStatementTimeoutMs = 15_000,
+            databaseLockTimeoutMs = 10_000)).start()
+        runtime.use { database ->
+            val locations = NotificationService(database, secret, "test")
+            val proposals = ProposalService(database, secret, locationPrivacyVersion = "test")
+            assertIs<SettingsUpdateResult.Updated>(locations.updateSettings(recipient,
+                NotificationSettingsChange(true, true, false, true, 0)))
+            assertIs<LocationWriteResult.Updated>(locations.setLocation(recipient, 55.75, 37.62))
+
+            val startsAt = Instant.now().plusSeconds(7_200)
+            val command = CreateProposalCommand(creator, chatId, UUID.randomUUID(), startsAt, startsAt.plusSeconds(3_600))
+            val proposalPid = CompletableDeferred<Int>()
+            val releaseProposal = CountDownLatch(1)
+            val creating = async {
+                proposals.create(command) { connection, proposal ->
+                    // Nearby recipients have been rechecked and events inserted by this point.
+                    val pid = connection.createStatement().use { statement ->
+                        statement.executeQuery("SELECT pg_backend_pid()").use { rows ->
+                            check(rows.next())
+                            rows.getInt(1)
+                        }
+                    }
+                    proposalPid.complete(pid)
+                    check(releaseProposal.await(15, TimeUnit.SECONDS))
+                    buildJsonObject { put("id", proposal.id.toString()) }
+                }
+            }
+            val deleting = async {
+                proposalPid.await()
+                locations.deleteLocation(recipient)
+            }
+            try {
+                val pid = withTimeout(5_000) { proposalPid.await() }
+                DriverManager.getConnection(url, dbUser, dbPassword).use { observer ->
+                    observer.prepareStatement(
+                        "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE ?=ANY(pg_blocking_pids(pid)))"
+                    ).use { statement ->
+                        statement.setInt(1, pid)
+                        withTimeout(5_000) {
+                            while (!deleting.isCompleted) {
+                                val blocked = statement.executeQuery().use { rows -> rows.next() && rows.getBoolean(1) }
+                                if (blocked) break
+                                delay(10)
+                            }
+                        }
+                    }
+                }
+                assertEquals(55.75, locations.location(recipient).latitude,
+                    "Deleting the center must wait for the eligible proposal transaction")
+                assertTrue(locations.list(recipient, null, 10).items.isEmpty())
+            } finally {
+                releaseProposal.countDown()
+            }
+            assertIs<CreateProposalResult.Created>(creating.await())
+            deleting.await()
+            assertNull(locations.location(recipient).latitude)
+            val event = locations.list(recipient, null, 10).items.single()
+            assertEquals("nearby_meeting", event.kind)
+            assertEquals(pointId, event.pointId)
+
+            assertIs<CreateProposalResult.Created>(proposals.create(command.copy(idempotencyKey = UUID.randomUUID())) { _, proposal ->
+                buildJsonObject { put("id", proposal.id.toString()) }
+            })
+            assertEquals(listOf(event), locations.list(recipient, null, 10).items)
         }
     }
 
@@ -205,6 +295,40 @@ class NotificationServiceIntegrationTest {
         ).use { statement -> statement.setObject(1, id); statement.setString(2, phone); statement.executeUpdate() }
         connection.prepareStatement("INSERT INTO notification_settings (user_id,updated_at) VALUES (?,clock_timestamp())")
             .use { statement -> statement.setObject(1, id); statement.executeUpdate() }
+    }
+
+    private fun seedNearbyChat(connection: Connection, creator: UUID, pointId: UUID): UUID {
+        val topicId = UUID.randomUUID()
+        val chatId = UUID.randomUUID()
+        connection.prepareStatement(
+            """INSERT INTO points (id,location,address,address_source,created_by_user_id,created_at,updated_at)
+               VALUES (?,ST_SetSRID(ST_MakePoint(37.62,55.75),4326),'Test','MANUAL',?,clock_timestamp(),clock_timestamp())"""
+        ).use { statement ->
+            statement.setObject(1, pointId)
+            statement.setObject(2, creator)
+            statement.executeUpdate()
+        }
+        connection.prepareStatement(
+            "INSERT INTO point_topics (id,point_id,preset_key,created_at) VALUES (?,?,'football',clock_timestamp())"
+        ).use { statement ->
+            statement.setObject(1, topicId)
+            statement.setObject(2, pointId)
+            statement.executeUpdate()
+        }
+        connection.prepareStatement("INSERT INTO chats (id,point_topic_id,created_at) VALUES (?,?,clock_timestamp())")
+            .use { statement ->
+                statement.setObject(1, chatId)
+                statement.setObject(2, topicId)
+                statement.executeUpdate()
+            }
+        connection.prepareStatement(
+            "INSERT INTO chat_memberships (chat_id,user_id,joined_at) VALUES (?,?,clock_timestamp())"
+        ).use { statement ->
+            statement.setObject(1, chatId)
+            statement.setObject(2, creator)
+            statement.executeUpdate()
+        }
+        return chatId
     }
 
     private fun insertEvent(connection: Connection, id: UUID, userId: UUID, channel: String, kind: String,

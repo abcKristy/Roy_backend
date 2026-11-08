@@ -182,7 +182,10 @@ class NotificationService(
 
     suspend fun deleteLocation(userId: UUID) {
         database.withRetryingJdbcTransaction { connection ->
-            if (lockActiveUser(connection, userId)) connection.prepareStatement(
+            if (!lockActiveUser(connection, userId)) return@withRetryingJdbcTransaction
+            // Nearby proposal creation holds a shared lock on settings from recheck through commit.
+            readSettings(connection, userId, forUpdate = true)
+            connection.prepareStatement(
                 "DELETE FROM notification_locations WHERE user_id=?"
             ).use { statement -> statement.setObject(1, userId); statement.executeUpdate() }
         }
