@@ -9,10 +9,11 @@ import java.time.Duration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /** DaData's server-side geolocate API; the API key never reaches the client response. */
@@ -46,8 +47,11 @@ class DaDataReverseGeocoder(
                 if (response.statusCode() !in 200..299) return@withContext ReverseGeocodeResult.Unavailable
                 val suggestions = Json.parseToJsonElement(response.body()).jsonObject["suggestions"]?.jsonArray
                     ?: return@withContext ReverseGeocodeResult.Unavailable
-                val address = suggestions.firstOrNull()?.jsonObject?.get("value")?.jsonPrimitive?.content?.trim()
-                if (address.isNullOrEmpty() || address.codePointCount(0, address.length) !in 1..300) {
+                val value = suggestions.firstOrNull()?.jsonObject?.get("value")
+                if (value == null || value === JsonNull) return@withContext ReverseGeocodeResult.None
+                if (value !is JsonPrimitive || !value.isString) return@withContext ReverseGeocodeResult.Unavailable
+                val address = value.content.trim()
+                if (address.codePointCount(0, address.length) !in 1..300) {
                     ReverseGeocodeResult.None
                 } else {
                     ReverseGeocodeResult.Found(address)

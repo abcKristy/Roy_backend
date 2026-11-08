@@ -38,6 +38,12 @@ class DaDataReverseGeocoderTest {
             assertTrue(requestBody.get().contains("\"lon\":37.653"))
             responseBody.set("""{"suggestions":[]}""")
             assertEquals(ReverseGeocodeResult.None, geocoder.lookup(PointPosition(55.878, 37.653)))
+            responseBody.set("""{"suggestions":[{"value":null}]}""")
+            assertEquals(ReverseGeocodeResult.None, geocoder.lookup(PointPosition(55.878, 37.653)))
+            for (invalidValue in listOf("123", "true", "[]", "{}")) {
+                responseBody.set("""{"suggestions":[{"value":$invalidValue}]}""")
+                assertEquals(ReverseGeocodeResult.Unavailable, geocoder.lookup(PointPosition(55.878, 37.653)))
+            }
             assertEquals(ReverseGeocodeResult.Unavailable,
                 DaDataReverseGeocoder(null, URI("http://127.0.0.1:${server.address.port}/reverse"))
                     .lookup(PointPosition(55.878, 37.653)))
