@@ -75,7 +75,7 @@ private class PooledDatabaseRuntime(
                 connection.commit()
                 result
             } catch (failure: Throwable) {
-                connection.rollback()
+                rollbackPreservingFailure(connection, failure)
                 throw failure
             }
         }
@@ -92,12 +92,18 @@ private class PooledDatabaseRuntime(
                 connection.commit()
                 result
             } catch (failure: Throwable) {
-                connection.rollback()
+                rollbackPreservingFailure(connection, failure)
                 throw failure
-            } finally {
-                connection.isReadOnly = false
-                connection.transactionIsolation = Connection.TRANSACTION_READ_COMMITTED
             }
+            // Hikari resets read-only and isolation on close, where use preserves the primary exception.
+        }
+    }
+
+    private fun rollbackPreservingFailure(connection: Connection, failure: Throwable) {
+        try {
+            connection.rollback()
+        } catch (rollbackFailure: Throwable) {
+            if (rollbackFailure !== failure) failure.addSuppressed(rollbackFailure)
         }
     }
 
