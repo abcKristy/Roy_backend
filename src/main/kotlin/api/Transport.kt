@@ -1,5 +1,6 @@
 package com.example.api
 
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -7,6 +8,7 @@ import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
+import io.ktor.server.response.header
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 
@@ -26,6 +28,9 @@ fun Application.configureTransport(errorMapper: ErrorMapper = ErrorMapper()) {
         exception<Throwable> { call, cause ->
             if (cause is CancellationException) throw cause
             val failure = errorMapper.map(cause)
+            if (failure.status == HttpStatusCode.TooManyRequests && call.response.headers[HttpHeaders.RetryAfter] == null) {
+                failure.error.retryAfterSeconds?.let { call.response.header(HttpHeaders.RetryAfter, it.toString()) }
+            }
             val requestId = call.requestId()
             if (failure.status.value >= 500) {
                 serverLog.error(

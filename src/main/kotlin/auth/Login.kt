@@ -2,7 +2,9 @@ package com.example.auth
 
 import com.example.api.ApiException
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.serialization.Serializable
+import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -51,22 +53,28 @@ class LoginService(
     private val accessTtl: Duration = Duration.ofMinutes(15),
     private val refreshTtl: Duration = Duration.ofDays(30),
 ) {
+    private val admission = LoginAdmission()
+
     init {
         require(accessTtl.nano == 0 && accessTtl.seconds in 60..30L * 24 * 60 * 60)
         require(refreshTtl.nano == 0 && refreshTtl.seconds in 60..30L * 24 * 60 * 60)
     }
 
     suspend fun login(request: LoginRequest): Session {
-        val phone = request.phone.trim()
-        val credential = if (PHONE.matches(phone)) repository.findCredential(phone) else null
+        val phone = request.phone.trim().takeIf(PHONE::matches)
+        return admission.run(phone) { authenticate(phone, request.password) }
+    }
+
+    private suspend fun authenticate(phone: String?, password: String): Session {
+        val credential = phone?.let { repository.findCredential(it) }
         if (credential == null) {
-            passwordHashing.verifyUnknown(request.password)
+            passwordHashing.verifyUnknown(password)
             invalidCredentials()
         }
-        if (!passwordHashing.verify(request.password, credential.passwordHash)) invalidCredentials()
+        if (!passwordHashing.verify(password, credential.passwordHash)) invalidCredentials()
 
         val replacement = if (passwordHashing.needsRehash(credential.passwordHash)) {
-            passwordHashing.hash(request.password)
+            passwordHashing.hash(password)
         } else {
             null
         }
@@ -98,4 +106,49 @@ class LoginService(
     private companion object {
         val PHONE = Regex("^\\+[1-9][0-9]{1,14}$")
     }
+}
+
+private const val LOGIN_WINDOW_NANOS = 60_000_000_000L
+private const val LOGIN_LIMIT_PER_WINDOW = 60
+private const val LOGIN_LIMIT_PER_PHONE = 8
+private const val NANOS_PER_SECOND = 1_000_000_000L
+
+/** Keep one password slot available to other auth operations and reject excess login work immediately. */
+private class LoginAdmission {
+    private val slot = Semaphore(1)
+    private val attemptsByPhone = mutableMapOf<String, Int>()
+    private var totalAttempts = 0
+    private var windowStart = System.nanoTime()
+
+    suspend fun <T> run(phone: String?, attempt: suspend () -> T): T {
+        if (!slot.tryAcquire()) limited(1)
+        try {
+            val now = System.nanoTime()
+            if (now - windowStart >= LOGIN_WINDOW_NANOS) {
+                windowStart = now
+                totalAttempts = 0
+                attemptsByPhone.clear()
+            }
+            val key = phone?.let {
+                java.util.Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(it.toByteArray(Charsets.UTF_8)))
+            }.orEmpty()
+            val phoneAttempts = attemptsByPhone.getOrDefault(key, 0)
+            if (totalAttempts >= LOGIN_LIMIT_PER_WINDOW || phoneAttempts >= LOGIN_LIMIT_PER_PHONE) {
+                val remaining = LOGIN_WINDOW_NANOS - (now - windowStart)
+                limited(((remaining + NANOS_PER_SECOND - 1) / NANOS_PER_SECOND).toInt())
+            }
+            totalAttempts++
+            attemptsByPhone[key] = phoneAttempts + 1
+            return attempt()
+        } finally {
+            slot.release()
+        }
+    }
+
+    private fun limited(retrySeconds: Int): Nothing = throw ApiException(
+        HttpStatusCode.TooManyRequests,
+        "LOGIN_RATE_LIMITED",
+        "Слишком много попыток входа. Повторите позже",
+        retryAfterSeconds = retrySeconds,
+    )
 }

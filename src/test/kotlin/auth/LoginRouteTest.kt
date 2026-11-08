@@ -72,5 +72,18 @@ class LoginRouteTest {
         assertEquals(wrong.status, unknown.status)
         assertTrue(wrong.bodyAsText().contains("INVALID_CREDENTIALS"))
         assertTrue(unknown.bodyAsText().contains("INVALID_CREDENTIALS"))
+
+        repeat(6) {
+            assertEquals(HttpStatusCode.Unauthorized, client.post("/api/v1/auth/login") {
+                contentType(ContentType.Application.Json)
+                setBody("""{"phone":"+79991234567","password":"wrong-password"}""")
+            }.status)
+        }
+        val limited = client.post("/api/v1/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"phone":"+79991234567","password":"correct-password"}""")
+        }
+        assertEquals(HttpStatusCode.TooManyRequests, limited.status)
+        assertTrue(limited.bodyAsText().contains("LOGIN_RATE_LIMITED"))
     }
 }
