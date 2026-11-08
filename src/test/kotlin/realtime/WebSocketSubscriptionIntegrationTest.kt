@@ -10,6 +10,8 @@ import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
 import com.example.persistence.HikariDatabaseBootstrap
 import com.example.persistence.JdbcSessionRepository
+import com.example.points.JoinPointChatResult
+import com.example.points.LeavePointChatResult
 import com.example.points.PointWriteService
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
@@ -94,9 +96,10 @@ class WebSocketSubscriptionIntegrationTest {
             lateinit var hub: RealtimeHub
             val access=SessionAccessService(secret,JdbcSessionRepository(db),onSessionRevoked={ hub.closeRevokedSession(it.sessionId) })
             hub=RealtimeHub(db,access)
+            val memberships = PointWriteService(db)
             application {
                 configureTransport(); installRealtimeTransport()
-                configureRouting(db,sessionAccess=access,pointWriteService=PointWriteService(db),realtimeHub=hub)
+                configureRouting(db,sessionAccess=access,pointWriteService=memberships,realtimeHub=hub)
             }
             val now=Instant.now()
             val tokens=sessionIds.mapIndexed { index,id -> "Bearer "+JwtTokenIssuer(secret).issue(if(index<2) actor else neighbor,id,0,now.minusSeconds(1),now.plusSeconds(3600)) }
@@ -179,6 +182,21 @@ class WebSocketSubscriptionIntegrationTest {
                     val second=this
                     assertEquals("hello",next()["type"]?.jsonPrimitive?.content)
                     command("subscribe",listOf(chats[0])); assertEquals("subscribed",next()["type"]?.jsonPrimitive?.content)
+
+                    // Delay leave publication until both membership transactions have committed.
+                    assertIs<LeavePointChatResult.Left>(memberships.leave(actor, chats[0]))
+                    assertIs<JoinPointChatResult.Joined>(memberships.join(actor, chats[0]))
+                    second.command("subscribe", listOf(chats[0]))
+                    assertEquals(listOf(chats[0].toString()), second.next()["acceptedChatIds"]!!.jsonArray.map { it.jsonPrimitive.content })
+                    hub.publishMembershipChanged(chats[0], actor, "left")
+                    val rejoined = UUID.randomUUID()
+                    probe(RealtimeScopeKind.CHAT, chats[0], rejoined)
+                    val afterRejoin = UUID.randomUUID()
+                    probe(RealtimeScopeKind.USER, actor, afterRejoin)
+                    first.marker(afterRejoin, setOf(rejoined))
+                    second.marker(rejoined, emptySet())
+                    second.marker(afterRejoin, emptySet())
+
                     assertEquals(HttpStatusCode.NoContent,client.delete("/api/v1/chats/${chats[0]}/membership"){header(HttpHeaders.Authorization,tokens[0])}.status)
                     val afterLeave=UUID.randomUUID(); probe(RealtimeScopeKind.CHAT,chats[0],afterLeave)
                     val alive=UUID.randomUUID(); probe(RealtimeScopeKind.USER,actor,alive)

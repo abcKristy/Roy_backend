@@ -176,7 +176,8 @@ class PointWriteService(
             """INSERT INTO chat_memberships (chat_id,user_id,joined_at,last_read_seq)
                VALUES (?,?,?,0)
                ON CONFLICT (chat_id,user_id) DO UPDATE
-               SET joined_at = EXCLUDED.joined_at, left_at = NULL"""
+               SET joined_at = EXCLUDED.joined_at, left_at = NULL,
+                   incarnation = chat_memberships.incarnation + 1"""
         ).use { statement ->
             statement.setObject(1, chatId)
             statement.setObject(2, userId)

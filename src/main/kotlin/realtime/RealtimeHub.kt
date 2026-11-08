@@ -66,7 +66,7 @@ class RealtimeHub(
         val socket: DefaultWebSocketServerSession,
     ) {
         val id: UUID = UUID.randomUUID()
-        val subscriptions: MutableSet<UUID> = ConcurrentHashMap.newKeySet()
+        val subscriptions = ConcurrentHashMap<UUID, Long>()
         val outbound = Channel<String>(64)
     }
 
@@ -87,25 +87,25 @@ class RealtimeHub(
             val ids = connection.createArrayOf("uuid", requested.toTypedArray())
             try {
                 connection.prepareStatement(
-                    """SELECT chat_id FROM chat_memberships
+                    """SELECT chat_id,incarnation FROM chat_memberships
                        WHERE user_id=? AND left_at IS NULL AND chat_id=ANY (?)"""
                 ).use { statement ->
                     statement.setObject(1, client.identity.userId)
                     statement.setArray(2, ids)
-                    statement.executeQuery().use { rows -> buildSet {
-                        while (rows.next()) add(rows.getObject(1, UUID::class.java))
+                    statement.executeQuery().use { rows -> buildMap {
+                        while (rows.next()) put(rows.getObject(1, UUID::class.java), rows.getLong(2))
                     } }
                 }
             } finally { ids.free() }
         }
         val yes = requested.distinct().filter { it in accepted }
         val no = requested.distinct().filter { it !in accepted }
-        client.subscriptions.addAll(yes)
+        client.subscriptions.putAll(accepted)
         return yes to no
     }
 
     internal fun unsubscribe(client: Client, requested: List<UUID>) {
-        client.subscriptions.removeAll(requested.toSet())
+        requested.forEach { client.subscriptions.remove(it) }
     }
 
     /** Call only after the producing transaction commits. No replay is promised. */
@@ -115,19 +115,26 @@ class RealtimeHub(
         withTimeoutOrNull(1_500) {
             coroutineScope {
                 for (client in clients.values) {
+                    val incarnation = if (event.scopeKind == RealtimeScopeKind.CHAT) client.subscriptions[event.scopeId] else null
                     val eligible = when (event.scopeKind) {
                         RealtimeScopeKind.USER -> client.identity.userId == event.scopeId
-                        RealtimeScopeKind.CHAT -> event.scopeId in client.subscriptions
+                        RealtimeScopeKind.CHAT -> incarnation != null
                     }
                     if (!eligible) continue
                     launch {
                         try {
                             if (!isActive(client)) {
                                 closeBestEffort(client, sessionExpired())
-                            } else if (event.scopeKind == RealtimeScopeKind.CHAT &&
-                                !hasMembership(client.identity.userId, event.scopeId)) {
-                                client.subscriptions.remove(event.scopeId)
-                            } else if (client.outbound.trySend(wire).isFailure) {
+                                return@launch
+                            }
+                            if (incarnation != null) {
+                                if (!hasMembershipIncarnation(client.identity.userId, event.scopeId, incarnation)) {
+                                    client.subscriptions.remove(event.scopeId, incarnation)
+                                    return@launch
+                                }
+                                if (client.subscriptions[event.scopeId] != incarnation) return@launch
+                            }
+                            if (client.outbound.trySend(wire).isFailure) {
                                 closeBestEffort(client, CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Slow client"))
                             }
                         } catch (cancel: CancellationException) {
@@ -236,12 +243,13 @@ class RealtimeHub(
         false
     }
 
-    private suspend fun hasMembership(userId: UUID, chatId: UUID): Boolean = database.withReadOnlyJdbcTransaction { connection ->
+    private suspend fun hasMembershipIncarnation(userId: UUID, chatId: UUID, incarnation: Long): Boolean = database.withReadOnlyJdbcTransaction { connection ->
         connection.prepareStatement(
-            "SELECT 1 FROM chat_memberships WHERE user_id=? AND chat_id=? AND left_at IS NULL"
+            "SELECT 1 FROM chat_memberships WHERE user_id=? AND chat_id=? AND left_at IS NULL AND incarnation=?"
         ).use { statement ->
             statement.setObject(1, userId)
             statement.setObject(2, chatId)
+            statement.setLong(3, incarnation)
             statement.executeQuery().use { it.next() }
         }
     }
