@@ -24,7 +24,10 @@ import java.time.Instant
 import java.util.UUID
 
 @Serializable
-private data class AccountDeletionInput(val currentPassword: String, val confirm: Boolean)
+private data class AccountDeletionInput(
+    val currentPassword: String,
+    @Serializable(with = StrictJsonBooleanSerializer::class) val confirm: Boolean,
+)
 
 internal fun Route.accountDeletionRoutes(service: AccountDeletionService, sessions: SessionAccessService,
                                          realtime: RealtimeHub? = null) {

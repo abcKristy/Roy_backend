@@ -5,13 +5,35 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveChannel
 import io.ktor.utils.io.readAvailable
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.CodingErrorAction
 
 private const val MAX_JSON_BODY_BYTES = 64 * 1024
+
+/** Use for explicit confirmations so that quoted values cannot authorize an action. */
+internal object StrictJsonBooleanSerializer : KSerializer<Boolean> {
+    override val descriptor = PrimitiveSerialDescriptor("StrictJsonBoolean", PrimitiveKind.BOOLEAN)
+
+    override fun deserialize(decoder: Decoder): Boolean {
+        val value = (decoder as? JsonDecoder)?.decodeJsonElement() as? JsonPrimitive
+            ?: throw SerializationException("Expected JSON Boolean")
+        if (value.isString) throw SerializationException("Expected JSON Boolean")
+        return value.booleanOrNull ?: throw SerializationException("Expected JSON Boolean")
+    }
+
+    override fun serialize(encoder: Encoder, value: Boolean) = encoder.encodeBoolean(value)
+}
 
 /** Use for JSON request DTOs so syntax errors and invalid fields remain distinct. */
 suspend fun <T> ApplicationCall.receiveStrictJson(deserializer: DeserializationStrategy<T>): T {

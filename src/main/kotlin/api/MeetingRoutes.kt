@@ -44,7 +44,6 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonDecoder
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
@@ -56,24 +55,10 @@ import java.util.UUID
 
 @Serializable private data class ProposalInput(val startsAt: String, val endsAt: String)
 @Serializable private data class VoteInput(
-    @Serializable(with = StrictVoteBooleanSerializer::class) val going: Boolean,
+    @Serializable(with = StrictJsonBooleanSerializer::class) val going: Boolean,
 )
-
-/** JSON Boolean only: the standard decoder also accepts quoted boolean text. */
-private object StrictVoteBooleanSerializer : KSerializer<Boolean> {
-    override val descriptor = PrimitiveSerialDescriptor("StrictVoteBoolean", PrimitiveKind.BOOLEAN)
-
-    override fun deserialize(decoder: Decoder): Boolean {
-        val value = (decoder as? JsonDecoder)?.decodeJsonElement() as? JsonPrimitive
-            ?: throw SerializationException("Expected JSON Boolean")
-        if (value.isString) throw SerializationException("Expected JSON Boolean")
-        return value.booleanOrNull ?: throw SerializationException("Expected JSON Boolean")
-    }
-
-    override fun serialize(encoder: Encoder, value: Boolean) = encoder.encodeBoolean(value)
-}
 @Serializable private data class BookingInput(
-    @Serializable(with = StrictVoteBooleanSerializer::class) val confirmOverlap: Boolean,
+    @Serializable(with = StrictJsonBooleanSerializer::class) val confirmOverlap: Boolean,
     @Serializable(with = StrictBookingRevisionSerializer::class) val expectedRevision: Long,
 )
 
