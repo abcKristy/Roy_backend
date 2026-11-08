@@ -1,14 +1,26 @@
 package com.example.accounts
 
+import com.example.api.proposalJson
 import com.example.auth.Argon2idPasswordHasher
 import com.example.auth.PasswordHasher
 import com.example.auth.PasswordHashingWork
 import com.example.auth.SessionIdentity
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
+import com.example.meetings.BookMeetingCommand
+import com.example.meetings.BookMeetingResult
+import com.example.meetings.BookingService
+import com.example.meetings.CloseMeetingCommand
+import com.example.meetings.CloseMeetingResult
 import com.example.persistence.HikariDatabaseBootstrap
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import java.sql.Connection
 import java.sql.DriverManager
 import java.util.UUID
 import java.util.concurrent.CyclicBarrier
@@ -19,6 +31,118 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class AccountDeletionServiceIntegrationTest {
+    @Test
+    fun `booking and close replay erase only deleted author references from current and historical snapshots`() = runBlocking {
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
+        require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_step8delete$").matches(url))
+        val dbUser = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
+        val dbPassword = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
+        val actor = UUID.randomUUID()
+        val peer = UUID.randomUUID()
+        val session = UUID.randomUUID()
+        val point = UUID.randomUUID()
+        val topic = UUID.randomUUID()
+        val chat = UUID.randomUUID()
+        val actorProposal = UUID.randomUUID()
+        val peerProposal = UUID.randomUUID()
+        val hasher = Argon2idPasswordHasher()
+        val hash = hasher.hash("correct-password")
+        val config = ServerConfig(url, dbUser, dbPassword, "test-secret", appEnvironment = AppEnvironment.LOCAL)
+        HikariDatabaseBootstrap(config).start().use { runtime ->
+            try {
+                runtime.withJdbcTransaction { connection ->
+                    for (id in listOf(actor, peer)) {
+                        val phone = "+7" + id.mostSignificantBits.toULong().toString().takeLast(10).padStart(10, '0')
+                        connection.execute(
+                            """INSERT INTO users (id,phone_e164,password_hash,display_name,age_years,
+                               accepted_privacy_version,accepted_privacy_at,created_at,updated_at)
+                               VALUES (?,?,?,'Test',20,'draft',clock_timestamp(),clock_timestamp(),clock_timestamp())""",
+                            id, phone, hash,
+                        )
+                        connection.execute("INSERT INTO notification_settings(user_id,updated_at) VALUES (?,clock_timestamp())", id)
+                    }
+                    connection.execute(
+                        """INSERT INTO auth_sessions(id,user_id,created_at,expires_at)
+                           VALUES (?,?,clock_timestamp(),clock_timestamp()+interval '1 day')""", session, actor,
+                    )
+                    connection.execute(
+                        """INSERT INTO points(id,location,address,address_source,created_by_user_id,created_at,updated_at)
+                           VALUES (?,ST_SetSRID(ST_MakePoint(37.5,55.7),4326),'Test','MANUAL',?,clock_timestamp(),clock_timestamp())""",
+                        point, actor,
+                    )
+                    connection.execute("INSERT INTO point_topics(id,point_id,preset_key,created_at) VALUES (?,?,'football',clock_timestamp())", topic, point)
+                    connection.execute("INSERT INTO chats(id,point_topic_id,created_at) VALUES (?,?,clock_timestamp())", chat, topic)
+                    for (id in listOf(actor, peer)) {
+                        connection.execute("INSERT INTO chat_memberships(chat_id,user_id,joined_at) VALUES (?,?,clock_timestamp())", chat, id)
+                    }
+                    for ((proposal, author) in listOf(actorProposal to actor, peerProposal to peer)) {
+                        connection.execute(
+                            """INSERT INTO meeting_proposals(id,chat_id,proposer_user_id,starts_at,ends_at,created_at,updated_at)
+                               VALUES (?,?,?,clock_timestamp()+interval '2 hours',clock_timestamp()+interval '3 hours',
+                                       clock_timestamp(),clock_timestamp())""", proposal, chat, author,
+                        )
+                        for (id in listOf(actor, peer)) {
+                            connection.execute("INSERT INTO votes(proposal_id,user_id,created_at) VALUES (?,?,clock_timestamp())", proposal, id)
+                        }
+                    }
+                }
+
+                val service = BookingService(runtime)
+                val actorBooks = BookMeetingCommand(actor, peerProposal, UUID.randomUUID(), false, 0)
+                assertIs<BookMeetingResult.Created>(service.book(actorBooks) { _, view -> proposalJson(view) })
+                val close = CloseMeetingCommand(peer, peerProposal, UUID.randomUUID(), 1)
+                val closed = assertIs<CloseMeetingResult.Created>(service.close(close) { _, view -> proposalJson(view) })
+                val book = BookMeetingCommand(peer, actorProposal, UUID.randomUUID(), false, 0)
+                val booked = assertIs<BookMeetingResult.Created>(service.book(book) { _, view -> proposalJson(view) })
+                val bookedBody = booked.responseSnapshot.getValue("body").jsonObject
+                val closedBody = closed.responseSnapshot.getValue("body").jsonObject
+                val closedBooking = closedBody.getValue("booking").jsonObject
+                assertEquals(JsonPrimitive(actor.toString()), bookedBody["proposedByUserId"])
+                assertEquals(JsonPrimitive(actor.toString()), closedBooking["bookedByUserId"])
+                val expectedBooking = booked.responseSnapshot.withField("body", bookedBody.withField("proposedByUserId", JsonNull))
+                val expectedClose = closed.responseSnapshot.withField("body", closedBody.withField(
+                    "booking", closedBooking.withField("bookedByUserId", JsonNull),
+                ))
+                suspend fun assertRedactedReplays() {
+                    assertEquals(expectedBooking, assertIs<BookMeetingResult.Replay>(service.book(book) { _, _ ->
+                        error("Replay should use the stored snapshot")
+                    }).responseSnapshot)
+                    assertEquals(expectedClose, assertIs<CloseMeetingResult.Replay>(service.close(close) { _, _ ->
+                        error("Replay should use the stored snapshot")
+                    }).responseSnapshot)
+                }
+
+                val deletion = AccountDeletionService(runtime, PasswordHashingWork(hasher))
+                assertIs<AccountDeletionResult.Deleted>(deletion.delete(SessionIdentity(actor, session, 0), "correct-password"))
+                assertRedactedReplays()
+
+                // Recreate the rows an older release left behind, even after the point is gone.
+                val migration = checkNotNull(AccountDeletionServiceIntegrationTest::class.java.getResource(
+                    "/db/migration/V017__anonymize_meeting_replay_snapshots.sql",
+                )).readText()
+                runtime.withJdbcTransaction { connection ->
+                    connection.execute("DELETE FROM points WHERE id=?", point)
+                    for ((key, snapshot) in listOf(
+                        book.idempotencyKey to booked.responseSnapshot,
+                        close.idempotencyKey to closed.responseSnapshot,
+                    )) {
+                        connection.execute(
+                            """UPDATE operation_idempotency SET response_snapshot=?::jsonb
+                               WHERE actor_user_id=? AND idempotency_key=?""", snapshot.toString(), peer, key.toString(),
+                        )
+                    }
+                    connection.createStatement().use { it.execute(migration) }
+                }
+                assertRedactedReplays()
+            } finally {
+                runtime.withJdbcTransaction { connection ->
+                    connection.execute("DELETE FROM points WHERE id=?", point)
+                    connection.execute("DELETE FROM users WHERE id IN (?,?)", actor, peer)
+                }
+            }
+        }
+    }
+
     @Test
     fun `overlapping deletions anonymize the shared graph and revoke sessions once`() = runBlocking {
         val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
@@ -127,4 +251,14 @@ class AccountDeletionServiceIntegrationTest {
                 } }
         }
     }
+
+    private fun Connection.execute(sql: String, vararg values: Any?) {
+        prepareStatement(sql).use { statement ->
+            values.forEachIndexed { index, value -> statement.setObject(index + 1, value) }
+            statement.executeUpdate()
+        }
+    }
+
+    private fun JsonObject.withField(name: String, value: JsonElement): JsonObject =
+        JsonObject(this + (name to value))
 }

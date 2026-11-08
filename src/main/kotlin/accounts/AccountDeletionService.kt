@@ -222,6 +222,17 @@ class AccountDeletionService(
             execute(connection, "DELETE FROM notification_locations WHERE user_id=?", identity.userId)
             execute(connection, "DELETE FROM notification_settings WHERE user_id=?", identity.userId)
             execute(connection, "DELETE FROM operation_idempotency WHERE actor_user_id=?", identity.userId)
+            // Other actors keep their replay results, including those whose meeting no longer exists.
+            execute(connection,
+                """UPDATE operation_idempotency
+                   SET response_snapshot=jsonb_set(response_snapshot,'{body,proposedByUserId}','null'::jsonb,false)
+                   WHERE operation_type IN ('book_meeting','close_meeting')
+                   AND response_snapshot #>> '{body,proposedByUserId}'=?""", identity.userId.toString())
+            execute(connection,
+                """UPDATE operation_idempotency
+                   SET response_snapshot=jsonb_set(response_snapshot,'{body,booking,bookedByUserId}','null'::jsonb,false)
+                   WHERE operation_type IN ('book_meeting','close_meeting')
+                   AND response_snapshot #>> '{body,booking,bookedByUserId}'=?""", identity.userId.toString())
             execute(connection, "DELETE FROM point_creation_events WHERE creator_user_id=?", identity.userId)
             execute(connection, "DELETE FROM message_rate_events WHERE user_id=?", identity.userId)
             if (locked.avatarKey != null) execute(connection,
