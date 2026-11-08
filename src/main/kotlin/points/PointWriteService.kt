@@ -2,6 +2,7 @@ package com.example.points
 
 import com.example.persistence.AdvisoryLockKeys
 import com.example.persistence.DatabaseRuntime
+import com.example.persistence.InactiveActorException
 import com.example.persistence.JdbcIdempotencyOperations
 import com.example.persistence.JdbcNotificationRecipients
 import com.example.persistence.JdbcNotificationWriter
@@ -410,7 +411,7 @@ class PointWriteService(
     private fun lockUser(connection: Connection, userId: UUID) {
         connection.prepareStatement("SELECT id FROM users WHERE id=? AND deleted_at IS NULL FOR NO KEY UPDATE").use { statement ->
             statement.setObject(1, userId)
-            statement.executeQuery().use { rows -> check(rows.next()) { "Active user required" } }
+            statement.executeQuery().use { rows -> if (!rows.next()) throw InactiveActorException() }
         }
     }
 

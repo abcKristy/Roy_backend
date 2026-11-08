@@ -1,6 +1,7 @@
 package com.example.chats
 
 import com.example.persistence.DatabaseRuntime
+import com.example.persistence.InactiveActorException
 import com.example.persistence.withRetryingJdbcTransaction
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -132,7 +133,7 @@ class ChatReadService(private val database: DatabaseRuntime, cursorSecret: Strin
         return database.withRetryingJdbcTransaction { connection ->
             connection.prepareStatement("SELECT id FROM users WHERE id=? AND deleted_at IS NULL FOR NO KEY UPDATE").use { statement ->
                 statement.setObject(1, userId)
-                statement.executeQuery().use { rows -> check(rows.next()) { "Active user required" } }
+                statement.executeQuery().use { rows -> if (!rows.next()) throw InactiveActorException() }
             }
             val last = connection.prepareStatement("SELECT last_message_seq FROM chats WHERE id=? FOR UPDATE").use { statement ->
                 statement.setObject(1, chatId)

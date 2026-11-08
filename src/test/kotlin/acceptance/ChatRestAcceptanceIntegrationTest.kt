@@ -1,7 +1,14 @@
 package com.example.acceptance
 
+import com.example.accounts.AccountDeletionResult
+import com.example.accounts.AccountDeletionService
 import com.example.api.*
+import com.example.auth.Argon2idPasswordHasher
+import com.example.auth.PasswordHasher
+import com.example.auth.PasswordHashingWork
 import com.example.auth.SessionAccessService
+import com.example.auth.SessionIdentity
+import com.example.auth.SessionRepository
 import com.example.chats.*
 import com.example.config.*
 import com.example.persistence.*
@@ -14,10 +21,64 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.*
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.*
 
 class ChatRestAcceptanceIntegrationTest {
+    @Test
+    fun `chat writes return session expired if deletion commits after authentication`() = testApplication {
+        val url = com.example.testing.testDatabaseUrl()
+        val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER required")
+        val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD required")
+        val secret = "rest-acceptance-secret-at-least-32-bytes"
+        ChatAcceptanceFixture(url, user, password).use { fixture ->
+            val config = ServerConfig(url, user, password, secret, appEnvironment = AppEnvironment.PRODUCTION)
+            HikariDatabaseBootstrap(config).start().use { db ->
+                val hasher = object : PasswordHasher by Argon2idPasswordHasher() {
+                    override fun verify(password: String, encodedHash: String) = encodedHash == "synthetic-test-hash"
+                }
+                val deletion = AccountDeletionService(db, PasswordHashingWork(hasher))
+                val sessions = JdbcSessionRepository(db)
+                val interleavedSessions = object : SessionRepository by sessions {
+                    override suspend fun findActive(identity: SessionIdentity, now: Instant) =
+                        sessions.findActive(identity, now)?.also {
+                            // Return the successful auth snapshot only after a real deletion commits.
+                            assertIs<AccountDeletionResult.Deleted>(deletion.delete(identity, "fixture password"))
+                        }
+                }
+                application {
+                    configureTransport()
+                    configureRouting(db, sessionAccess = SessionAccessService(secret, interleavedSessions),
+                        pointWriteService = PointWriteService(db), chatReadService = ChatReadService(db, secret),
+                        chatSendService = ChatSendService(db, MessageContentPolicy()))
+                }
+                val chatPath = "/api/v1/chats/${fixture.chats[0]}"
+                val writes = listOf(
+                    Triple(HttpMethod.Post, "messages", """{"text":"Ordinary test message"}"""),
+                    Triple(HttpMethod.Put, "read-cursor", """{"lastReadMessageSeq":1}"""),
+                    Triple(HttpMethod.Put, "membership", null),
+                    Triple(HttpMethod.Delete, "membership", null),
+                )
+                for ((actor, write) in fixture.people.zip(writes)) {
+                    val (verb, endpoint, body) = write
+                    val response = client.request("$chatPath/$endpoint") {
+                        method = verb
+                        header(HttpHeaders.Authorization, fixture.bearer(actor, secret))
+                        if (verb == HttpMethod.Post) header("Idempotency-Key", UUID.randomUUID().toString())
+                        if (body != null) {
+                            contentType(ContentType.Application.Json)
+                            setBody(body)
+                        }
+                    }
+                    assertEquals(HttpStatusCode.Unauthorized, response.status, "$verb $endpoint")
+                    val error = Json.parseToJsonElement(response.bodyAsText()).jsonObject.getValue("error").jsonObject
+                    assertEquals("SESSION_EXPIRED", error.getValue("code").jsonPrimitive.content)
+                }
+            }
+        }
+    }
+
     @Test
     fun `joined actor completes persisted chat lifecycle with authoritative reads`() = testApplication {
         val url = com.example.testing.testDatabaseUrl()

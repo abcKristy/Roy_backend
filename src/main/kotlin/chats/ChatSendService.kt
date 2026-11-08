@@ -1,6 +1,7 @@
 package com.example.chats
 
 import com.example.persistence.DatabaseRuntime
+import com.example.persistence.InactiveActorException
 import com.example.persistence.JdbcIdempotencyOperations
 import com.example.persistence.JdbcNotificationRecipients
 import com.example.persistence.JdbcNotificationWriter
@@ -128,7 +129,7 @@ class ChatSendService(
     ).use { statement ->
         statement.setObject(1, id)
         statement.executeQuery().use { rows ->
-            check(rows.next()) { "Active user required" }
+            if (!rows.next()) throw InactiveActorException()
             Actor(rows.getString(1), rows.getString(2), rows.getObject(3, OffsetDateTime::class.java)?.toInstant())
         }
     }
