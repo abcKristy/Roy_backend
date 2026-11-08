@@ -7,7 +7,9 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.sql.Connection
@@ -20,6 +22,53 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class PointCreationGuardsIntegrationTest {
+    @Test
+    fun `another actor can create and replay while a creator waits for its user lock`() = runBlocking {
+        val fixture = fixture() ?: return@runBlocking
+        val waitingActor = UUID.randomUUID()
+        val otherActor = UUID.randomUUID()
+        fun connection() = DriverManager.getConnection(fixture.url, fixture.user, fixture.password)
+        connection().use { connection ->
+            seedUser(connection, waitingActor)
+            seedUser(connection, otherActor)
+        }
+        val config = ServerConfig(fixture.url, fixture.user, fixture.password, "test-secret",
+            appEnvironment = AppEnvironment.PRODUCTION, databaseStatementTimeoutMs = 15_000, databaseLockTimeoutMs = 10_000)
+        HikariDatabaseBootstrap(config).start().use { database ->
+            val service = PointWriteService(database)
+            val (lat, lon) = randomPosition()
+            val existing = command(otherActor, lat + 1, lon + 1)
+            val created = assertIs<CreatePointResult.Created>(service.create(existing, ::createdBody, ::quotaBody))
+            connection().use { blocker ->
+                blocker.autoCommit = false
+                val blockerPid = blocker.prepareStatement("SELECT pg_backend_pid() FROM users WHERE id=? FOR NO KEY UPDATE").use { statement ->
+                    statement.setObject(1, waitingActor)
+                    statement.executeQuery().use { rows -> check(rows.next()); rows.getInt(1) }
+                }
+                val pending = async { service.create(command(waitingActor, lat, lon), ::createdBody, ::quotaBody) }
+                try {
+                    withTimeout(5_000) {
+                        connection().use { observer ->
+                            observer.prepareStatement(
+                                "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE ?=ANY(pg_blocking_pids(pid)))",
+                            ).use { statement ->
+                                statement.setInt(1, blockerPid)
+                                while (!statement.executeQuery().use { rows -> check(rows.next()); rows.getBoolean(1) }) delay(10)
+                            }
+                        }
+                        val replay = assertIs<CreatePointResult.Replay>(service.create(existing, ::createdBody, ::quotaBody))
+                        assertEquals(created.responseSnapshot, replay.responseSnapshot)
+                        assertIs<CreatePointResult.Created>(service.create(command(otherActor, lat + 2, lon + 2), ::createdBody, ::quotaBody))
+                    }
+                } finally {
+                    blocker.rollback()
+                }
+                assertIs<CreatePointResult.Created>(pending.await())
+            }
+        }
+        Unit
+    }
+
     @Test
     fun `parallel last slot creates one point and commits one quota denial`() = runBlocking {
         val fixture = fixture() ?: return@runBlocking

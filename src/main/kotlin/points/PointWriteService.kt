@@ -58,7 +58,6 @@ class PointWriteService(
             topic.customLabel?.let { put("customLabel", it) }
         })
         return database.withRetryingJdbcTransaction { connection ->
-            connection.acquireTransactionAdvisoryLock(AdvisoryLockKeys.pointCreation)
             when (val decision = idempotency.lockActorAndCheck(
                 connection, command.actorId, "create_point", command.idempotencyKey, hash,
             )) {
@@ -68,8 +67,7 @@ class PointWriteService(
                     return@withRetryingJdbcTransaction CreatePointResult.KeyReused
                 JdbcIdempotencyOperations.Decision.New -> Unit
             }
-            val now = databaseNow(connection)
-            val quota = PointQuotaSql.read(connection, command.actorId, now)
+            val quota = PointQuotaSql.read(connection, command.actorId, databaseNow(connection))
             quota.blockedUntil?.let {
                 return@withRetryingJdbcTransaction CreatePointResult.QuotaBlocked(it)
             }
@@ -82,11 +80,14 @@ class PointWriteService(
                 }
                 return@withRetryingJdbcTransaction CreatePointResult.QuotaExceeded(until, checkNotNull(response))
             }
+            // Only new creations that reach the proximity check need cross-actor serialization.
+            connection.acquireTransactionAdvisoryLock(AdvisoryLockKeys.pointCreation)
             val nearby = nearby(connection, input.position)
             if (nearby.isNotEmpty() && !input.confirmNearby) {
                 return@withRetryingJdbcTransaction CreatePointResult.NearbyConfirmationRequired(nearby)
             }
             requirePreset(connection, topic.presetKey)
+            val now = databaseNow(connection)
             val pointId = UUID.randomUUID()
             val topicId = UUID.randomUUID()
             val chatId = UUID.randomUUID()
