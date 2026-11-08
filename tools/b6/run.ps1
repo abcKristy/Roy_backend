@@ -3,13 +3,10 @@ param([string[]]$Suite, [string]$Output = 'build/b6-evidence/integration.json')
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'local-docker.ps1')
+. (Join-Path $PSScriptRoot 'distribution.ps1')
 Assert-LocalDocker
 if (-not $env:JAVA_HOME) { throw 'Set JAVA_HOME to a local JDK 17' }
 $java = Join-Path $env:JAVA_HOME 'bin/java.exe'
-$source = git rev-parse HEAD
-if ($LASTEXITCODE -ne 0) { throw 'Run from the backend repository' }
-$workingCopy = git status --porcelain
-if ($LASTEXITCODE -ne 0) { throw 'Cannot determine source working tree state' }
 $plan = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'suites.json') | ConvertFrom-Json -AsHashtable
 if ($Suite) {
     $selected = [ordered]@{}
@@ -19,6 +16,7 @@ if ($Suite) {
     }
     $plan = $selected
 }
+$distribution = Build-B6Distribution
 $runDir = Join-Path (Get-Location).Path ('build/b6-run-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $runDir -Force | Out-Null
 $env:B6_PLAN = Join-Path $runDir 'suites.json'
@@ -52,8 +50,9 @@ try {
     docker exec $id createdb -U $env:POSTGRES_USER roy_b6_template
     if ($LASTEXITCODE -ne 0) { throw 'Could not create migration template' }
     $env:DATABASE_URL = "jdbc:postgresql://$binding/roy_b6_template"
+    Assert-B6DistributionUnchanged $distribution
     & $java -cp 'build/install/roy-backend/lib/*' com.example.persistence.MigrationMainKt
-    if ($LASTEXITCODE -ne 0) { throw 'Local migration failed. Build installDist first.' }
+    if ($LASTEXITCODE -ne 0) { throw 'Local migration failed' }
     $database = docker exec $id psql -X -At -U $env:POSTGRES_USER -d roy_b6_template -c "SELECT current_setting('server_version'),postgis_lib_version(),(SELECT max(installed_rank) FROM flyway_schema_history)"
     if ($LASTEXITCODE -ne 0) { throw 'Cannot verify local schema' }
     if ($plan.Contains('roy_m2t4_filter')) {
@@ -93,8 +92,10 @@ try {
             }
         }
     )
+    Assert-B6DistributionUnchanged $distribution
     $evidence = [ordered]@{
-        source=$source; source_worktree_clean=(-not $workingCopy); local_database=$database; gradle_exit=$gradleStatus
+        source=$distribution.Source; source_worktree_clean=$true; jar_sha256=$distribution.JarSha256
+        local_database=$database; gradle_exit=$gradleStatus
         suites=$records
     }
     $reportDir = Split-Path -Parent $Output

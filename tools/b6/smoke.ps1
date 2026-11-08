@@ -1,15 +1,10 @@
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'local-docker.ps1')
+. (Join-Path $PSScriptRoot 'distribution.ps1')
 Assert-LocalDocker
-$source = git rev-parse HEAD
-if ($LASTEXITCODE -ne 0) { throw 'Cannot determine backend source' }
-$workingCopy = git status --porcelain
-if ($LASTEXITCODE -ne 0) { throw 'Cannot determine backend working tree state' }
-$jars = @(Get-ChildItem -LiteralPath 'build/install/roy-backend/lib' -Filter 'roy-backend*.jar' -File)
-if ($jars.Count -ne 1) { throw 'Build installDist before running smoke' }
-$jarPath = $jars[0].FullName
-$jarHash = (Get-FileHash -LiteralPath $jarPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if (-not $env:JAVA_HOME) { throw 'Set JAVA_HOME to a local JDK 17' }
 $java = Join-Path $env:JAVA_HOME 'bin/java.exe'
+$distribution = Build-B6Distribution
 $env:POSTGRES_USER = 'b6_smoke'
 $env:POSTGRES_PASSWORD = [Guid]::NewGuid().ToString('N')
 $env:DATABASE_USER = $env:POSTGRES_USER
@@ -44,6 +39,7 @@ try {
     docker exec $id createdb -U $env:POSTGRES_USER roy_b6_smoke
     if ($LASTEXITCODE -ne 0) { throw 'Cannot create local smoke database' }
     $env:DATABASE_URL = "jdbc:postgresql://$db/roy_b6_smoke"
+    Assert-B6DistributionUnchanged $distribution
     & $java -cp 'build/install/roy-backend/lib/*' com.example.persistence.MigrationMainKt
     if ($LASTEXITCODE -ne 0) { throw 'Smoke migrations failed' }
     $dir = New-Item -ItemType Directory -Force 'build/b6-evidence'
@@ -79,14 +75,11 @@ try {
         $ws.Dispose()
         $timeout.Dispose()
     }
-    if ((git rev-parse HEAD) -ne $source -or
-        (Get-FileHash -LiteralPath $jarPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $jarHash) {
-        throw 'Source or artifact changed during smoke'
-    }
+    Assert-B6DistributionUnchanged $distribution
     [ordered]@{
-        source = $source
-        source_worktree_clean = -not $workingCopy
-        jar_sha256 = $jarHash
+        source = $distribution.Source
+        source_worktree_clean = $true
+        jar_sha256 = $distribution.JarSha256
         health = 200
         openapi = $spec.openapi
         websocket_docs = $wsDoc.StatusCode
