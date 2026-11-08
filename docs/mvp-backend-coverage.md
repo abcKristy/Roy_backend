@@ -8,8 +8,8 @@
 
 - `GET /` — служебный ответ без доступа к частным данным. `ServerTest`.
 - `GET /health` — готовность зависит от БД, версия схемы проверяется до приёма трафика. `HealthRouteTest`, `DatabaseBootstrapIntegrationTest`.
-- `GET /api/v1/legal/privacy` — только включённая локальная metadata версии, в production черновик закрыт. `DraftPrivacyRouteTest`.
-- `GET /api/v1/legal/privacy/document` — неизменяемый документ соответствует версии и контрольной сумме. `DraftPrivacyRouteTest`.
+- `GET /api/v1/legal/privacy` — метаданные утверждённой редакции в production или включённого черновика локально. `ProductionPrivacyPolicyTest`, `DraftPrivacyRouteTest`.
+- `GET /api/v1/legal/privacy/document` — текст загружается один раз вместе с версией, контрольная сумма локального черновика проверяется при запуске. `ProductionPrivacyPolicyTest`, `DraftPrivacyRouteTest`.
 - `POST /api/v1/auth/register` — нормализация, версия согласия, уникальность и атомарное создание сессии. `RegistrationRouteTest`, `JdbcRegistrationRepositoryIntegrationTest`.
 - `POST /api/v1/auth/login` — проверка хеша, одинаковый отказ для неверных учётных данных, сессия только после подтверждения. `LoginRouteTest`, `JdbcLoginRepositoryIntegrationTest`.
 - `POST /api/v1/auth/refresh` — ротация refresh, повтор отзывает сессию. `RefreshRouteTest`, `JdbcRefreshRepositoryIntegrationTest`, `RefreshHistoryMigrationIntegrationTest`.

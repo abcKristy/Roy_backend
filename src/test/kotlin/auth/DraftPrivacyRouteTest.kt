@@ -35,7 +35,7 @@ class DraftPrivacyRouteTest {
         assertEquals(first.version, restarted.version)
         application {
             configureTransport()
-            configureRouting(database, draftPrivacyPolicy = first)
+            configureRouting(database, privacyPolicy = first)
         }
 
         val metadataResponse = client.get("/api/v1/legal/privacy")
@@ -45,7 +45,7 @@ class DraftPrivacyRouteTest {
         assertEquals(first.publishedAt.toString(), metadata.getValue("publishedAt").jsonPrimitive.content)
         assertEquals("http://127.0.0.1:8080/api/v1/legal/privacy/document", metadata.getValue("url").jsonPrimitive.content)
 
-        val documentResponse = client.get(DraftPrivacyPolicy.DOCUMENT_PATH)
+        val documentResponse = client.get(PrivacyPolicyDocument.PATH)
         assertEquals(HttpStatusCode.OK, documentResponse.status)
         assertTrue(documentResponse.headers[HttpHeaders.ContentType].orEmpty().startsWith("text/markdown"))
         assertTrue(documentResponse.bodyAsText().contains(DraftPrivacyPolicy.VERSION))
@@ -79,7 +79,7 @@ class DraftPrivacyRouteTest {
             configureRouting(database)
         }
         assertEquals(HttpStatusCode.ServiceUnavailable, client.get("/api/v1/legal/privacy").status)
-        assertEquals(HttpStatusCode.ServiceUnavailable, client.get(DraftPrivacyPolicy.DOCUMENT_PATH).status)
+        assertEquals(HttpStatusCode.ServiceUnavailable, client.get(PrivacyPolicyDocument.PATH).status)
     }
 
     @Test
@@ -99,7 +99,7 @@ class DraftPrivacyRouteTest {
         )
         application {
             configureTransport()
-            configureRouting(database, registrationService = service, draftPrivacyPolicy = draft)
+            configureRouting(database, registrationService = service, privacyPolicy = draft)
         }
         val stale = client.post("/api/v1/auth/register") {
             contentType(ContentType.Application.Json)

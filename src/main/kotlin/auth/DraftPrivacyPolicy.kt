@@ -7,18 +7,16 @@ import java.time.Instant
 /** Local development publication only. Never treat this version as production consent. */
 class DraftPrivacyPolicy(
     publicBaseUrl: URI,
-    val document: String = requireNotNull(DraftPrivacyPolicy::class.java.getResourceAsStream("/legal/privacy-policy-draft.md")) {
+    override val document: String = requireNotNull(DraftPrivacyPolicy::class.java.getResourceAsStream("/legal/privacy-policy-draft.md")) {
         "Draft privacy policy resource is missing"
     }.bufferedReader(Charsets.UTF_8).use { it.readText() },
-) : PublishedPrivacyPolicy {
+) : PrivacyPolicyDocument {
     override val version: String = VERSION
-    val publishedAt: Instant = PUBLISHED_AT
-    val url: String = publicBaseUrl.toString().trimEnd('/') + DOCUMENT_PATH
+    override val publishedAt: Instant = PUBLISHED_AT
+    override val url: String = publicBaseUrl.resolve(PrivacyPolicyDocument.PATH).toString()
     init {
         val normalized = document.replace("\r\n", "\n")
-        val headerVersion = HEADER.matchEntire(normalized.lineSequence().drop(2).firstOrNull().orEmpty())
-            ?.groupValues?.get(1)
-        require(headerVersion == VERSION) { "Draft privacy policy header version does not match metadata" }
+        require(headerVersion(normalized) == VERSION) { "Draft privacy policy header version does not match metadata" }
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(normalized.toByteArray(Charsets.UTF_8))
             .joinToString("") { byte -> "%02x".format(byte) }
@@ -29,9 +27,11 @@ class DraftPrivacyPolicy(
 
     companion object {
         const val VERSION = "draft-2026-11-01.2"
-        const val DOCUMENT_PATH = "/api/v1/legal/privacy/document"
         val PUBLISHED_AT: Instant = Instant.parse("2026-11-01T19:02:11Z")
         private const val DOCUMENT_SHA256 = "c7882235db9aeebc149e0ae784d90cd3f8ea9966894bdd8f6274436e2f327843"
         private val HEADER = Regex("""^\*\*Версия: (draft-\d{4}-\d{2}-\d{2}\.\d+)\. Статус: [^*]+\*\*(?: .*)?$""")
+
+        internal fun headerVersion(document: String): String? =
+            HEADER.matchEntire(document.lineSequence().drop(2).firstOrNull().orEmpty())?.groupValues?.get(1)
     }
 }

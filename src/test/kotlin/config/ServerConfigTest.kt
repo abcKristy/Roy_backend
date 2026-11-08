@@ -180,4 +180,50 @@ class ServerConfigTest {
         }
         assertFalse(ServerConfig.fromEnvironment(required + ("PUBLIC_BASE_URL" to "")).draftPrivacyEnabled)
     }
+
+    @Test
+    fun `production policy requires complete settings and an HTTPS origin`() {
+        val publication = mapOf(
+            "AUTH_PRIVACY_POLICY_FILE" to "policy-fixture.md",
+            "AUTH_PRIVACY_POLICY_VERSION" to "2026-11-08.1",
+            "AUTH_PRIVACY_POLICY_PUBLISHED_AT" to "2026-11-08T00:00:00Z",
+        )
+        val https = mapOf("PUBLIC_BASE_URL" to "https://policy.example.test/")
+        assertEquals(null, ServerConfig.fromEnvironment(required + https).privacyPolicyPublication)
+        for (missing in publication.keys) {
+            assertFailsWith<IllegalStateException> {
+                ServerConfig.fromEnvironment(required + https + (publication - missing))
+            }
+        }
+        for (origin in listOf(null, "http://policy.example.test", "https://policy.example.test/legal")) {
+            assertFailsWith<IllegalArgumentException> {
+                ServerConfig.fromEnvironment(required + publication + origin?.let { mapOf("PUBLIC_BASE_URL" to it) }.orEmpty())
+            }
+        }
+        assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(required + https + publication + ("APP_ENV" to "local"))
+        }
+        assertEquals("2026-11-08.1", ServerConfig.fromEnvironment(required + https + publication).privacyPolicyPublication?.version)
+    }
+
+    @Test
+    fun `production policy rejects malformed or draft version metadata without echoing values`() {
+        val publication = required + mapOf(
+            "PUBLIC_BASE_URL" to "https://policy.example.test",
+            "AUTH_PRIVACY_POLICY_FILE" to "policy-fixture.md",
+            "AUTH_PRIVACY_POLICY_VERSION" to "2026-11-08.1",
+            "AUTH_PRIVACY_POLICY_PUBLISHED_AT" to "2026-11-08T00:00:00Z",
+        )
+        val malformed = listOf(
+            "AUTH_PRIVACY_POLICY_VERSION" to "Draft-test-version",
+            "AUTH_PRIVACY_POLICY_VERSION" to "test\u0000version",
+            "AUTH_PRIVACY_POLICY_PUBLISHED_AT" to "test-invalid-timestamp",
+        )
+        for ((name, value) in malformed) {
+            val failure = assertFailsWith<IllegalArgumentException> {
+                ServerConfig.fromEnvironment(publication + (name to value))
+            }
+            assertFalse(failure.stackTraceToString().contains(value))
+        }
+    }
 }

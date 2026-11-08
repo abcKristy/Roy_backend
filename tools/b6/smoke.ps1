@@ -20,7 +20,7 @@ $env:JWT_SECRET = ([Guid]::NewGuid().ToString('N') + [Guid]::NewGuid().ToString(
 $env:APP_ENV = 'local'
 $env:AUTH_DRAFT_POLICY_ENABLED = 'true'
 $env:SERVER_HOST = '127.0.0.1'
-Get-ChildItem Env: | Where-Object Name -Match '^(AVATAR_STORAGE_|APNS_|RUSTORE_|DADATA_|PUSH_TOKEN_ENCRYPTION_KEY_BASE64$|PUBLIC_BASE_URL$)' |
+Get-ChildItem Env: | Where-Object Name -Match '^(AVATAR_STORAGE_|APNS_|RUSTORE_|DADATA_|AUTH_PRIVACY_POLICY_|PUSH_TOKEN_ENCRYPTION_KEY_BASE64$|PUBLIC_BASE_URL$)' |
     ForEach-Object { Remove-Item -LiteralPath ('Env:' + $_.Name) }
 $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
 $listener.Start()

@@ -16,11 +16,11 @@ T120 implements `GET /api/v1/users/{userId}/avatar`. Access requires a live sess
 
 Successful reads return JPEG or PNG with a strong `ETag`, `Cache-Control: private, no-cache` and `Vary: Authorization`. A matching `If-None-Match` yields an empty `304` after access is checked. Cleanup worker composition belongs to T123. Live acceptance of the dedicated private Yandex bucket and its KMS key remains an external dependency. The [T119 verification](m5-t119-avatar-swap.md) and [T120 verification](m5-t120-avatar-read.md) use PostgreSQL and the real local file adapter.
 
-## Privacy publication is local-draft only
+## Privacy publication requires server configuration
 
-M0 describes an active published policy as a registration prerequisite. The current backend only publishes a local development draft behind `APP_ENV=local` and `AUTH_DRAFT_POLICY_ENABLED=true`, with loopback host and public URL. Outside that mode, both policy routes and registration return `503 SERVICE_UNAVAILABLE`. OpenAPI documents this reachable refusal, including its response body. A production policy publisher is not implemented.
+M0 describes an active published policy as a registration prerequisite. In production, the backend publishes a separately supplied approved document when the file, version, publication timestamp and HTTPS origin are configured. The development draft requires `APP_ENV=local`, `AUTH_DRAFT_POLICY_ENABLED=true` and a loopback host and origin. With neither publication configured, both policy routes and registration return `503 SERVICE_UNAVAILABLE` as documented by OpenAPI.
 
-Evidence: `auth/DraftPrivacyPolicy.kt`, `config/ServerConfig.kt`, `api/Routing.kt`, `auth/Registration.kt`; `auth/DraftPrivacyRouteTest.kt` and `UnpublishedPrivacyDatabaseIntegrationTest.kt`.
+Evidence: `auth/PrivacyPolicyDocument.kt`, `auth/DraftPrivacyPolicy.kt`, `config/ServerConfig.kt`, `api/Routing.kt`, `auth/Registration.kt`, `auth/ProductionPrivacyPolicyTest.kt`, `auth/DraftPrivacyRouteTest.kt` and `auth/UnpublishedPrivacyDatabaseIntegrationTest.kt`.
 
 ## Push-device registration does not call the push provider
 

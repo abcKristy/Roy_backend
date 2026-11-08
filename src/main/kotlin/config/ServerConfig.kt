@@ -1,11 +1,23 @@
 package com.example.config
 
 import com.example.external.ApnsEnvironment
-import java.time.Duration
 import java.net.URI
 import java.net.URISyntaxException
+import java.nio.file.InvalidPathException
+import java.nio.file.Path
+import java.time.Duration
+import java.time.Instant
+import java.time.format.DateTimeParseException
 
 enum class AppEnvironment { LOCAL, PRODUCTION }
+
+class PrivacyPolicyPublicationConfig(val file: Path, val version: String, val publishedAt: Instant) {
+    init {
+        require(version.isNotBlank() && version == version.trim() && version.none { it.isISOControl() } &&
+            !version.startsWith("draft-", ignoreCase = true)
+        ) { "AUTH_PRIVACY_POLICY_VERSION must be a valid production policy version" }
+    }
+}
 
 /** Process configuration. Values are read from the JVM environment, not from Compose's .env file. */
 class ServerConfig(
@@ -30,6 +42,7 @@ class ServerConfig(
     val avatarObjectStorage: AvatarObjectStorageConfig? = null,
     val ruStorePush: RuStorePushConfig? = null,
     val apnsPush: ApnsPushConfig? = null,
+    val privacyPolicyPublication: PrivacyPolicyPublicationConfig? = null,
 ) {
     init {
         require(avatarObjectStorage == null || appEnvironment == AppEnvironment.PRODUCTION) {
@@ -64,11 +77,17 @@ class ServerConfig(
         publicBaseUrl?.let { url ->
             require(url.scheme in setOf("http", "https") && !url.host.isNullOrBlank() &&
                 url.userInfo == null && url.query == null && url.fragment == null &&
-                (url.path.isNullOrEmpty() || url.path == "/") && url.port != 0
+                (url.path.isNullOrEmpty() || url.path == "/") && (url.port == -1 || url.port in 1..65535)
             ) { "PUBLIC_BASE_URL must be an HTTP(S) origin without a path, query or fragment" }
             if (draftPrivacyEnabled) require(url.host.orEmpty().lowercase() in setOf("localhost", "127.0.0.1", "[::1]", "::1")) {
                 "Draft privacy policy requires a loopback PUBLIC_BASE_URL"
             }
+        }
+        require(privacyPolicyPublication == null || appEnvironment == AppEnvironment.PRODUCTION) {
+            "Privacy policy publication requires APP_ENV=production"
+        }
+        require(privacyPolicyPublication == null || publicBaseUrl?.scheme == "https") {
+            "Privacy policy publication requires an HTTPS PUBLIC_BASE_URL"
         }
     }
 
@@ -106,6 +125,20 @@ class ServerConfig(
                     throw IllegalArgumentException("PUBLIC_BASE_URL is invalid")
                 }
             }
+            val policySettings = listOf("AUTH_PRIVACY_POLICY_FILE", "AUTH_PRIVACY_POLICY_VERSION", "AUTH_PRIVACY_POLICY_PUBLISHED_AT")
+            val privacyPolicyPublication = if (policySettings.any { !environment[it].isNullOrBlank() }) {
+                val file = try {
+                    Path.of(required("AUTH_PRIVACY_POLICY_FILE"))
+                } catch (_: InvalidPathException) {
+                    throw IllegalArgumentException("AUTH_PRIVACY_POLICY_FILE is invalid")
+                }
+                val publishedAt = try {
+                    Instant.parse(required("AUTH_PRIVACY_POLICY_PUBLISHED_AT"))
+                } catch (_: DateTimeParseException) {
+                    throw IllegalArgumentException("AUTH_PRIVACY_POLICY_PUBLISHED_AT must be an ISO-8601 instant")
+                }
+                PrivacyPolicyPublicationConfig(file, required("AUTH_PRIVACY_POLICY_VERSION"), publishedAt)
+            } else null
 
             fun intSetting(name: String, default: Int): Int = environment[name]?.let {
                 it.toIntOrNull() ?: throw IllegalArgumentException("$name must be an integer")
@@ -165,6 +198,7 @@ class ServerConfig(
                 avatarObjectStorage = avatarObjectStorage,
                 ruStorePush = ruStorePush,
                 apnsPush = apnsPush,
+                privacyPolicyPublication = privacyPolicyPublication,
             )
         }
     }

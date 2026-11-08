@@ -5,7 +5,7 @@ import com.example.auth.RegistrationService
 import com.example.auth.LoginRequest
 import com.example.auth.LoginService
 import com.example.auth.SessionAccessService
-import com.example.auth.DraftPrivacyPolicy
+import com.example.auth.PrivacyPolicyDocument
 import com.example.auth.RefreshRequest
 import com.example.auth.RefreshService
 import com.example.persistence.DatabaseRuntime
@@ -47,7 +47,7 @@ fun Application.configureRouting(
     loginService: LoginService? = null,
     refreshService: RefreshService? = null,
     sessionAccess: SessionAccessService? = null,
-    draftPrivacyPolicy: DraftPrivacyPolicy? = null,
+    privacyPolicy: PrivacyPolicyDocument? = null,
     pointReadRepository: PointReadRepository? = null,
     pointWriteService: PointWriteService? = null,
     moderationService: ModerationService? = null,
@@ -109,13 +109,13 @@ fun Application.configureRouting(
             call.respond(HealthResponse("ok"))
         }
         get("/api/v1/legal/privacy") {
-            val policy = draftPrivacyPolicy ?: throw ApiException(
+            val policy = privacyPolicy ?: throw ApiException(
                 HttpStatusCode.ServiceUnavailable, "SERVICE_UNAVAILABLE", "Политика пока не опубликована"
             )
             call.respond(PrivacyMetadata(policy.version, policy.publishedAt.toString(), policy.url))
         }
-        get(DraftPrivacyPolicy.DOCUMENT_PATH) {
-            val policy = draftPrivacyPolicy ?: throw ApiException(
+        get(PrivacyPolicyDocument.PATH) {
+            val policy = privacyPolicy ?: throw ApiException(
                 HttpStatusCode.ServiceUnavailable, "SERVICE_UNAVAILABLE", "Политика пока не опубликована"
             )
             call.respondText(policy.document, ContentType.parse("text/markdown; charset=UTF-8"))

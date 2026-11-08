@@ -8,6 +8,8 @@ import com.example.auth.LoginService
 import com.example.auth.RegistrationService
 import com.example.auth.UnpublishedPrivacyPolicy
 import com.example.auth.DraftPrivacyPolicy
+import com.example.auth.PrivacyPolicyDocument
+import com.example.auth.ProductionPrivacyPolicy
 import com.example.auth.PasswordHashingWork
 import com.example.auth.ProfileService
 import com.example.accounts.AccountDeletionService
@@ -62,7 +64,14 @@ import java.nio.file.Path
 /** Ktor composition root. Migrations must succeed before routes are installed. */
 fun Application.module() = configuredModule(ServerConfig.fromEnvironment())
 
+internal fun ServerConfig.loadPrivacyPolicy(): PrivacyPolicyDocument? {
+    if (draftPrivacyEnabled) return DraftPrivacyPolicy(requireNotNull(publicBaseUrl))
+    val publication = privacyPolicyPublication ?: return null
+    return ProductionPrivacyPolicy(requireNotNull(publicBaseUrl), publication.file, publication.version, publication.publishedAt)
+}
+
 internal fun Application.configuredModule(config: ServerConfig) {
+    val privacyPolicy = config.loadPrivacyPolicy()
     val deviceTokenCipher = config.pushTokenEncryptionKeyBase64?.let(DeviceTokenCipher::fromBase64)
     val database = HikariDatabaseBootstrap(config).start()
     var cloudAvatarStore: YandexAvatarStore? = null
@@ -75,7 +84,6 @@ internal fun Application.configuredModule(config: ServerConfig) {
         installRealtimeTransport()
         val passwordHashing = PasswordHashingWork(Argon2idPasswordHasher())
         val tokenIssuer = JwtTokenIssuer(config.jwtSecret)
-        val draftPolicy = if (config.draftPrivacyEnabled) DraftPrivacyPolicy(requireNotNull(config.publicBaseUrl)) else null
         val pushSenders = buildMap<String, PushSender> {
             config.ruStorePush?.let { put("ANDROID_RUSTORE", RuStorePushSender(it.projectId, it.serviceToken)) }
             config.apnsPush?.let { put("IOS_APNS", ApnsPushSender(it.teamId, it.keyId, it.privateKeyPem, it.topic, it.environment)) }
@@ -86,7 +94,7 @@ internal fun Application.configuredModule(config: ServerConfig) {
                 PushSender { platform, token, payload -> pushSenders.getValue(platform).send(platform, token, payload) },
                 PushTokenDecoder(deviceTokenCipher::decrypt),
                 enabledPlatforms = pushSenders.keys,
-                locationPrivacyVersion = draftPolicy?.version,
+                locationPrivacyVersion = privacyPolicy?.version,
             )
         } else null
         val sessionRepository = JdbcSessionRepository(database)
@@ -147,7 +155,7 @@ internal fun Application.configuredModule(config: ServerConfig) {
             documentationBaseUrl = config.publicBaseUrl?.toString(),
             database = database,
             registrationService = RegistrationService(
-                policy = draftPolicy ?: UnpublishedPrivacyPolicy,
+                policy = privacyPolicy ?: UnpublishedPrivacyPolicy,
                 passwordHashing = passwordHashing,
                 repository = JdbcRegistrationRepository(database),
                 tokenIssuer = tokenIssuer,
@@ -160,17 +168,17 @@ internal fun Application.configuredModule(config: ServerConfig) {
             ),
             refreshService = RefreshService(sessionRepository, tokenIssuer, accessTtl = config.jwtTtl),
             sessionAccess = sessionAccess,
-            draftPrivacyPolicy = draftPolicy,
+            privacyPolicy = privacyPolicy,
             pointReadRepository = PointReadRepository(database, config.jwtSecret),
             pointWriteService = PointWriteService(database),
             reverseGeocoder = DaDataReverseGeocoder(config.dadataApiKey.takeIf { config.appEnvironment == AppEnvironment.PRODUCTION }),
             moderationService = ModerationService(database),
             chatReadService = ChatReadService(database, config.jwtSecret),
             chatSendService = ChatSendService(database, MessageContentPolicy()),
-            proposalService = ProposalService(database, config.jwtSecret, locationPrivacyVersion = draftPolicy?.version),
+            proposalService = ProposalService(database, config.jwtSecret, locationPrivacyVersion = privacyPolicy?.version),
             bookingService = BookingService(database),
             notificationService = NotificationService(
-                database, config.jwtSecret, locationPrivacyVersion = draftPolicy?.version,
+                database, config.jwtSecret, locationPrivacyVersion = privacyPolicy?.version,
             ),
             deviceService = deviceTokenCipher?.let { DeviceService(database, it) },
             profileService = ProfileService(

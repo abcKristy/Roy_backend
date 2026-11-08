@@ -136,7 +136,7 @@ def validate(document):
         source = path.read_text(encoding="utf-8")
         for method, name in re.findall(r'(?m)^\s*(get|post|put|patch|delete|head|options)\("([^"\n]*)"\)\s*\{', source):
             actual.add((method, name))
-        if "get(DraftPrivacyPolicy.DOCUMENT_PATH)" in source:
+        if "get(PrivacyPolicyDocument.PATH)" in source:
             actual.add(("get", "/api/v1/legal/privacy/document"))
     documented = set()
     operation_ids = set()
