@@ -47,7 +47,7 @@ class PointNearbyQueryIntegrationTest {
                 assertEquals(99, context.nearby.single { it.id == north }.distanceMeters)
                 assertEquals(lat, context.nearby.single { it.id == center }.lat)
                 assertEquals(lon, context.nearby.single { it.id == center }.lon)
-                assertEquals("Nearby fixture", context.nearby.single { it.id == inside }.address)
+                assertEquals("Nearby fixture", context.nearby.single { it.id == east }.address)
                 assertEquals(0, context.quota.weekUsed)
             }
 

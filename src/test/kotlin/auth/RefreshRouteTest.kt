@@ -3,6 +3,7 @@ package com.example.auth
 import com.example.api.configureRouting
 import com.example.api.configureTransport
 import com.example.persistence.DatabaseRuntime
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
