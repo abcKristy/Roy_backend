@@ -29,6 +29,10 @@ import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
+// The JDBC driver maps dates before 4713 BCE to -infinity. PostgreSQL's upper limit is exclusive.
+private val earliestFiniteMeetingTime = Instant.parse("-4712-01-01T00:00:00Z")
+private val meetingTimeUpperLimit = Instant.parse("+294277-01-01T00:00:00Z")
+
 /** Proposal and vote operations use actor -> point -> proposal -> chat -> recipient locks. */
 class ProposalService(
     private val database: DatabaseRuntime,
@@ -135,7 +139,9 @@ class ProposalService(
                 JdbcIdempotencyOperations.Decision.New -> Unit
             }
             // Existing successful requests must replay before applying stricter storage bounds.
-            if (!endsAt.isAfter(startsAt)) return@withRetryingJdbcTransaction CreateProposalResult.InvalidInterval
+            if (!endsAt.isAfter(startsAt) || startsAt < earliestFiniteMeetingTime || endsAt >= meetingTimeUpperLimit) {
+                return@withRetryingJdbcTransaction CreateProposalResult.InvalidInterval
+            }
             val pointId = pointForChat(connection, command.chatId)
                 ?: return@withRetryingJdbcTransaction CreateProposalResult.ChatGone
             if (!lockPoint(connection, pointId) || !lockChat(connection, command.chatId)) {

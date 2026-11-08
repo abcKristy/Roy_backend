@@ -100,6 +100,9 @@ class ProposalTimeIntegrationTest {
                 future.toString() to future.toString(),
                 future.toString() to future.minusNanos(1_000).toString(),
                 future.plusNanos(1).toString() to future.plusNanos(2).toString(),
+                future.toString() to "+294277-01-01T00:00:00Z",
+                future.toString() to "+1000000000-12-31T23:59:59Z",
+                "+294277-01-01T00:00:00Z" to "+294277-01-02T00:00:00Z",
                 "not-an-instant" to future.toString(),
             )
             for ((start, end) in invalid) {
