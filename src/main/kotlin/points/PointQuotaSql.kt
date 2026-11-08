@@ -18,17 +18,15 @@ internal object PointQuotaSql {
 
     fun read(connection: Connection, userId: UUID, at: Instant): PointQuotaRead = connection.prepareStatement(
         """WITH anchor AS (SELECT ?::timestamptz AS ts)
-           SELECT count(*) FILTER (WHERE e.created_at >= anchor.ts - interval '168 hours'
-                                      AND e.created_at < anchor.ts),
-                  count(*) FILTER (WHERE e.created_at >= anchor.ts - interval '720 hours'
-                                      AND e.created_at < anchor.ts),
-                  min(e.created_at) FILTER (WHERE e.created_at >= anchor.ts - interval '168 hours'
-                                            AND e.created_at < anchor.ts),
-                  min(e.created_at) FILTER (WHERE e.created_at >= anchor.ts - interval '720 hours'
-                                            AND e.created_at < anchor.ts),
+           SELECT count(*) FILTER (WHERE e.created_at >= anchor.ts - interval '168 hours'),
+                  count(e.created_at),
+                  min(e.created_at) FILTER (WHERE e.created_at >= anchor.ts - interval '168 hours'),
+                  min(e.created_at),
                   u.create_point_blocked_until
            FROM users AS u CROSS JOIN anchor
            LEFT JOIN point_creation_events AS e ON e.creator_user_id = u.id
+              AND e.created_at >= anchor.ts - interval '720 hours'
+              AND e.created_at < anchor.ts
            WHERE u.id = ? AND u.deleted_at IS NULL
            GROUP BY u.id,u.create_point_blocked_until"""
     ).use { statement ->
