@@ -230,8 +230,7 @@ class ProfileService(
                 AvatarState(rows.getString(1), rows.getObject(2, OffsetDateTime::class.java))
             }
         }
-        // V004 kept existing access JWTs valid without assigning a session auth version.
-        if (!sessionActive(connection, identity, allowLegacy = true) ||
+        if (!sessionActive(connection, identity) ||
             !identity.accessExpiresAt.isAfter(Instant.now())
         ) sessionExpired()
         return current
@@ -316,7 +315,7 @@ class ProfileService(
         val replacement = passwordHashing.hash(request.newPassword)
         return database.withRetryingJdbcTransaction { connection ->
             lockUser(connection, identity) ?: sessionExpired()
-            if (!sessionActive(connection, identity, allowLegacy = true) ||
+            if (!sessionActive(connection, identity) ||
                 !identity.accessExpiresAt.isAfter(Instant.now())
             ) sessionExpired()
             val stillCurrent = connection.prepareStatement(
@@ -370,19 +369,15 @@ class ProfileService(
             ) }
         }
 
-    private fun sessionActive(
-        connection: Connection,
-        identity: SessionIdentity,
-        allowLegacy: Boolean = false,
-    ): Boolean =
+    // V004 kept existing access JWTs valid without assigning a session auth version.
+    private fun sessionActive(connection: Connection, identity: SessionIdentity): Boolean =
         connection.prepareStatement(
             """SELECT 1 FROM auth_sessions WHERE id=? AND user_id=? AND revoked_at IS NULL
-               AND expires_at>clock_timestamp() AND (auth_version=? OR (auth_version IS NULL AND ?)) FOR UPDATE"""
+               AND expires_at>clock_timestamp() AND (auth_version IS NULL OR auth_version=?) FOR UPDATE"""
         ).use { statement ->
             statement.setObject(1, identity.sessionId)
             statement.setObject(2, identity.userId)
             statement.setInt(3, identity.authVersion)
-            statement.setBoolean(4, allowLegacy)
             statement.executeQuery().use { it.next() }
         }
 

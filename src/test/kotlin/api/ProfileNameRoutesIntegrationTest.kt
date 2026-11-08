@@ -64,6 +64,23 @@ class ProfileNameRoutesIntegrationTest {
     }
 
     @Test
+    fun `patch accepts a live legacy access-only session`() = profileTest { client, runtime, user, _ ->
+        runtime.withJdbcTransaction { connection ->
+            connection.prepareStatement(
+                "UPDATE auth_sessions SET auth_version=NULL,refresh_token_hash=NULL WHERE user_id=?"
+            ).use { statement ->
+                statement.setObject(1, user.id)
+                assertEquals(1, statement.executeUpdate())
+            }
+        }
+        assertEquals(HttpStatusCode.OK, client.getMe(user).status)
+        val response = client.patchName(user, nameBody("Новое имя"))
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals("Новое имя", response.userSelf().displayName)
+        assertEquals("Новое имя", runtime.snapshot(user.id).name)
+    }
+
+    @Test
     fun `repeating the trimmed name leaves the database row untouched`() = profileTest { client, runtime, user, _ ->
         val first = client.patchName(user, nameBody("Новое имя"))
         assertEquals(HttpStatusCode.OK, first.status)
