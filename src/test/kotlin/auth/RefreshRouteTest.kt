@@ -11,6 +11,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.http.content.OutgoingContent
 import io.ktor.server.testing.testApplication
 import java.time.Clock
 import java.time.Instant
@@ -42,7 +43,7 @@ class RefreshRouteTest {
                 override fun close() = Unit
             }, refreshService = service)
         }
-        for (accept in listOf("application/xml", "application/json;q=0, */*;q=1")) {
+        for (accept in listOf("application/xml", "application/json;q=0, */*;q=1", "invalid, application/json")) {
             val rejected = client.post("/api/v1/auth/refresh") {
                 header(HttpHeaders.Accept, accept)
                 contentType(ContentType.Application.Json)
@@ -52,6 +53,22 @@ class RefreshRouteTest {
             assertEquals("", rejected.bodyAsText())
             assertEquals(0, rotations)
         }
+        val repeatedAccept = client.post("/api/v1/auth/refresh") {
+            header(HttpHeaders.Accept, "application/xml")
+            header(HttpHeaders.Accept, "application/json")
+            contentType(ContentType.Application.Json)
+            setBody("""{"refreshToken":"$original"}""")
+        }
+        assertEquals(HttpStatusCode.NotAcceptable, repeatedAccept.status)
+        assertEquals(0, rotations)
+        val malformedMediaType = client.post("/api/v1/auth/refresh") {
+            header(HttpHeaders.ContentType, "invalid")
+            setBody(object : OutgoingContent.ByteArrayContent() {
+                override fun bytes() = """{"refreshToken":"$original"}""".encodeToByteArray()
+            })
+        }
+        assertEquals(HttpStatusCode.UnsupportedMediaType, malformedMediaType.status)
+        assertEquals(0, rotations)
         for (mediaType in listOf(ContentType.Text.Plain, ContentType.parse("application/json; charset=iso-8859-1"))) {
             val rejected = client.post("/api/v1/auth/refresh") {
                 contentType(mediaType)

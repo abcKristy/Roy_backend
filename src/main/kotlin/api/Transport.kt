@@ -1,5 +1,6 @@
 package com.example.api
 
+import io.ktor.http.BadContentTypeFormatException
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -25,13 +26,14 @@ private class JsonResponseNotAcceptable : RuntimeException()
 
 /** Reject an incompatible response format before a handler commits a JSON-returning mutation. */
 internal fun ApplicationCall.requireJsonResponse() {
-    val ranges = request.headers.getAll(HttpHeaders.Accept)?.flatMap { parseHeaderValue(it) }.orEmpty()
+    // Match Ktor's response converter, which negotiates using the first header value.
+    val ranges = parseHeaderValue(request.headers[HttpHeaders.Accept])
     if (ranges.isEmpty()) return
     val match = ranges.mapNotNull { range ->
         val mediaType = try {
             ContentType.parse(range.value)
-        } catch (_: IllegalArgumentException) {
-            return@mapNotNull null
+        } catch (_: BadContentTypeFormatException) {
+            throw JsonResponseNotAcceptable()
         }
         if (!ContentType.Application.Json.match(mediaType)) return@mapNotNull null
         val specificity = when {

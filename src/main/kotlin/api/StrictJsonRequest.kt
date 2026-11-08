@@ -1,5 +1,6 @@
 package com.example.api
 
+import io.ktor.http.BadContentTypeFormatException
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
@@ -41,7 +42,7 @@ internal object StrictJsonBooleanSerializer : KSerializer<Boolean> {
 suspend fun <T> ApplicationCall.receiveStrictJson(deserializer: DeserializationStrategy<T>): T {
     val contentType = try {
         request.contentType()
-    } catch (_: IllegalArgumentException) {
+    } catch (_: BadContentTypeFormatException) {
         ContentType.Application.OctetStream
     }
     val charset = contentType.parameter("charset")
