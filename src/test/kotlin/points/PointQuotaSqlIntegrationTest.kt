@@ -1,5 +1,6 @@
 package com.example.points
 
+import com.example.persistence.InactiveActorException
 import java.sql.Connection
 import java.sql.DriverManager
 import java.time.Instant
@@ -7,6 +8,7 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -68,6 +70,7 @@ class PointQuotaSqlIntegrationTest {
             assertNull(afterBoundary.weekNextAvailableAt)
             assertNull(afterBoundary.monthNextAvailableAt)
             assertTrue(afterBoundary.lastAvailableWarning)
+            assertFailsWith<InactiveActorException> { PointQuotaSql.read(connection, UUID.randomUUID(), at) }
         }
     }
 

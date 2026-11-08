@@ -1,5 +1,6 @@
 package com.example.points
 
+import com.example.persistence.InactiveActorException
 import java.sql.Connection
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -33,7 +34,7 @@ internal object PointQuotaSql {
         statement.setObject(1, at.atOffset(ZoneOffset.UTC))
         statement.setObject(2, userId)
         statement.executeQuery().use { rows ->
-            check(rows.next()) { "Active user is required" }
+            if (!rows.next()) throw InactiveActorException()
             val weekUsed = rows.getInt(1)
             val monthUsed = rows.getInt(2)
             val weekOldest = rows.getObject(3, OffsetDateTime::class.java)?.toInstant()
