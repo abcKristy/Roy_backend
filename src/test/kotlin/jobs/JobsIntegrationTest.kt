@@ -2,12 +2,15 @@ package com.example.jobs
 
 import com.example.config.AppEnvironment
 import com.example.config.ServerConfig
+import com.example.notifications.NotificationService
 import com.example.persistence.HikariDatabaseBootstrap
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.sql.Connection
 import java.sql.DriverManager
@@ -170,6 +173,54 @@ class JobsIntegrationTest {
                 insertEvent(events.last(), 9)
                 repeat(10) { broadcaster.tick(maxEvents = 1) }
                 assertEquals(events, seen)
+            }
+        }
+    }
+
+    @Test
+    fun `nearby history and broadcast use the same fallback and public target`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val recipient = UUID.randomUUID()
+        val eventId = UUID.randomUUID()
+        val pointId = UUID.randomUUID()
+        withSeededUser(dbUrl, recipient) {
+            connection(dbUrl).use { connection ->
+                connection.prepareStatement(
+                    """INSERT INTO notification_events
+                       (id,recipient_user_id,channel,event_type,dedupe_key,point_id,chat_id,proposal_id,
+                        display_snapshot,visible_in_app,push_requested,created_at)
+                       VALUES (?,?,'EXTRA','nearby_meeting',?,?,?,?,'{}'::jsonb,true,false,clock_timestamp())"""
+                ).use { statement ->
+                    statement.setObject(1, eventId)
+                    statement.setObject(2, recipient)
+                    statement.setString(3, eventId.toString())
+                    statement.setObject(4, pointId)
+                    statement.setObject(5, UUID.randomUUID())
+                    statement.setObject(6, UUID.randomUUID())
+                    statement.executeUpdate()
+                }
+            }
+            runtime(dbUrl).use { database ->
+                val service = NotificationService(database, "job-test-notification-secret-at-least-32-bytes")
+                val history = service.list(recipient, null, 10).items.single()
+                assertEquals("Уведомление", history.title)
+                assertEquals("", history.body)
+                assertEquals(pointId, history.pointId)
+                assertNull(history.chatId)
+                assertNull(history.proposalId)
+
+                val published = mutableListOf<JsonObject>()
+                val broadcaster = NotificationBroadcaster(database, publish = { user, id, payload, _ ->
+                    if (user == recipient && id == eventId) published += payload
+                })
+                broadcaster.tick()
+                val wire = published.single()
+                assertEquals(history.title, wire.getValue("title").jsonPrimitive.content)
+                assertEquals(history.body, wire.getValue("body").jsonPrimitive.content)
+                val target = wire.getValue("target").jsonObject
+                assertEquals(pointId.toString(), target.getValue("pointId").jsonPrimitive.content)
+                assertEquals(JsonNull, target.getValue("chatId"))
+                assertEquals(JsonNull, target.getValue("proposalId"))
             }
         }
     }

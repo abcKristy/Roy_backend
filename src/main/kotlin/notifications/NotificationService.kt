@@ -3,9 +3,6 @@ package com.example.notifications
 import com.example.chats.ChatCursorCodec
 import com.example.persistence.DatabaseRuntime
 import com.example.persistence.withRetryingJdbcTransaction
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.sql.Connection
@@ -29,12 +26,6 @@ sealed interface SettingsUpdateResult {
     data class Stale(val settings: NotificationSettingsView) : SettingsUpdateResult
     data object Unavailable : SettingsUpdateResult
 }
-
-data class NotificationView(
-    val id: UUID, val kind: String, val title: String, val body: String,
-    val pointId: UUID?, val chatId: UUID?, val proposalId: UUID?,
-    val createdAt: Instant, val readAt: Instant?,
-)
 
 data class NotificationPage(val items: List<NotificationView>, val nextCursor: String?)
 data class NotificationLocationView(val latitude: Double?, val longitude: Double?, val updatedAt: Instant?)
@@ -239,22 +230,6 @@ class NotificationService(
                 statement.executeUpdate()
             }
         } finally { channelArray.free() }
-    }
-
-    private fun readNotification(rows: java.sql.ResultSet): NotificationView {
-        val snapshot = Json.parseToJsonElement(rows.getString("display_snapshot")) as JsonObject
-        val kind = rows.getString("event_type")
-        val nearby = kind == "nearby_meeting"
-        return NotificationView(
-            rows.getObject("id", UUID::class.java), kind,
-            snapshot["title"]?.jsonPrimitive?.content ?: "Уведомление",
-            snapshot["body"]?.jsonPrimitive?.content ?: "",
-            rows.getObject("point_id", UUID::class.java),
-            if (nearby) null else rows.getObject("chat_id", UUID::class.java),
-            if (nearby) null else rows.getObject("proposal_id", UUID::class.java),
-            rows.getObject("created_at", OffsetDateTime::class.java).toInstant(),
-            rows.getObject("read_at", OffsetDateTime::class.java)?.toInstant(),
-        )
     }
 
     private fun fingerprint(input: String): String = MessageDigest.getInstance("SHA-256")

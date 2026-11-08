@@ -1,16 +1,12 @@
 package com.example.jobs
 
+import com.example.notifications.NotificationView
+import com.example.notifications.notificationJson
+import com.example.notifications.readNotification
 import com.example.persistence.DatabaseRuntime
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import java.time.Instant
-import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -51,59 +47,33 @@ class NotificationBroadcaster(
                 }
                 statement.executeQuery().use { rows -> buildList {
                     while (rows.next()) add(VisibleEvent(
-                        rows.getObject("id", UUID::class.java),
                         rows.getObject("recipient_user_id", UUID::class.java),
-                        rows.getString("event_type"),
-                        rows.getObject("point_id", UUID::class.java),
-                        rows.getObject("chat_id", UUID::class.java),
-                        rows.getObject("proposal_id", UUID::class.java),
-                        Json.parseToJsonElement(rows.getString("display_snapshot")) as JsonObject,
-                        rows.getObject("created_at", OffsetDateTime::class.java).toInstant(),
-                        rows.getObject("read_at", OffsetDateTime::class.java)?.toInstant(),
+                        readNotification(rows),
                     ))
                 } }
             }
         }
         var count = 0
         for (event in events) {
-            if (event.id in seen) continue
+            val notification = event.notification
+            if (notification.id in seen) continue
             try {
-                publish(event.recipientId, event.id, event.publicPayload(), event.createdAt)
+                publish(event.recipientId, notification.id, notificationJson(notification), notification.createdAt)
             } catch (cancel: CancellationException) {
                 throw cancel
             } catch (_: Exception) {
                 continue // Retry when the rolling window is scanned again.
             }
-            seen[event.id] = Unit
+            seen[notification.id] = Unit
             count++
             while (seen.size > rememberedIds) seen.remove(seen.keys.first())
         }
         // Restart at the end to catch rows committed after we passed their insertion timestamp.
-        after = if (events.size == maxEvents) events.last().let { Position(it.createdAt, it.id) } else null
+        after = if (events.size == maxEvents) events.last().notification.let { Position(it.createdAt, it.id) } else null
         return count
     }
 
     private data class Position(val createdAt: Instant, val id: UUID)
 
-    private data class VisibleEvent(
-        val id: UUID, val recipientId: UUID, val kind: String, val pointId: UUID?,
-        val chatId: UUID?, val proposalId: UUID?, val snapshot: JsonObject,
-        val createdAt: Instant, val readAt: Instant?,
-    ) {
-        fun publicPayload(): JsonObject = buildJsonObject {
-            put("id", id.toString())
-            put("kind", kind)
-            put("title", snapshot["title"]?.jsonPrimitive?.content ?: "Уведомление")
-            put("body", snapshot["body"]?.jsonPrimitive?.content ?: "Откройте приложение")
-            put("target", buildJsonObject {
-                put("pointId", pointId?.let { JsonPrimitive(it.toString()) } ?: JsonNull)
-                put("chatId", if (kind == "nearby_meeting") JsonNull
-                    else chatId?.let { JsonPrimitive(it.toString()) } ?: JsonNull)
-                put("proposalId", if (kind == "nearby_meeting") JsonNull
-                    else proposalId?.let { JsonPrimitive(it.toString()) } ?: JsonNull)
-            })
-            put("createdAt", createdAt.toString())
-            put("readAt", readAt?.let { JsonPrimitive(it.toString()) } ?: JsonNull)
-        }
-    }
+    private data class VisibleEvent(val recipientId: UUID, val notification: NotificationView)
 }

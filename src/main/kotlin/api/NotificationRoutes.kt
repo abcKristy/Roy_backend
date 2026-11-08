@@ -6,8 +6,8 @@ import com.example.notifications.NotificationLocationView
 import com.example.notifications.NotificationService
 import com.example.notifications.NotificationSettingsChange
 import com.example.notifications.NotificationSettingsView
-import com.example.notifications.NotificationView
 import com.example.notifications.SettingsUpdateResult
+import com.example.notifications.notificationJson
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.header
@@ -137,20 +137,6 @@ private fun settingsJson(value: NotificationSettingsView): JsonObject = buildJso
     put("extraPushEnabled", value.extraPushEnabled)
     put("extraInAppEnabled", value.extraInAppEnabled)
     put("revision", value.revision)
-}
-
-private fun notificationJson(value: NotificationView): JsonObject = buildJsonObject {
-    put("id", value.id.toString())
-    put("kind", value.kind)
-    put("title", value.title)
-    put("body", value.body)
-    put("target", buildJsonObject {
-        put("pointId", value.pointId?.let { JsonPrimitive(it.toString()) } ?: JsonNull)
-        put("chatId", value.chatId?.let { JsonPrimitive(it.toString()) } ?: JsonNull)
-        put("proposalId", value.proposalId?.let { JsonPrimitive(it.toString()) } ?: JsonNull)
-    })
-    put("createdAt", value.createdAt.toString())
-    put("readAt", value.readAt?.let { JsonPrimitive(it.toString()) } ?: JsonNull)
 }
 
 private fun locationJson(value: NotificationLocationView): JsonObject = buildJsonObject {
