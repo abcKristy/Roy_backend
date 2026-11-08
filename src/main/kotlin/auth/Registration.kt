@@ -113,8 +113,8 @@ class RegistrationService(
         }
 
         val phone = request.phone.trim()
-        val displayName = request.displayName.trim()
-        if (!PHONE.matches(phone) || displayName.codePointCount(0, displayName.length) !in 1..80 ||
+        val displayName = normalizeDisplayName(request.displayName)
+        if (!PHONE.matches(phone) || displayName == null ||
             request.password.codePointCount(0, request.password.length) !in 8..128 ||
             request.ageYears !in 12..Short.MAX_VALUE.toInt()
         ) {

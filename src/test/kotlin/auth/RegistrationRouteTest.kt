@@ -43,7 +43,7 @@ class RegistrationRouteTest {
     }
 
     @Test
-    fun `test publication fixture returns complete session`() = testApplication {
+    fun `registration rejects invalid Unicode names and returns a complete session for valid names`() = testApplication {
         var writes = 0
         val service = RegistrationService(
             ActivePrivacyPolicy("test-v1"),
@@ -64,10 +64,18 @@ class RegistrationRouteTest {
             }, service)
         }
 
-        val response = client.post("/api/v1/auth/register") {
+        suspend fun register(displayName: String) = client.post("/api/v1/auth/register") {
             contentType(ContentType.Application.Json)
-            setBody("""{"phone":"+79991234567","password":"safe-password-123","displayName":"Аня","ageYears":24,"acceptedPrivacyPolicyVersion":"test-v1"}""")
+            setBody("""{"phone":"+79991234567","password":"safe-password-123","displayName":"$displayName","ageYears":24,"acceptedPrivacyPolicyVersion":"test-v1"}""")
         }
+        for (invalid in listOf("""A\u0000B""", """A\ud800B""", """A\udfffB""")) {
+            val rejected = register(invalid)
+            assertEquals(HttpStatusCode.UnprocessableEntity, rejected.status)
+            assertTrue(rejected.bodyAsText().contains("INVALID_FIELD"))
+        }
+        assertEquals(0, writes)
+
+        val response = register("  Аня 🌱  ")
         assertEquals(HttpStatusCode.Created, response.status)
         assertEquals("no-store", response.headers[HttpHeaders.CacheControl])
         assertEquals(1, writes)
@@ -75,6 +83,7 @@ class RegistrationRouteTest {
         assertTrue(body.contains("\"accessToken\""))
         assertTrue(body.contains("\"expiresAt\""))
         assertTrue(body.contains("\"messageMutedUntil\":null"))
+        assertTrue(body.contains("\"displayName\":\"Аня 🌱\""))
         assertTrue(body.contains("\"phone\":\"+79991234567\""))
     }
 }
