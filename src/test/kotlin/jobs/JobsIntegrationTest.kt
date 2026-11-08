@@ -137,6 +137,72 @@ class JobsIntegrationTest {
     }
 
     @Test
+    fun `notification broadcast advances across full pages and revisits late commits`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val recipient = UUID.randomUUID()
+        val events = List(4) { UUID.randomUUID() }
+        fun insertEvent(id: UUID, minutesAgo: Int) = connection(dbUrl).use { connection ->
+            connection.prepareStatement(
+                """INSERT INTO notification_events
+                   (id,recipient_user_id,channel,event_type,dedupe_key,display_snapshot,
+                    visible_in_app,push_requested,created_at)
+                   VALUES (?,?,'PERSONAL','chat_message',?,'{}'::jsonb,
+                           true,false,clock_timestamp()-(? * interval '1 minute'))"""
+            ).use { statement ->
+                statement.setObject(1, id)
+                statement.setObject(2, recipient)
+                statement.setString(3, id.toString())
+                statement.setInt(4, minutesAgo)
+                statement.executeUpdate()
+            }
+        }
+        withSeededUser(dbUrl, recipient) {
+            events.take(3).forEachIndexed { index, id -> insertEvent(id, 8 - index) }
+            runtime(dbUrl).use { database ->
+                val seen = mutableListOf<UUID>()
+                val broadcaster = NotificationBroadcaster(database, publish = { user, id, _, _ ->
+                    if (user == recipient) seen += id
+                })
+                repeat(3) { broadcaster.tick(maxEvents = 1) }
+                assertEquals(events.take(3), seen)
+
+                // This row only becomes visible after its position has been passed.
+                insertEvent(events.last(), 9)
+                repeat(10) { broadcaster.tick(maxEvents = 1) }
+                assertEquals(events, seen)
+            }
+        }
+    }
+
+    @Test
+    fun `retention drains full batches within its cycle budget`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val account = UUID.randomUUID()
+        fun remaining() = connection(dbUrl).use { connection ->
+            connection.prepareStatement("SELECT count(*) FROM message_rate_events WHERE user_id=?").use { statement ->
+                statement.setObject(1, account)
+                statement.executeQuery().use { rows -> check(rows.next()); rows.getInt(1) }
+            }
+        }
+        withSeededUser(dbUrl, account) {
+            connection(dbUrl).use { connection ->
+                connection.prepareStatement(
+                    """INSERT INTO message_rate_events(id,user_id,accepted_at)
+                       SELECT gen_random_uuid(),?,clock_timestamp()-age FROM
+                         unnest(ARRAY[interval '4 days',interval '3 days',interval '2 days',interval '1 hour']) AS offsets(age)"""
+                ).use { statement -> statement.setObject(1, account); statement.executeUpdate() }
+            }
+            runtime(dbUrl).use { database ->
+                val cleanup = RetentionCleanup(database)
+                cleanup.runCycle(limitPerTable = 1, maxBatches = 2)
+                assertEquals(2, remaining())
+                cleanup.runCycle(limitPerTable = 1, maxBatches = 2)
+                assertEquals(1, remaining())
+            }
+        }
+    }
+
+    @Test
     fun `missing media is done and stale lease is reclaimed`(): Unit = runBlocking {
         val dbUrl = checkedUrl() ?: return@runBlocking
         val job = UUID.randomUUID()
@@ -582,6 +648,20 @@ class JobsIntegrationTest {
         ).use { it.setObject(1, id); it.setString(2, phone); it.executeUpdate() }
         c.prepareStatement("INSERT INTO notification_settings (user_id,updated_at) VALUES (?,clock_timestamp())")
             .use { it.setObject(1, id); it.executeUpdate() }
+    }
+
+    private suspend fun withSeededUser(dbUrl: String, id: UUID, block: suspend () -> Unit) {
+        connection(dbUrl).use { seedUser(it, id) }
+        try {
+            block()
+        } finally {
+            connection(dbUrl).use { connection ->
+                connection.prepareStatement("DELETE FROM users WHERE id=?").use { statement ->
+                    statement.setObject(1, id)
+                    statement.executeUpdate()
+                }
+            }
+        }
     }
 
     private fun seedChat(c: Connection, owner: UUID, point: UUID, chat: UUID) {

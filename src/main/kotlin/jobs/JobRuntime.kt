@@ -40,7 +40,7 @@ class JobRuntime(
         }
         loop("proposal-expiry", 30_000) { onExpired(expiry.tick()) }
         loop("notification-broadcast", 2_000) { broadcaster.tick() }
-        loop("retention", 3_600_000) { cleanup.runBatch() }
+        loop("retention", 3_600_000) { cleanup.runCycle() }
         for ((platform, worker) in push) loop("push-delivery-$platform", 2_000) { worker.processBatch() }
         if (media != null) loop("media-deletion", 10_000) { media.processBatch() }
         return this
