@@ -34,7 +34,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -161,6 +163,18 @@ class ProfileNameRoutesIntegrationTest {
         }
 
     @Test
+    fun `access expiry after route authentication prevents a name change`() {
+        // Authenticate before the deadline and exercise the mutation at the actual time.
+        val authenticationClock = Clock.fixed(Instant.now().minusSeconds(7200), ZoneOffset.UTC)
+        profileTest(authenticationClock = authenticationClock) { client, runtime, user, _ ->
+            val before = runtime.snapshot(user.id)
+            assertEquals(HttpStatusCode.OK, client.getMe(user).status)
+            client.patchName(user, nameBody("Новое имя")).assertError(HttpStatusCode.Unauthorized, "SESSION_EXPIRED")
+            assertEquals(before, runtime.snapshot(user.id))
+        }
+    }
+
+    @Test
     fun `delivering the earlier patch response after a newer commit preserves the newer name`() {
         val responseReady = CompletableDeferred<Unit>()
         val releaseResponse = CompletableDeferred<Unit>()
@@ -199,6 +213,7 @@ class ProfileNameRoutesIntegrationTest {
 
     private fun profileTest(
         beforeRespond: suspend (UserSelf) -> Unit = {},
+        authenticationClock: Clock = Clock.systemUTC(),
         test: suspend (HttpClient, DatabaseRuntime, FixtureUser, FixtureUser) -> Unit,
     ) = testApplication {
         val url = testDatabaseUrl()
@@ -211,8 +226,8 @@ class ProfileNameRoutesIntegrationTest {
             secret,
         )
         HikariDatabaseBootstrap(config).start().use { runtime ->
-            val user = runtime.seedUser(secret)
-            val other = runtime.seedUser(secret)
+            val user = runtime.seedUser(secret, authenticationClock)
+            val other = runtime.seedUser(secret, authenticationClock)
             application {
                 sendPipeline.intercept(ApplicationSendPipeline.Before) {
                     (subject as? UserSelf)?.let { beforeRespond(it) }
@@ -220,7 +235,7 @@ class ProfileNameRoutesIntegrationTest {
                 configureTransport()
                 configureRouting(
                     runtime,
-                    sessionAccess = SessionAccessService(secret, JdbcSessionRepository(runtime)),
+                    sessionAccess = SessionAccessService(secret, JdbcSessionRepository(runtime), clock = authenticationClock),
                     profileService = ProfileService(runtime, PasswordHashingWork(Argon2idPasswordHasher())),
                 )
             }
@@ -228,7 +243,7 @@ class ProfileNameRoutesIntegrationTest {
         }
     }
 
-    private suspend fun DatabaseRuntime.seedUser(secret: String): FixtureUser {
+    private suspend fun DatabaseRuntime.seedUser(secret: String, authenticationClock: Clock): FixtureUser {
         val id = UUID.randomUUID()
         val sessionId = UUID.randomUUID()
         val phone = "+7" + id.mostSignificantBits.toULong().toString().takeLast(10).padStart(10, '0')
@@ -253,7 +268,7 @@ class ProfileNameRoutesIntegrationTest {
                 it.executeUpdate()
             }
         }
-        val now = Instant.now()
+        val now = authenticationClock.instant()
         val token = JwtTokenIssuer(secret).issue(id, sessionId, 0, now.minusSeconds(1), now.plusSeconds(3600))
         return FixtureUser(id, phone, "Bearer $token")
     }

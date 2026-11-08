@@ -29,6 +29,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeout
 import java.sql.Connection
 import java.sql.DriverManager
+import java.time.Clock
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -89,6 +90,26 @@ class DeviceRegistrationSecurityIntegrationTest {
                 }
                 assertEquals(HttpStatusCode.Unauthorized, request.await())
             }
+        }
+    }
+
+    @Test
+    fun `access expiry after route authentication prevents device updates and revocation`() = testApplication {
+        val now = Instant.now()
+        // Authenticate before the deadline and exercise the mutation at the actual time.
+        val authenticationClock = Clock.fixed(now.minusSeconds(20), ZoneOffset.UTC)
+        withDeviceRegistry(authenticationClock = authenticationClock) { registry ->
+            val actor = registry.actor()
+            val installation = UUID.randomUUID()
+            assertEquals(HttpStatusCode.OK, registry.put(actor, installation.toString(), "existing"))
+            val before = registry.binding(installation)
+
+            val expired = registry.withAccessExpiry(actor, now.minusSeconds(10))
+            val response = registry.request(expired, installation.toString(), "replacement")
+            assertEquals(HttpStatusCode.Unauthorized, response.status)
+            assertTrue(response.bodyAsText().contains("SESSION_EXPIRED"))
+            assertEquals(HttpStatusCode.Unauthorized, registry.delete(expired, installation))
+            assertEquals(before, registry.binding(installation))
         }
     }
 
@@ -172,6 +193,7 @@ class DeviceRegistrationSecurityIntegrationTest {
 
     private suspend fun ApplicationTestBuilder.withDeviceRegistry(
         afterAuthentication: suspend () -> Unit = {},
+        authenticationClock: Clock = Clock.systemUTC(),
         block: suspend (Registry) -> Unit,
     ) {
         val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
@@ -186,18 +208,18 @@ class DeviceRegistrationSecurityIntegrationTest {
                 val sessions = SessionAccessService(secret, object : SessionRepository by repository {
                     override suspend fun findActive(identity: SessionIdentity, now: Instant) =
                         repository.findActive(identity, now)?.also { afterAuthentication() }
-                })
+                }, clock = authenticationClock)
                 application {
                     configureTransport()
                     routing { deviceRoutes(DeviceService(database, cipher), sessions) }
                 }
                 DriverManager.getConnection(url, user, password).use { connection ->
-                    block(Registry(this, connection, JwtTokenIssuer(secret), sessions))
+                    block(Registry(this, connection, JwtTokenIssuer(secret), sessions, authenticationClock.instant()))
                 }
             }
     }
 
-    private data class Actor(val userId: UUID, val authorization: String)
+    private data class Actor(val userId: UUID, val sessionId: UUID, val authorization: String)
 
     private data class Binding(
         val userId: UUID,
@@ -212,8 +234,9 @@ class DeviceRegistrationSecurityIntegrationTest {
         val connection: Connection,
         val issuer: JwtTokenIssuer,
         val sessions: SessionAccessService,
+        authenticatedAt: Instant,
     ) {
-        private val createdAt = Instant.now().truncatedTo(ChronoUnit.SECONDS).minusSeconds(120)
+        private val createdAt = authenticatedAt.truncatedTo(ChronoUnit.SECONDS).minusSeconds(120)
 
         fun actor(): Actor {
             val userId = UUID.randomUUID()
@@ -239,8 +262,12 @@ class DeviceRegistrationSecurityIntegrationTest {
                 statement.setObject(4, expiresAt.atOffset(ZoneOffset.UTC))
                 assertEquals(1, statement.executeUpdate())
             }
-            return Actor(userId, "Bearer " + issuer.issue(userId, sessionId, 0, createdAt, expiresAt))
+            return Actor(userId, sessionId, "Bearer " + issuer.issue(userId, sessionId, 0, createdAt, expiresAt))
         }
+
+        fun withAccessExpiry(actor: Actor, expiresAt: Instant): Actor = actor.copy(
+            authorization = "Bearer " + issuer.issue(actor.userId, actor.sessionId, 0, createdAt, expiresAt),
+        )
 
         suspend fun request(
             actor: Actor, installationId: String, token: String, platform: String = "android", provider: String = "rustore",

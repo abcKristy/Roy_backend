@@ -230,9 +230,7 @@ class ProfileService(
                 AvatarState(rows.getString(1), rows.getObject(2, OffsetDateTime::class.java))
             }
         }
-        if (!sessionActive(connection, identity) ||
-            !identity.accessExpiresAt.isAfter(Instant.now())
-        ) sessionExpired()
+        if (!sessionActive(connection, identity)) sessionExpired()
         return current
     }
 
@@ -312,9 +310,7 @@ class ProfileService(
         val replacement = passwordHashing.hash(request.newPassword)
         return database.withRetryingJdbcTransaction { connection ->
             lockUser(connection, identity) ?: sessionExpired()
-            if (!sessionActive(connection, identity) ||
-                !identity.accessExpiresAt.isAfter(Instant.now())
-            ) sessionExpired()
+            if (!sessionActive(connection, identity)) sessionExpired()
             val stillCurrent = connection.prepareStatement(
                 "SELECT password_hash,auth_version FROM users WHERE id=?"
             ).use { statement ->
@@ -375,7 +371,7 @@ class ProfileService(
             statement.setObject(1, identity.sessionId)
             statement.setObject(2, identity.userId)
             statement.setInt(3, identity.authVersion)
-            statement.executeQuery().use { it.next() }
+            statement.executeQuery().use { it.next() && identity.accessExpiresAt.isAfter(Instant.now()) }
         }
 
     private fun sessionExpired(): Nothing = throw ApiException(

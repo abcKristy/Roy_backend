@@ -81,15 +81,15 @@ class DeviceService(private val database: DatabaseRuntime, private val cipher: D
             .digest(token.toByteArray(StandardCharsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
         return try {
-            database.withRetryingJdbcTransaction { connection ->
-                if (!lockActor(connection, identity)) return@withRetryingJdbcTransaction RegisterDeviceResult.SessionUnavailable
+            withLiveAccess(identity, RegisterDeviceResult.SessionUnavailable) { connection ->
+                if (!lockActor(connection, identity)) return@withLiveAccess RegisterDeviceResult.SessionUnavailable
                 lockRegistry(connection)
                 val sessionOrder = lockActiveSessionOrder(connection, identity)
-                    ?: return@withRetryingJdbcTransaction RegisterDeviceResult.SessionUnavailable
+                    ?: return@withLiveAccess RegisterDeviceResult.SessionUnavailable
                 val existing = findInstallation(connection, command.installationId)
                 if (existing?.isNewerThan(sessionOrder) == true ||
                     isRetiredToken(connection, command.installationId, command.platform, digest)) {
-                    return@withRetryingJdbcTransaction RegisterDeviceResult.StaleRegistration
+                    return@withLiveAccess RegisterDeviceResult.StaleRegistration
                 }
                 val sameOwner = existing?.userId == identity.userId
                 val sameToken = existing?.platform == command.platform && existing.digest == digest
@@ -97,11 +97,11 @@ class DeviceService(private val database: DatabaseRuntime, private val cipher: D
                     if (existing.lastSessionOrder != sessionOrder) {
                         updateSessionOrder(connection, command.installationId, sessionOrder)
                     }
-                    return@withRetryingJdbcTransaction RegisterDeviceResult.Registered(
+                    return@withLiveAccess RegisterDeviceResult.Registered(
                         DeviceRegistration(command.installationId, existing.createdAt))
                 }
                 if (activeTokenElsewhere(connection, command.installationId, command.platform, digest)) {
-                    return@withRetryingJdbcTransaction RegisterDeviceResult.TokenInUse
+                    return@withLiveAccess RegisterDeviceResult.TokenInUse
                 }
                 val now = databaseNow(connection)
                 val registeredAt = if (existing != null && sameOwner && existing.revokedAt == null) existing.createdAt else now
@@ -149,15 +149,15 @@ class DeviceService(private val database: DatabaseRuntime, private val cipher: D
 
     /** False means the session is no longer active. Missing or foreign installations are a no-op. */
     suspend fun revoke(identity: SessionIdentity, installationId: UUID): Boolean =
-        database.withRetryingJdbcTransaction { connection ->
-            if (!lockActor(connection, identity)) return@withRetryingJdbcTransaction false
+        withLiveAccess(identity, false) { connection ->
+            if (!lockActor(connection, identity)) return@withLiveAccess false
             lockRegistry(connection)
-            val sessionOrder = lockActiveSessionOrder(connection, identity) ?: return@withRetryingJdbcTransaction false
+            val sessionOrder = lockActiveSessionOrder(connection, identity) ?: return@withLiveAccess false
             val existing = findInstallation(connection, installationId)
-            if (existing?.userId != identity.userId || existing.isNewerThan(sessionOrder)) return@withRetryingJdbcTransaction true
+            if (existing?.userId != identity.userId || existing.isNewerThan(sessionOrder)) return@withLiveAccess true
             if (existing.revokedAt != null) {
                 if (existing.lastSessionOrder != sessionOrder) updateSessionOrder(connection, installationId, sessionOrder)
-                return@withRetryingJdbcTransaction true
+                return@withLiveAccess true
             }
             cancelQueuedJobs(connection, installationId)
             connection.prepareStatement(
@@ -170,6 +170,19 @@ class DeviceService(private val database: DatabaseRuntime, private val cipher: D
             }
             true
         }
+
+    private suspend fun <T> withLiveAccess(identity: SessionIdentity, expired: T, block: (Connection) -> T): T = try {
+        database.withRetryingJdbcTransaction { connection ->
+            val result = block(connection)
+            // Installation and job locks can outlast the initial session check. Roll back any writes.
+            if (!identity.accessExpiresAt.isAfter(Instant.now())) throw AccessDeadlineElapsed()
+            result
+        }
+    } catch (_: AccessDeadlineElapsed) {
+        expired
+    }
+
+    private class AccessDeadlineElapsed : RuntimeException()
 
     private data class StoredInstallation(
         val userId: UUID, val platform: String, val digest: String,
@@ -198,7 +211,9 @@ class DeviceService(private val database: DatabaseRuntime, private val cipher: D
                 if (rows.next()) rows.getLong(1) to rows.getObject(2, OffsetDateTime::class.java).toInstant() else null
             }
         } ?: return null
-        return session.first.takeIf { session.second.isAfter(databaseNow(connection)) }
+        return session.first.takeIf {
+            session.second.isAfter(databaseNow(connection)) && identity.accessExpiresAt.isAfter(Instant.now())
+        }
     }
 
     private fun lockRegistry(connection: Connection) {
