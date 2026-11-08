@@ -76,12 +76,11 @@ object ApprovedProfanityDetector : ProfanityDetector {
 }
 
 private object PhoneDetector {
-    private val candidate = Regex("(?<![\\p{L}\\p{N}])\\+?[0-9](?:[0-9 ()\\u00a0.-]*[0-9])?(?![\\p{L}\\p{N}])")
+    private val candidate = Regex("(?<![\\p{L}\\p{N}])\\+?[0-9](?:[ ()\\u00a0.-]{0,3}[0-9])*+(?![\\p{L}\\p{N}])")
     private val context = Regex("(?iu)(?<![\\p{L}\\p{N}])(?:телефон|звони|тел|phone|call me)[ :\\-]{1,2}$")
 
     fun contains(text: String): Boolean = candidate.findAll(text).any { match ->
         val value = match.value
-        if (Regex("[ ()\\u00a0.-]{4,}").containsMatchIn(value)) return@any false
         val digits = value.count(Char::isDigit)
         when {
             value.startsWith('+') -> digits in 10..15
@@ -111,7 +110,7 @@ private object LinkDetector {
                 val match = explicitHost.matchAt(normalized, prefix.range.last + 1) ?: return@any false
                 if (normalized.getOrNull(match.range.last + 1) == '_') return@any false
                 val candidate = match.value
-                val labels = candidate.replace(" ", "").split('.')
+                val labels = candidate.replace(" ", "").trimEnd('.').split('.')
                 val numericIpv4 = labels.size == 4 && labels.all { label -> label.all { it in '0'..'9' } }
                 labels.size >= 2 && labels.all { hostLabel.matches(it) } &&
                     (!numericIpv4 || labels.all { it.length <= 3 && it.toIntOrNull()?.let { part -> part in 0..255 } == true })

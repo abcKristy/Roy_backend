@@ -49,6 +49,7 @@ class MessageContentPolicyTest {
         listOf(
             "Пиши +7 (999) 123-45-67", "my phone +1 202 555 0143", "звони 123 45 67",
             "тел: 12345678", "phone 123-45-67", "79991234567", "89991234567", "9991234567",
+            "Заказ 12    79991234567", "Заказ 12\u00a0\u00a0\u00a0\u00a0+7 (999) 123-45-67",
         ).forEach { assertTrue(policy.rejected(it), it) }
         listOf(
             "Встречаемся в 12:30 у дома 12", "номер заказа 123 45 67", "01.11.2026",
@@ -63,12 +64,13 @@ class MessageContentPolicyTest {
             "смотри https://example.com", "example.com", "t . me / name", "name@example.com",
             "http://[2001:db8::1]/", "192.168.1.1", "пример.рф", "h t t p s : / / example.com",
             "example . com", "vk.com/id", "ftp://example.org", "www.example.net",
+            "Смотри https://example.museum.", "Смотри www . example . museum ...",
         ).forEach { assertTrue(policy.rejected(it), it) }
         listOf(
             "версия 1.2.3", "2001:db8", "почта на столе", "ул. Ленина", "т. е.",
             "10.5 км", "пример", "http://", "www.", "ftp://", "h t t p s : / /",
             "example . unknownsuffix", "ex ample.com", "@nickname", "точка ком", "example.unknownsuffix",
-            "256.256.256.256",
+            "256.256.256.256", "https://example..museum.", "example.museum.",
         ).forEach { assertFalse(policy.rejected(it), it) }
     }
 }
