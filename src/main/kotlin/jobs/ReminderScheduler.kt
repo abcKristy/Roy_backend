@@ -12,7 +12,9 @@ import com.example.persistence.RecipientLockMode
 import com.example.persistence.withRetryingJdbcTransaction
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.postgresql.util.PSQLState
 import java.sql.Connection
+import java.sql.SQLException
 import java.time.Clock
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -75,7 +77,14 @@ class ReminderScheduler(
             }
         }
         var produced = 0
-        for (id in ids) produced += schedule(id)
+        for (id in ids) {
+            try {
+                produced += schedule(id)
+            } catch (failure: SQLException) {
+                if (failure.sqlState != PSQLState.LOCK_NOT_AVAILABLE.state) throw failure
+                // A later lock timed out. Revisit this booking on the next tick if still due.
+            }
+        }
         created.addAndGet(produced.toLong())
         val missed = database.withReadOnlyJdbcTransaction { connection ->
             val now = now(connection)
@@ -150,7 +159,7 @@ class ReminderScheduler(
     }
 
     private fun lockPoint(connection: Connection, id: UUID): Boolean = connection.prepareStatement(
-        "SELECT 1 FROM points WHERE id=? FOR UPDATE"
+        "SELECT 1 FROM points WHERE id=? FOR UPDATE SKIP LOCKED"
     ).use { statement ->
         statement.setObject(1, id)
         statement.executeQuery().use { it.next() }

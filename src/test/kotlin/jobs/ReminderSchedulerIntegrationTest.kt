@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import java.sql.Connection
+import java.sql.DriverManager
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -41,6 +42,23 @@ class ReminderSchedulerIntegrationTest {
             val idle = fixture.scheduler().tick(limit = 1)
             assertEquals(0, idle.bookingsVisited)
             assertEquals(0, idle.eventsCreated)
+        }
+    }
+
+    @Test
+    fun `locked point does not delay reminders for another point`() = runBlocking<Unit> {
+        Fixture().use { fixture ->
+            val blocked = fixture.booking(secondsUntilStart = 3510)
+            val available = fixture.booking(secondsUntilStart = 3540)
+            val scheduler = fixture.scheduler()
+
+            fixture.withPointLocked(blocked) {
+                assertEquals(ReminderTick(2, 2, 0), scheduler.tick())
+                assertEquals(emptyMap(), fixture.reminders(blocked))
+                assertEquals(setOf(fixture.owner, fixture.peer), fixture.reminders(available).keys)
+            }
+            assertEquals(ReminderTick(1, 2, 0), scheduler.tick())
+            assertEquals(setOf(fixture.owner, fixture.peer), fixture.reminders(blocked).keys)
         }
     }
 
@@ -177,6 +195,26 @@ class ReminderSchedulerIntegrationTest {
         }
 
         fun scheduler(runtime: DatabaseRuntime = database) = ReminderScheduler(runtime, clock = Clock.fixed(now, ZoneOffset.UTC))
+
+        suspend fun withPointLocked(booking: UUID, block: suspend () -> Unit) {
+            DriverManager.getConnection(url, System.getenv("DATABASE_USER"), System.getenv("DATABASE_PASSWORD")).use { connection ->
+                connection.autoCommit = false
+                try {
+                    connection.prepareStatement(
+                        """SELECT point.id FROM bookings AS b
+                           JOIN meeting_proposals AS p ON p.id=b.proposal_id
+                           JOIN chats AS c ON c.id=p.chat_id JOIN point_topics AS pt ON pt.id=c.point_topic_id
+                           JOIN points AS point ON point.id=pt.point_id WHERE b.id=? FOR UPDATE OF point"""
+                    ).use { statement ->
+                        statement.setObject(1, booking)
+                        statement.executeQuery().use { rows -> check(rows.next()) }
+                    }
+                    block()
+                } finally {
+                    connection.rollback()
+                }
+            }
+        }
 
         suspend fun reminders(booking: UUID): Map<UUID, UUID> = database.withReadOnlyJdbcTransaction { connection ->
             connection.prepareStatement(
