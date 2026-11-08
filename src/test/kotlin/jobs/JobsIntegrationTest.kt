@@ -12,6 +12,7 @@ import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class JobsIntegrationTest {
@@ -158,6 +159,54 @@ class JobsIntegrationTest {
                     .use { s -> s.setObject(1, job); s.executeQuery().use { r ->
                         assertTrue(r.next()); assertEquals("DONE", r.getString(1)); assertNotNull(r.getObject(2))
                     } }
+            }
+        }
+    }
+
+    @Test
+    fun `media claims at the attempt limit fail without another store call`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val expired = UUID.randomUUID()
+        val pending = UUID.randomUUID()
+        connection(dbUrl).use { connection ->
+            connection.prepareStatement(
+                """INSERT INTO media_deletion_jobs
+                   (id,object_key,status,attempts,next_attempt_at,claim_token,lease_until,created_at)
+                   VALUES (?,?,'PROCESSING',1,clock_timestamp(),gen_random_uuid(),
+                           clock_timestamp()-interval '1 minute',clock_timestamp()),
+                          (?,?,'PENDING',1,clock_timestamp(),NULL,NULL,clock_timestamp())"""
+            ).use { statement ->
+                statement.setObject(1, expired)
+                statement.setString(2, expired.toString())
+                statement.setObject(3, pending)
+                statement.setString(4, pending.toString())
+                statement.executeUpdate()
+            }
+        }
+        runtime(dbUrl).use { database ->
+            var deletes = 0
+            val worker = MediaDeletionWorker(database, MediaStore { deletes++; MediaDeleteResult.AlreadyMissing }, maxAttempts = 1)
+            assertEquals(0, worker.processBatch())
+            assertEquals(0, deletes)
+            assertEquals(1L, worker.snapshot().reclaimed)
+            assertEquals(2L, worker.snapshot().failed)
+            connection(dbUrl).use { connection ->
+                connection.prepareStatement(
+                    "SELECT status,attempts,completed_at,claim_token,lease_until FROM media_deletion_jobs WHERE id IN (?,?)"
+                ).use { statement ->
+                    statement.setObject(1, expired)
+                    statement.setObject(2, pending)
+                    statement.executeQuery().use { rows ->
+                        repeat(2) {
+                            assertTrue(rows.next())
+                            assertEquals("FAILED", rows.getString(1))
+                            assertEquals(1, rows.getInt(2))
+                            assertNotNull(rows.getObject(3))
+                            assertNull(rows.getObject(4))
+                            assertNull(rows.getObject(5))
+                        }
+                    }
+                }
             }
         }
     }

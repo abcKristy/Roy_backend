@@ -66,14 +66,15 @@ class MediaDeletionWorker(
         connection.prepareStatement(
             """WITH due AS (
                  SELECT id FROM media_deletion_jobs
-                 WHERE status='PENDING' AND next_attempt_at<=clock_timestamp()
+                 WHERE status='PENDING' AND next_attempt_at<=clock_timestamp() AND attempts<?
                  ORDER BY next_attempt_at,id FOR UPDATE SKIP LOCKED LIMIT 1
                ) UPDATE media_deletion_jobs AS j
                SET status='PROCESSING',attempts=j.attempts+1,completed_at=NULL,claim_token=gen_random_uuid(),
                    lease_until=clock_timestamp()+(? * interval '1 second')
                FROM due WHERE j.id=due.id RETURNING j.id,j.claim_token,j.object_key"""
         ).use { statement ->
-            statement.setInt(1, leaseSeconds)
+            statement.setInt(1, maxAttempts)
+            statement.setInt(2, leaseSeconds)
             statement.executeQuery().use { rows ->
                 if (rows.next()) Claim(rows.getObject(1, UUID::class.java),
                     rows.getObject(2, UUID::class.java), rows.getString(3)) else null
@@ -83,20 +84,38 @@ class MediaDeletionWorker(
 
     suspend fun reclaimExpired(limit: Int = 100): Int {
         require(limit in 1..1000)
-        val count = database.withJdbcTransaction { connection ->
+        val (reclaimedCount, failedCount) = database.withJdbcTransaction { connection ->
+            // A previous worker may already have requeued an expired final attempt.
             connection.prepareStatement(
-                """WITH expired AS (
-                    SELECT id FROM media_deletion_jobs WHERE status='PROCESSING'
-                      AND lease_until<=clock_timestamp()
-                    ORDER BY lease_until,id FOR UPDATE SKIP LOCKED LIMIT ?
-                ) UPDATE media_deletion_jobs AS j
-                SET status='PENDING',claim_token=NULL,lease_until=NULL,completed_at=NULL,
-                    next_attempt_at=clock_timestamp()
-                FROM expired WHERE j.id=expired.id"""
-            ).use { statement -> statement.setInt(1, limit); statement.executeUpdate() }
+                """WITH recoverable AS (
+                    SELECT id,status FROM media_deletion_jobs
+                    WHERE (status='PROCESSING' AND lease_until<=clock_timestamp())
+                       OR (status='PENDING' AND next_attempt_at<=clock_timestamp() AND attempts>=?)
+                    ORDER BY COALESCE(lease_until,next_attempt_at),id FOR UPDATE SKIP LOCKED LIMIT ?
+                ), transitioned AS (
+                    UPDATE media_deletion_jobs AS j
+                    SET status=CASE WHEN j.attempts>=? THEN 'FAILED' ELSE 'PENDING' END,
+                        claim_token=NULL,lease_until=NULL,
+                        completed_at=CASE WHEN j.attempts>=? THEN clock_timestamp() ELSE NULL END,
+                        next_attempt_at=clock_timestamp()
+                    FROM recoverable WHERE j.id=recoverable.id
+                    RETURNING recoverable.status AS previous_status,j.status
+                ) SELECT count(*) FILTER (WHERE previous_status='PROCESSING'),
+                         count(*) FILTER (WHERE status='FAILED') FROM transitioned"""
+            ).use { statement ->
+                statement.setInt(1, maxAttempts)
+                statement.setInt(2, limit)
+                statement.setInt(3, maxAttempts)
+                statement.setInt(4, maxAttempts)
+                statement.executeQuery().use { rows ->
+                    check(rows.next())
+                    rows.getLong(1) to rows.getLong(2)
+                }
+            }
         }
-        reclaimed.addAndGet(count.toLong())
-        return count
+        reclaimed.addAndGet(reclaimedCount)
+        failed.addAndGet(failedCount)
+        return reclaimedCount.toInt()
     }
 
     suspend fun retryFailed(jobId: UUID): Boolean = database.withJdbcTransaction { connection ->
