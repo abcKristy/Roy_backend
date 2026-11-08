@@ -13,6 +13,7 @@ import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
 import io.ktor.util.AttributeKey
 import io.ktor.websocket.Frame
+import io.ktor.websocket.CloseReason
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CancellationException
@@ -47,13 +48,16 @@ fun Application.installRealtimeTransport(idleTimeoutMillis: Long = 60_000L) {
 fun Route.realtimeRoutes(hub: RealtimeHub) {
     route("/api/v1/ws") {
         intercept(ApplicationCallPipeline.Call) {
-            val identity = hub.authenticate(context.request.headers[HttpHeaders.Authorization])
+            val identity = hub.authenticateUpgrade(context.request.headers[HttpHeaders.Authorization])
             context.attributes.put(identityKey, identity)
         }
         webSocket {
             val authorization = call.request.headers[HttpHeaders.Authorization] ?: error("Authenticated header missing")
             val identity = call.attributes[identityKey]
-            val client = hub.register(identity, authorization, this)
+            val client = hub.register(identity, authorization, this) ?: run {
+                close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Connection limit"))
+                return@webSocket
+            }
             val sender = launch {
                 for (text in client.outbound) send(Frame.Text(text))
             }
@@ -75,6 +79,10 @@ fun Route.realtimeRoutes(hub: RealtimeHub) {
             try {
                 for (frame in incoming) {
                     if (frame !is Frame.Text) continue
+                    if (!client.allowCommand()) {
+                        close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "Command rate limit"))
+                        break
+                    }
                     if (try { hub.authenticate(authorization) != identity } catch (_: ApiException) { true }) {
                         close(hub.sessionExpired())
                         break

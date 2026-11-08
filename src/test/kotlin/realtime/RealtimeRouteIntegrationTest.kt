@@ -17,6 +17,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -98,6 +99,13 @@ class RealtimeRouteIntegrationTest {
             wsClient.webSocket("/api/v1/ws", request = { header(HttpHeaders.Authorization, "Bearer $jwt") }) {
                 val hello = Json.parseToJsonElement((incoming.receive() as Frame.Text).readText()).jsonObject
                 assertEquals("hello", hello["type"]?.jsonPrimitive?.content)
+                wsClient.webSocket("/api/v1/ws", request = { header(HttpHeaders.Authorization, "Bearer $jwt") }) {
+                    val secondHello = Json.parseToJsonElement((incoming.receive() as Frame.Text).readText()).jsonObject
+                    assertEquals("hello", secondHello["type"]?.jsonPrimitive?.content)
+                    wsClient.webSocket("/api/v1/ws", request = { header(HttpHeaders.Authorization, "Bearer $jwt") }) {
+                        assertEquals(1013, withTimeout(5_000) { closeReason.await() }?.code?.toInt())
+                    }
+                }
                 val requestId = UUID.randomUUID()
                 send(Frame.Text("""{"v":1,"type":"subscribe","requestId":"$requestId","chatIds":["$chatId","$otherChatId"]}"""))
                 val subscribed = Json.parseToJsonElement((incoming.receive() as Frame.Text).readText()).jsonObject

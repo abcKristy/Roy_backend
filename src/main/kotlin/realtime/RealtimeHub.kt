@@ -4,6 +4,7 @@ import com.example.api.ApiException
 import com.example.auth.SessionAccessService
 import com.example.auth.SessionIdentity
 import com.example.persistence.DatabaseRuntime
+import io.ktor.http.HttpStatusCode
 import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
@@ -13,13 +14,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.sql.Connection
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+
+private const val MAX_CONNECTIONS = 256
+private const val MAX_CONNECTIONS_PER_SESSION = 2
+private const val MAX_SUBSCRIPTIONS_PER_CONNECTION = 100
+private const val MAX_COMMANDS_PER_SECOND = 20
 
 enum class RealtimeScopeKind { CHAT, USER }
 
@@ -68,14 +77,49 @@ class RealtimeHub(
         val id: UUID = UUID.randomUUID()
         val subscriptions = ConcurrentHashMap<UUID, Long>()
         val outbound = Channel<String>(64)
+        private var commandWindowStart = System.nanoTime()
+        private var commandCount = 0
+
+        // Only the socket's reader calls this, before command parsing or session lookup.
+        fun allowCommand(): Boolean {
+            val now = System.nanoTime()
+            if (now - commandWindowStart >= 1_000_000_000L) {
+                commandWindowStart = now
+                commandCount = 0
+            }
+            if (commandCount >= MAX_COMMANDS_PER_SECOND) return false
+            commandCount++
+            return true
+        }
     }
 
     private val clients = ConcurrentHashMap<UUID, Client>()
+    private val databaseChecks = Semaphore(2)
 
-    suspend fun authenticate(authorization: String?): SessionIdentity = sessions.currentIdentity(authorization)
+    suspend fun authenticate(authorization: String?): SessionIdentity =
+        databaseChecks.withPermit { sessions.currentIdentity(authorization) }
 
-    internal fun register(identity: SessionIdentity, authorization: String, socket: DefaultWebSocketServerSession): Client =
+    internal suspend fun authenticateUpgrade(authorization: String?): SessionIdentity {
+        if (!databaseChecks.tryAcquire()) throw ApiException(
+            HttpStatusCode.TooManyRequests, "WS_RATE_LIMITED", "Повторите подключение позже", retryAfterSeconds = 1,
+        )
+        return try {
+            sessions.currentIdentity(authorization)
+        } finally {
+            databaseChecks.release()
+        }
+    }
+
+    internal fun register(
+        identity: SessionIdentity,
+        authorization: String,
+        socket: DefaultWebSocketServerSession,
+    ): Client? = synchronized(clients) {
+        if (clients.size >= MAX_CONNECTIONS ||
+            clients.values.count { it.identity.sessionId == identity.sessionId } >= MAX_CONNECTIONS_PER_SESSION
+        ) return@synchronized null
         Client(identity, authorization, socket).also { clients[it.id] = it }
+    }
 
     internal fun unregister(client: Client) {
         clients.remove(client.id)
@@ -83,7 +127,7 @@ class RealtimeHub(
     }
 
     internal suspend fun subscribe(client: Client, requested: List<UUID>): Pair<List<UUID>, List<UUID>> {
-        val accepted = database.withReadOnlyJdbcTransaction { connection ->
+        val accepted = readRealtime { connection ->
             val ids = connection.createArrayOf("uuid", requested.toTypedArray())
             try {
                 connection.prepareStatement(
@@ -98,10 +142,17 @@ class RealtimeHub(
                 }
             } finally { ids.free() }
         }
-        val yes = requested.distinct().filter { it in accepted }
-        val no = requested.distinct().filter { it !in accepted }
-        client.subscriptions.putAll(accepted)
-        return yes to no
+        val distinct = requested.distinct()
+        val subscribed = buildList {
+            for (chatId in distinct) {
+                val incarnation = accepted[chatId] ?: continue
+                if (client.subscriptions.containsKey(chatId) || client.subscriptions.size < MAX_SUBSCRIPTIONS_PER_CONNECTION) {
+                    client.subscriptions[chatId] = incarnation
+                    add(chatId)
+                }
+            }
+        }
+        return subscribed to distinct.filter { it !in subscribed }
     }
 
     internal fun unsubscribe(client: Client, requested: List<UUID>) {
@@ -156,7 +207,7 @@ class RealtimeHub(
     /** Re-read committed membership state; a deleted chat has no remaining subscribers. */
     suspend fun publishMembershipChanged(chatId: UUID, userId: UUID, action: String) {
         require(action == "joined" || action == "left")
-        val count = database.withReadOnlyJdbcTransaction { connection ->
+        val count = readRealtime { connection ->
             connection.prepareStatement(
                 "SELECT count(*) FROM chat_memberships WHERE chat_id=? AND left_at IS NULL"
             ).use { statement ->
@@ -180,7 +231,7 @@ class RealtimeHub(
 
     /** Re-read committed point state and notify members across all its topics, without a chat subscription. */
     suspend fun publishPointChangedForChat(chatId: UUID) {
-        val change = database.withReadOnlyJdbcTransaction { connection ->
+        val change = readRealtime { connection ->
             val point = connection.prepareStatement(
                 """SELECT point.id,point.updated_at FROM chats AS chat
                    JOIN point_topics AS topic ON topic.id=chat.point_topic_id
@@ -191,7 +242,7 @@ class RealtimeHub(
                     if (!rows.next()) null else rows.getObject(1, UUID::class.java) to
                         rows.getObject(2, OffsetDateTime::class.java).toInstant()
                 }
-            } ?: return@withReadOnlyJdbcTransaction null
+            } ?: return@readRealtime null
             val recipients = connection.prepareStatement(
                 """SELECT DISTINCT membership.user_id FROM chat_memberships AS membership
                    JOIN users AS recipient ON recipient.id=membership.user_id AND recipient.deleted_at IS NULL
@@ -238,12 +289,12 @@ class RealtimeHub(
     }
 
     private suspend fun isActive(client: Client): Boolean = try {
-        sessions.currentIdentity(client.authorization) == client.identity
+        authenticate(client.authorization) == client.identity
     } catch (_: ApiException) {
         false
     }
 
-    private suspend fun hasMembershipIncarnation(userId: UUID, chatId: UUID, incarnation: Long): Boolean = database.withReadOnlyJdbcTransaction { connection ->
+    private suspend fun hasMembershipIncarnation(userId: UUID, chatId: UUID, incarnation: Long): Boolean = readRealtime { connection ->
         connection.prepareStatement(
             "SELECT 1 FROM chat_memberships WHERE user_id=? AND chat_id=? AND left_at IS NULL AND incarnation=?"
         ).use { statement ->
@@ -253,6 +304,9 @@ class RealtimeHub(
             statement.executeQuery().use { it.next() }
         }
     }
+
+    private suspend fun <T> readRealtime(block: (Connection) -> T): T =
+        databaseChecks.withPermit { database.withReadOnlyJdbcTransaction(block) }
 
     internal fun sessionExpired() = CloseReason(4401.toShort(), "Session expired")
 }
