@@ -2,6 +2,7 @@ package com.example.meetings
 
 import com.example.api.configureRouting
 import com.example.api.configureTransport
+import com.example.api.proposalJson
 import com.example.auth.JwtTokenIssuer
 import com.example.auth.SessionAccessService
 import com.example.config.AppEnvironment
@@ -27,6 +28,28 @@ import java.util.UUID
 import kotlin.test.*
 
 class BookingResponseIntegrationTest {
+    @Test
+    fun `confirmed booking replays its complete overlap list above the old snapshot size limit`() = runBlocking<Unit> {
+        Fixture().use { f ->
+            val expectedIds = listOf(f.directLaterBooking, f.directEarlierBooking) + f.addDirectOverlaps(100)
+            val service = BookingService(f.runtime)
+            val command = BookMeetingCommand(f.booker, f.target, UUID.randomUUID(), false, 2)
+            val warning = assertIs<BookMeetingResult.OverlapConfirmRequired>(service.book(command) { _, view -> proposalJson(view) })
+            assertEquals(expectedIds, warning.overlaps.map { it.bookingId })
+
+            val confirmed = command.copy(confirmOverlap = true)
+            val created = assertIs<BookMeetingResult.Created>(service.book(confirmed) { _, view -> proposalJson(view) })
+            assertEquals(201, created.responseSnapshot.getValue("status").jsonPrimitive.int)
+            assertTrue(created.responseSnapshot.toString().toByteArray(Charsets.UTF_8).size > 16_384)
+            val overlaps = created.responseSnapshot.getValue("body").jsonObject.getValue("booking")
+                .jsonObject.getValue("overlappingActive").jsonArray
+            assertEquals(expectedIds.map(UUID::toString), overlaps.map { it.jsonObject.getValue("bookingId").jsonPrimitive.content })
+            assertEquals(created.responseSnapshot, assertIs<BookMeetingResult.Replay>(service.book(confirmed) { _, _ ->
+                error("Replay should use the saved snapshot")
+            }).responseSnapshot)
+        }
+    }
+
     @Test
     fun `canonical booking snapshots keep actual owner identity order and only direct active overlaps`() = runBlocking<Unit> {
         Fixture().use { f ->
@@ -176,6 +199,22 @@ class BookingResponseIntegrationTest {
         }
         private data class Slot(val id: UUID, val chat: UUID, val start: Long, val end: Long)
         fun connection(): Connection = DriverManager.getConnection(url, user, password)
+        fun addDirectOverlaps(count: Int): List<UUID> = connection().use { c ->
+            c.autoCommit = false
+            List(count) {
+                val proposal = UUID.randomUUID()
+                val booking = UUID.randomUUID()
+                execute(c, """INSERT INTO meeting_proposals(id,chat_id,proposer_user_id,starts_at,ends_at,revision,created_at,updated_at)
+                    SELECT ?,chat_id,proposer_user_id,starts_at,ends_at,revision,created_at,updated_at
+                    FROM meeting_proposals WHERE id=?""", proposal, target)
+                execute(c, """INSERT INTO votes(proposal_id,user_id,created_at)
+                    SELECT ?,user_id,created_at FROM votes WHERE proposal_id=?""", proposal, target)
+                execute(c, "INSERT INTO bookings(id,proposal_id,booked_by_user_id,created_at) VALUES (?,?,?,clock_timestamp())",
+                    booking, proposal, booker)
+                booking
+            }.also { c.commit() }
+        }
+
         fun bearer(actor: UUID): String {
             val now = Instant.now()
             return "Bearer " + JwtTokenIssuer(secret).issue(actor, sessions.getValue(actor), 0, now.minusSeconds(1), now.plusSeconds(3600))
