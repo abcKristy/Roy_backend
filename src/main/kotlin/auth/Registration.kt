@@ -120,7 +120,17 @@ class RegistrationService(
         ) {
             throw ApiException(HttpStatusCode.UnprocessableEntity, "INVALID_FIELD", "Некорректные данные")
         }
+        return passwordHashing.publicAdmission.register(phone) {
+            createRegistration(request, phone, displayName, currentVersion)
+        }
+    }
 
+    private suspend fun createRegistration(
+        request: RegisterRequest,
+        phone: String,
+        displayName: String,
+        currentVersion: String,
+    ): Session {
         val now = clock.instant().truncatedTo(ChronoUnit.SECONDS)
         val refreshExpiresAt = now.plus(refreshTtl)
         val userId = UUID.randomUUID()

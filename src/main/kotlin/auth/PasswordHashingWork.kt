@@ -13,6 +13,7 @@ class PasswordHashingWork(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private val slots = Semaphore(maxConcurrent)
+    internal val publicAdmission = PublicAuthAdmission()
 
     suspend fun hash(password: String): String = slots.withPermit {
         withContext(dispatcher) { hasher.hash(password) }
