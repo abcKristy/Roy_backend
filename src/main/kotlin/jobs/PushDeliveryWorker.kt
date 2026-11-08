@@ -129,7 +129,7 @@ class PushDeliveryWorker(
         }
     }
 
-    private data class Claim(val id: UUID, val token: UUID, val attempts: Int)
+    private data class Claim(val id: UUID, val token: UUID, val attempts: Int, val platform: String)
     private data class Candidate(
         val eventId: UUID, val installationId: UUID, val recipientId: UUID,
         val platform: String, val ciphertext: String, val kind: String,
@@ -142,20 +142,20 @@ class PushDeliveryWorker(
     private suspend fun claim(): Claim? = database.withJdbcTransaction { connection ->
         connection.prepareStatement(
             """WITH due AS (
-                   SELECT j.id FROM push_delivery_jobs AS j
+                   SELECT j.id,d.platform FROM push_delivery_jobs AS j
                    JOIN device_registrations AS d ON d.installation_id=j.installation_id
                    WHERE j.status='PENDING' AND j.next_attempt_at<=clock_timestamp() AND d.platform=ANY(?)
                    ORDER BY j.next_attempt_at,j.id FOR UPDATE OF j SKIP LOCKED LIMIT 1
                ) UPDATE push_delivery_jobs AS j
                SET status='PROCESSING',attempts=j.attempts+1,completed_at=NULL,claim_token=gen_random_uuid(),
                    lease_until=clock_timestamp()+(? * interval '1 second')
-               FROM due WHERE j.id=due.id RETURNING j.id,j.claim_token,j.attempts"""
+               FROM due WHERE j.id=due.id RETURNING j.id,j.claim_token,j.attempts,due.platform"""
         ).use { statement ->
             statement.setArray(1, connection.createArrayOf("text", enabledPlatforms.toTypedArray()))
             statement.setInt(2, leaseSeconds)
             statement.executeQuery().use { rows ->
                 if (rows.next()) Claim(rows.getObject(1, UUID::class.java), rows.getObject(2, UUID::class.java),
-                    rows.getInt(3)) else null
+                    rows.getInt(3), rows.getString(4)) else null
             }
         }
     }
@@ -166,16 +166,23 @@ class PushDeliveryWorker(
             if (finish(claim, "CANCELLED", null)) cancelled.incrementAndGet()
             return
         }
+        if (candidate.platform != claim.platform) {
+            handoff(claim)
+            return
+        }
         val token = try {
             tokenDecoder.decrypt(candidate.installationId, candidate.platform, candidate.ciphertext)
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: Exception) {
-            if (finish(claim, "FAILED", PushFailureCode.INVALID_TOKEN)) failed.incrementAndGet()
-            return
+            null
         }
         // Decryption can outlive cancellation; recheck immediately before provider I/O.
         val currentCandidate = database.withReadOnlyJdbcTransaction { connection -> loadValidCandidate(connection, claim) }
+        if (currentCandidate != null && currentCandidate.platform != claim.platform) {
+            handoff(claim)
+            return
+        }
         if (currentCandidate != candidate) {
             if (currentCandidate != null) {
                 // The same owner rotated the token while decrypting. Retry with its new binding.
@@ -183,6 +190,10 @@ class PushDeliveryWorker(
                 return
             }
             if (finish(claim, "CANCELLED", null)) cancelled.incrementAndGet()
+            return
+        }
+        if (token == null) {
+            if (finish(claim, "FAILED", PushFailureCode.INVALID_TOKEN)) failed.incrementAndGet()
             return
         }
         val result = try {
@@ -201,6 +212,21 @@ class PushDeliveryWorker(
                 if (finish(claim, "FAILED", result.code, revoke = revoke)) failed.incrementAndGet()
             }
             is PushSendResult.Retryable -> retry(claim, result)
+        }
+    }
+
+    private suspend fun handoff(claim: Claim) {
+        database.withRetryingJdbcTransaction { connection ->
+            // The provider was never called. Return the attempt to the worker for the current platform.
+            connection.prepareStatement(
+                """UPDATE push_delivery_jobs SET status='PENDING',attempts=attempts-1,
+                   claim_token=NULL,lease_until=NULL,next_attempt_at=clock_timestamp()
+                   WHERE id=? AND claim_token=? AND status='PROCESSING' AND lease_until>clock_timestamp()"""
+            ).use { statement ->
+                statement.setObject(1, claim.id)
+                statement.setObject(2, claim.token)
+                statement.executeUpdate()
+            }
         }
     }
 

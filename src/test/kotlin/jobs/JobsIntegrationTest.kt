@@ -648,6 +648,46 @@ class JobsIntegrationTest {
         }
     }
 
+    @Test
+    fun `platform changed during decrypt hands off the final attempt without sending`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val fixture = seedPushJob(dbUrl)
+        runtime(dbUrl).use { database ->
+            var oldSends = 0
+            val oldProvider = PushDeliveryWorker(database, PushSender { _, _, _ ->
+                oldSends++
+                PushSendResult.Delivered
+            }, PushTokenDecoder { _, platform, _ ->
+                assertEquals("ANDROID_RUSTORE", platform)
+                connection(dbUrl).use { connection ->
+                    connection.prepareStatement(
+                        "UPDATE device_registrations SET platform='IOS_APNS',token_ciphertext='new-cipher' WHERE installation_id=?"
+                    ).use { statement -> statement.setObject(1, fixture.installation); statement.executeUpdate() }
+                }
+                "old-token"
+            }, maxAttempts = 1, enabledPlatforms = setOf("ANDROID_RUSTORE"))
+            assertEquals(1, oldProvider.processBatch())
+            assertEquals(0, oldSends)
+            assertEquals("PENDING" to 0, pushState(dbUrl, fixture.job))
+            assertEquals(0L, oldProvider.snapshot().failed)
+
+            var newSends = 0
+            val newProvider = PushDeliveryWorker(database, PushSender { platform, token, payload ->
+                assertEquals("IOS_APNS", platform)
+                assertEquals("new-token", token)
+                assertEquals(fixture.event, payload.notificationId)
+                newSends++
+                PushSendResult.Delivered
+            }, PushTokenDecoder { _, _, ciphertext ->
+                assertEquals("new-cipher", ciphertext)
+                "new-token"
+            }, maxAttempts = 1, enabledPlatforms = setOf("IOS_APNS"))
+            assertEquals(1, newProvider.processBatch())
+            assertEquals(1, newSends)
+            assertEquals("SENT" to 1, pushState(dbUrl, fixture.job))
+        }
+    }
+
     private data class PushFixture(val event: UUID, val job: UUID, val installation: UUID)
 
     private fun seedPushJob(
