@@ -56,9 +56,11 @@ class CreatePointNormalizerTest {
             valid.copy(position = PointPosition(55.75, -181.0)),
             valid.copy(address = "   "),
             valid.copy(address = "a".repeat(301)),
+            valid.copy(address = "A\u0000B"),
             valid.copy(topic = PointTopicInput("unknown")),
             valid.copy(topic = PointTopicInput("other", " ")),
             valid.copy(topic = PointTopicInput("other", "a".repeat(41))),
+            valid.copy(topic = PointTopicInput("other", "A\u0000B")),
             valid.copy(topic = PointTopicInput("football", "label")),
         )
         for (command in invalid) {
@@ -66,6 +68,8 @@ class CreatePointNormalizerTest {
                 service.create(command, { _, _ -> buildJsonObject {} }, { buildJsonObject {} })
             }
         }
+        val addTopic = AddTopicCommand(valid.actorId, UUID.randomUUID(), UUID.randomUUID(), PointTopicInput("other", "A\u0000B"))
+        assertFailsWith<IllegalArgumentException> { service.addTopic(addTopic) { _, _ -> buildJsonObject {} } }
         assertEquals(0, transactions)
     }
 }

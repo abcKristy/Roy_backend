@@ -66,7 +66,7 @@ data class PointMapFilter(
         require(peopleMin in 0..50 && peopleMax in peopleMin..50) { "Invalid people range" }
         require(limit in 1..100) { "Invalid page limit" }
         require(topicKey == null || topicKey in TopicPresetKeys.allowed) { "Invalid topic key" }
-        require(customTopicLabel == null || (topicKey == "other" && customTopicLabel.isNotBlank() &&
+        require(customTopicLabel == null || (topicKey == "other" && customTopicLabel.isNotBlank() && '\u0000' !in customTopicLabel &&
             customTopicLabel.trim().codePointCount(0, customTopicLabel.trim().length) <= 40)) {
             "Custom topic label requires other"
         }

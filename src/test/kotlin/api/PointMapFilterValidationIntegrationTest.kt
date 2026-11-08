@@ -36,6 +36,7 @@ class PointMapFilterValidationIntegrationTest {
                 "topicKey=unknown", "topicKey=", "customTopicLabel=Chess",
                 "topicKey=football&customTopicLabel=Chess", "topicKey=other&customTopicLabel=%20%20",
                 "topicKey=other&customTopicLabel=${"x".repeat(41)}",
+                "topicKey=other&customTopicLabel=A%00B",
                 "peopleMin=1&peopleMin=2", "peopleMax=1&peopleMax=2",
                 "topicKey=football&topicKey=other",
                 "topicKey=other&customTopicLabel=Chess&customTopicLabel=Checkers",

@@ -20,7 +20,7 @@ fun PointTopicInput.normalizeTopic(): NormalizedPointTopic {
     require(presetKey in TopicPresetKeys.allowed) { "Invalid topic preset" }
     val displayLabel = customLabel?.trim()
     if (presetKey == "other") {
-        require(displayLabel != null && displayLabel.codePointCount(0, displayLabel.length) in 1..40) {
+        require(displayLabel != null && '\u0000' !in displayLabel && displayLabel.codePointCount(0, displayLabel.length) in 1..40) {
             "Invalid custom topic"
         }
     } else {

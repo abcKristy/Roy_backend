@@ -6,7 +6,9 @@ fun CreatePointCommand.normalized(): CreatePointCommand {
     require(position.longitude.isFinite() && position.longitude in -180.0..180.0) { "Invalid longitude" }
 
     val normalizedAddress = address.trim()
-    require(normalizedAddress.codePointCount(0, normalizedAddress.length) in 1..300) { "Invalid address" }
+    require('\u0000' !in normalizedAddress && normalizedAddress.codePointCount(0, normalizedAddress.length) in 1..300) {
+        "Invalid address"
+    }
 
     return copy(address = normalizedAddress, topic = topic.normalizeTopic().input)
 }
