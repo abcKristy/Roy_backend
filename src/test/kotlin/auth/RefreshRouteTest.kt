@@ -51,6 +51,15 @@ class RefreshRouteTest {
             assertEquals("", rejected.bodyAsText())
             assertEquals(0, rotations)
         }
+        for (mediaType in listOf(ContentType.Text.Plain, ContentType.parse("application/json; charset=iso-8859-1"))) {
+            val rejected = client.post("/api/v1/auth/refresh") {
+                contentType(mediaType)
+                setBody("""{"refreshToken":"$original"}""")
+            }
+            assertEquals(HttpStatusCode.UnsupportedMediaType, rejected.status)
+            assertTrue(rejected.bodyAsText().contains("UNSUPPORTED_MEDIA_TYPE"))
+            assertEquals(0, rotations)
+        }
         val response = client.post("/api/v1/auth/refresh") {
             contentType(ContentType.Application.Json)
             setBody("""{"refreshToken":"$original"}""")

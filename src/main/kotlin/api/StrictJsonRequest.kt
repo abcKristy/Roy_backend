@@ -1,7 +1,9 @@
 package com.example.api
 
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
+import io.ktor.server.request.contentType
 import io.ktor.server.request.receiveChannel
 import io.ktor.utils.io.readAvailable
 import kotlinx.serialization.DeserializationStrategy
@@ -37,6 +39,17 @@ internal object StrictJsonBooleanSerializer : KSerializer<Boolean> {
 
 /** Use for JSON request DTOs so syntax errors and invalid fields remain distinct. */
 suspend fun <T> ApplicationCall.receiveStrictJson(deserializer: DeserializationStrategy<T>): T {
+    val contentType = try {
+        request.contentType()
+    } catch (_: IllegalArgumentException) {
+        ContentType.Application.OctetStream
+    }
+    val charset = contentType.parameter("charset")
+    if (!contentType.withoutParameters().match(ContentType.Application.Json) ||
+        (charset != null && !charset.equals("utf-8", ignoreCase = true))
+    ) {
+        throw ApiException(HttpStatusCode.UnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "Ожидается application/json в UTF-8")
+    }
     val body = receiveBoundedJsonBody()
     val element = try {
         transportJson.parseToJsonElement(body)

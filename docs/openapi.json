@@ -1019,6 +1019,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -1512,6 +1531,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -2038,6 +2076,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -2778,6 +2835,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -3193,6 +3269,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -3569,6 +3664,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -4441,6 +4555,33 @@
                 }
               }
             }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -4779,6 +4920,33 @@
                 }
               }
             }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -5081,6 +5249,33 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            },
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -5513,6 +5708,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -6707,6 +6921,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -7025,6 +7258,33 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            },
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -7435,6 +7695,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -8197,6 +8476,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -9259,6 +9557,33 @@
                 }
               }
             }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -9819,6 +10144,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -10575,6 +10919,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -11286,6 +11649,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -11595,6 +11977,25 @@
           },
           "406": {
             "description": "Невозможно согласовать формат ответа: Accept исключает application/json, а обработчик пытается вернуть JSON успешного результата или ошибки, включая ошибку авторизации. Маршруты записи с успешным JSON-ответом проверяют Accept до изменения состояния. Ответ 406 имеет пустое тело без error.code. Успешные текстовые/Markdown-ответы и ответы 204 не требуют согласования JSON. Передавайте `Accept: application/json` или `Accept: */*`.\n\nПример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_MEDIA_TYPE",
+                    "message": "Ожидается application/json в UTF-8",
+                    "details": null,
+                    "retryAfterSeconds": null
+                  },
+                  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                }
+              }
+            }
           }
         },
         "parameters": [

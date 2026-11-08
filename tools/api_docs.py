@@ -97,6 +97,19 @@ def assemble():
                     "Пример HTTP-ответа:\n```http\nHTTP/1.1 406 Not Acceptable\n\n```\nТело ответа отсутствует."
                 ),
             }
+            if "application/json" in operation.get("requestBody", {}).get("content", {}):
+                unsupported = "Ожидается application/json в UTF-8"
+                operation["responses"]["415"] = {
+                    "description": "UNSUPPORTED_MEDIA_TYPE: Content-Type отсутствует или не объявляет JSON в UTF-8.",
+                    "content": {"application/json": {
+                        "schema": {"$ref": "#/components/schemas/Error"},
+                        "example": {
+                            "error": {"code": "UNSUPPORTED_MEDIA_TYPE", "message": unsupported,
+                                      "details": None, "retryAfterSeconds": None},
+                            "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                        },
+                    }},
+                }
             if operation.pop("x-no-store", False):
                 for response in operation["responses"].values():
                     response.setdefault("headers", {})["Cache-Control"] = {

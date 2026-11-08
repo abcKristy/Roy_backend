@@ -34,6 +34,8 @@ M0's common error list is not exhaustive. Every strict-JSON request has a 65,536
 
 Notification-location writes additionally return `403 POLICY_NOT_ACCEPTED` when the account has not accepted the configured policy version, or `503 SERVICE_UNAVAILABLE` if that version is unavailable. Device mutations use `400 INVALID_FIELD` for an invalid path UUID. These existing outcomes are included per operation.
 
+JSON request bodies require `Content-Type: application/json` and UTF-8. A missing or incompatible type, or an explicitly unsupported charset, returns `415 UNSUPPORTED_MEDIA_TYPE` before the body is decoded.
+
 An `Accept` header excluding `application/json` produces an empty `406 Not Acceptable` when the route needs to return JSON. Routes with a JSON mutation response check this before changing state. A refresh request rejected this way leaves the submitted token unspent. Ktor still negotiates JSON for reads and errors, including authentication errors. Successful `204` and explicitly rendered text or Markdown responses are unaffected.
 
 Evidence: `api/StrictJsonRequest.kt`, `Transport.kt`, `ErrorMapper.kt`, `NotificationRoutes.kt`, `notifications/NotificationService.kt`; `api/NotificationRoutesIntegrationTest.kt` and auth transport tests.
