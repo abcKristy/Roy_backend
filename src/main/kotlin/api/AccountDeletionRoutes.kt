@@ -27,7 +27,9 @@ import java.util.UUID
 private data class AccountDeletionInput(
     val currentPassword: String,
     @Serializable(with = StrictJsonBooleanSerializer::class) val confirm: Boolean,
-)
+) {
+    override fun toString(): String = "AccountDeletionInput(redacted)"
+}
 
 internal fun Route.accountDeletionRoutes(service: AccountDeletionService, sessions: SessionAccessService,
                                          realtime: RealtimeHub? = null) {

@@ -14,7 +14,9 @@ import kotlinx.serialization.Serializable
 import java.util.UUID
 
 @Serializable
-private data class PushDeviceInput(val platform: String, val provider: String, val token: String)
+private data class PushDeviceInput(val platform: String, val provider: String, val token: String) {
+    override fun toString(): String = "PushDeviceInput(redacted)"
+}
 
 @Serializable
 private data class PushDeviceResponse(val installationId: String, val registeredAt: String)

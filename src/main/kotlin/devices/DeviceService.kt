@@ -59,7 +59,9 @@ class DeviceTokenCipher private constructor(key: ByteArray) {
 data class DeviceRegistration(val installationId: UUID, val registeredAt: Instant)
 data class RegisterDeviceCommand(
     val identity: SessionIdentity, val installationId: UUID, val platform: String, val token: String,
-)
+) {
+    override fun toString(): String = "RegisterDeviceCommand(redacted)"
+}
 
 sealed interface RegisterDeviceResult {
     data class Registered(val value: DeviceRegistration) : RegisterDeviceResult
