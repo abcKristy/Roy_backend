@@ -173,18 +173,18 @@ class PointReadRepository(private val database: DatabaseRuntime, cursorSecret: S
         require(lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0)
         return database.withReadOnlyJdbcTransaction { connection ->
             val nearby = connection.prepareStatement(
-                """SELECT id,ST_Y(location),ST_X(location),address,
-                          round(ST_Distance(location::geography,ST_SetSRID(ST_MakePoint(?,?),4326)::geography))::integer
-                   FROM points
-                   WHERE ST_DWithin(location::geography,ST_SetSRID(ST_MakePoint(?,?),4326)::geography,100.01)
-                     AND ST_Distance(location::geography,
-                         ST_SetSRID(ST_MakePoint(?,?),4326)::geography) <= 100.0
-                   ORDER BY location::geography <-> ST_SetSRID(ST_MakePoint(?,?),4326)::geography,id"""
+                """SELECT id,ST_Y(location),ST_X(location),address,round(meters)::integer
+                   FROM (
+                     SELECT id,location,address,ST_Distance(location::geography,
+                            ST_SetSRID(ST_MakePoint(?,?),4326)::geography) AS meters
+                     FROM points
+                     WHERE ST_DWithin(location::geography,ST_SetSRID(ST_MakePoint(?,?),4326)::geography,100.01)
+                   ) AS nearby
+                   WHERE meters <= 100.0
+                   ORDER BY meters,id"""
             ).use { statement ->
                 statement.setDouble(1, lon); statement.setDouble(2, lat)
                 statement.setDouble(3, lon); statement.setDouble(4, lat)
-                statement.setDouble(5, lon); statement.setDouble(6, lat)
-                statement.setDouble(7, lon); statement.setDouble(8, lat)
                 statement.executeQuery().use { rows -> buildList {
                     while (rows.next()) add(PointPreviewRead(
                         rows.getObject(1, UUID::class.java), rows.getDouble(2), rows.getDouble(3),

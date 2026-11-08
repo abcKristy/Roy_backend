@@ -21,16 +21,19 @@ class PointNearbyQueryIntegrationTest {
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
         val actor = UUID.randomUUID()
         val center = UUID.randomUUID()
-        val inside = UUID.randomUUID()
+        val east = UUID.randomUUID()
+        val north = UUID.randomUUID()
         val outside = UUID.randomUUID()
         val lon = -110.0 + Math.random() * 10.0
-        val lat = -20.0 + Math.random() * 10.0
+        val lat = -0.1 + Math.random() * 0.2
         DriverManager.getConnection(url, user, password).use { connection ->
             connection.autoCommit = false
             seedUser(connection, actor)
-            insertPoint(connection, center, actor, lon, lat, 0)
-            insertPoint(connection, inside, actor, lon, lat, 99)
-            insertPoint(connection, outside, actor, lon, lat, 101)
+            insertPoint(connection, center, actor, lon, lat, 0.0)
+            // Near the equator the sphere ranks the 99.4 m east point ahead of the 99 m north point.
+            insertPoint(connection, east, actor, lon, lat, 99.4)
+            insertPoint(connection, north, actor, lon, lat, 99.0, 0.0)
+            insertPoint(connection, outside, actor, lon, lat, 101.0)
             connection.commit()
         }
 
@@ -38,9 +41,10 @@ class PointNearbyQueryIntegrationTest {
             .start().use { runtime ->
                 val repository = PointReadRepository(runtime, "test-cursor-secret-at-least-thirty-two-bytes")
                 val context = repository.creationContext(actor, lat, lon)
-                assertEquals(setOf(center, inside), context.nearby.map { it.id }.toSet())
+                assertEquals(listOf(center, north, east), context.nearby.map { it.id })
                 assertEquals(0, context.nearby.single { it.id == center }.distanceMeters)
-                assertEquals(99, context.nearby.single { it.id == inside }.distanceMeters)
+                assertEquals(99, context.nearby.single { it.id == east }.distanceMeters)
+                assertEquals(99, context.nearby.single { it.id == north }.distanceMeters)
                 assertEquals(lat, context.nearby.single { it.id == center }.lat)
                 assertEquals(lon, context.nearby.single { it.id == center }.lon)
                 assertEquals("Nearby fixture", context.nearby.single { it.id == inside }.address)
@@ -87,17 +91,19 @@ class PointNearbyQueryIntegrationTest {
         }
     }
 
-    private fun insertPoint(connection: Connection, id: UUID, actor: UUID, lon: Double, lat: Double, metresEast: Int) {
+    private fun insertPoint(connection: Connection, id: UUID, actor: UUID, lon: Double, lat: Double,
+                            metres: Double, bearingDegrees: Double = 90.0) {
         connection.prepareStatement(
             """INSERT INTO points (id,location,address,address_source,created_by_user_id,created_at,updated_at)
-               VALUES (?,ST_Project(ST_SetSRID(ST_MakePoint(?,?),4326)::geography,?,radians(90))::geometry,
+               VALUES (?,ST_Project(ST_SetSRID(ST_MakePoint(?,?),4326)::geography,?,radians(?))::geometry,
                        'Nearby fixture','MANUAL',?,clock_timestamp(),clock_timestamp())"""
         ).use { statement ->
             statement.setObject(1, id)
             statement.setDouble(2, lon)
             statement.setDouble(3, lat)
-            statement.setInt(4, metresEast)
-            statement.setObject(5, actor)
+            statement.setDouble(4, metres)
+            statement.setDouble(5, bearingDegrees)
+            statement.setObject(6, actor)
             assertEquals(1, statement.executeUpdate())
         }
     }
