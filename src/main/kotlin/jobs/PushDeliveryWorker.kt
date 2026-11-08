@@ -10,6 +10,8 @@ import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.AtomicLong
 
+internal const val PUSH_JOB_TTL_SECONDS = 24 * 60 * 60
+
 data class PushPayload(
     val notificationId: UUID,
     val kind: String,
@@ -106,9 +108,15 @@ class PushDeliveryWorker(
     /** Explicit operator retry; terminal FAILED jobs are never retried automatically. */
     suspend fun retryFailed(jobId: UUID): Boolean = database.withJdbcTransaction { connection ->
         connection.prepareStatement(
-            """UPDATE push_delivery_jobs SET status='PENDING',attempts=0,last_error=NULL,completed_at=NULL,
-               next_attempt_at=clock_timestamp() WHERE id=? AND status='FAILED'"""
-        ).use { statement -> statement.setObject(1, jobId); statement.executeUpdate() == 1 }
+            """UPDATE push_delivery_jobs AS j
+               SET status='PENDING',attempts=0,last_error=NULL,completed_at=NULL,next_attempt_at=clock_timestamp()
+               FROM notification_events AS e WHERE e.id=j.notification_event_id AND j.id=? AND j.status='FAILED'
+                 AND e.created_at>clock_timestamp()-(? * interval '1 second')"""
+        ).use { statement ->
+            statement.setObject(1, jobId)
+            statement.setInt(2, PUSH_JOB_TTL_SECONDS)
+            statement.executeUpdate() == 1
+        }
     }
 
     suspend fun renewLease(jobId: UUID, token: UUID): Boolean = database.withJdbcTransaction { connection ->
@@ -285,9 +293,11 @@ class PushDeliveryWorker(
                JOIN users AS u ON u.id=e.recipient_user_id
                JOIN notification_settings AS s ON s.user_id=e.recipient_user_id
                WHERE j.id=? AND j.claim_token=? AND j.status='PROCESSING'
-                 AND j.lease_until>clock_timestamp()"""
+                 AND j.lease_until>clock_timestamp()
+                 AND e.created_at>clock_timestamp()-(? * interval '1 second')"""
         ).use { statement ->
             statement.setObject(1, claim.id); statement.setObject(2, claim.token)
+            statement.setInt(3, PUSH_JOB_TTL_SECONDS)
             statement.executeQuery().use { rows ->
                 if (!rows.next()) return@use null
                 if (rows.getObject("deleted_at") != null || rows.getObject("revoked_at") != null ||

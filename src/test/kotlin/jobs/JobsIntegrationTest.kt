@@ -410,6 +410,45 @@ class JobsIntegrationTest {
         }
     }
 
+    @Test
+    fun `stale push jobs cannot send after provider recovery and expire without a provider`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        fun age(event: UUID) = connection(dbUrl).use { connection ->
+            connection.prepareStatement("UPDATE notification_events SET created_at=clock_timestamp()-interval '25 hours' WHERE id=?")
+                .use { statement -> statement.setObject(1, event); statement.executeUpdate() }
+        }
+        val recovered = seedPushJob(dbUrl)
+        age(recovered.event)
+        runtime(dbUrl).use { database ->
+            var sends = 0
+            val worker = PushDeliveryWorker(database,
+                PushSender { _, _, _ -> sends++; PushSendResult.Delivered },
+                PushTokenDecoder { _, _, _ -> "token" })
+            assertEquals(1, worker.processBatch(limit = 1))
+            assertEquals(0, sends)
+            assertEquals("CANCELLED" to 1, pushState(dbUrl, recovered.job))
+
+            val pending = seedPushJob(dbUrl)
+            val expiredLease = seedPushJob(dbUrl)
+            val fresh = seedPushJob(dbUrl)
+            age(pending.event)
+            age(expiredLease.event)
+            connection(dbUrl).use { connection ->
+                connection.prepareStatement(
+                    """UPDATE push_delivery_jobs SET status='PROCESSING',attempts=1,
+                       claim_token=gen_random_uuid(),lease_until=clock_timestamp() WHERE id=?"""
+                ).use { statement -> statement.setObject(1, expiredLease.job); statement.executeUpdate() }
+            }
+            assertEquals(2, RetentionCleanup(database).runBatch().expiredPushJobs)
+            assertEquals("CANCELLED" to 0, pushState(dbUrl, pending.job))
+            assertEquals("CANCELLED" to 1, pushState(dbUrl, expiredLease.job))
+            assertEquals("PENDING" to 0, pushState(dbUrl, fresh.job))
+            assertEquals(1, worker.processBatch(limit = 1))
+            assertEquals(1, sends)
+            assertEquals("SENT" to 1, pushState(dbUrl, fresh.job))
+        }
+    }
+
     private data class PushFixture(val event: UUID, val job: UUID, val installation: UUID)
 
     private fun seedPushJob(dbUrl: String, nearbyConsent: String? = null): PushFixture {

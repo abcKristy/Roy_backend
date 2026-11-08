@@ -5,6 +5,7 @@ import com.example.persistence.DatabaseRuntime
 data class CleanupResult(
     val rateEvents: Int, val idempotencyRecords: Int, val expiredSessions: Int,
     val pushJobs: Int, val mediaJobs: Int,
+    val expiredPushJobs: Int,
 )
 
 /** Bounded batches; messages, reports and notification history have no arbitrary TTL. */
@@ -24,6 +25,21 @@ class RetentionCleanup(private val database: DatabaseRuntime) {
                     "status IN ('SENT','FAILED','CANCELLED') AND completed_at<clock_timestamp()-interval '30 days'"),
                 mediaJobs = delete("media_deletion_jobs",
                     "status='DONE' AND completed_at<clock_timestamp()-interval '30 days'"),
+                expiredPushJobs = connection.prepareStatement(
+                    """WITH victims AS (
+                         SELECT j.id FROM push_delivery_jobs AS j
+                         JOIN notification_events AS e ON e.id=j.notification_event_id
+                         WHERE (j.status='PENDING' OR (j.status='PROCESSING' AND j.lease_until<=statement_timestamp()))
+                           AND e.created_at<=statement_timestamp()-(? * interval '1 second')
+                         ORDER BY e.created_at,j.id FOR UPDATE OF j SKIP LOCKED LIMIT ?
+                       ) UPDATE push_delivery_jobs AS j
+                       SET status='CANCELLED',claim_token=NULL,lease_until=NULL,completed_at=clock_timestamp()
+                       FROM victims WHERE j.id=victims.id"""
+                ).use { statement ->
+                    statement.setInt(1, PUSH_JOB_TTL_SECONDS)
+                    statement.setInt(2, limitPerTable)
+                    statement.executeUpdate()
+                },
             )
         }
     }
