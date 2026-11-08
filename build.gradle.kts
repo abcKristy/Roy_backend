@@ -94,6 +94,9 @@ tasks.register<Test>("integrationTest") {
     classpath = sourceSets["test"].runtimeClasspath
     filter { includeTestsMatching("*IntegrationTest") }
     systemProperty("integration.required", "true")
+    // Availability, schema and fixtures in the external database can change without file inputs.
+    outputs.upToDateWhen { false }
+    outputs.doNotCacheIf("Integration tests use a live database") { true }
     afterTest(KotlinClosure2<TestDescriptor, TestResult, Unit>({ _, result ->
         if (result.resultType == TestResult.ResultType.SKIPPED) {
             throw GradleException("Required integration scenario was skipped")
