@@ -101,11 +101,11 @@ class DeviceRegistrationSecurityIntegrationTest {
         withDeviceRegistry(authenticationClock = authenticationClock) { registry ->
             val actor = registry.actor()
             val installation = UUID.randomUUID()
-            assertEquals(HttpStatusCode.OK, registry.put(actor, installation.toString(), "existing"))
+            assertEquals(HttpStatusCode.OK, registry.put(actor, installation.toString(), "existing-$installation"))
             val before = registry.binding(installation)
 
             val expired = registry.withAccessExpiry(actor, now.minusSeconds(10))
-            val response = registry.request(expired, installation.toString(), "replacement")
+            val response = registry.request(expired, installation.toString(), "replacement-$installation")
             assertEquals(HttpStatusCode.Unauthorized, response.status)
             assertTrue(response.bodyAsText().contains("SESSION_EXPIRED"))
             assertEquals(HttpStatusCode.Unauthorized, registry.delete(expired, installation))
