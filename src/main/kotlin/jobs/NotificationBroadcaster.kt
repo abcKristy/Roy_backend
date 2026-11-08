@@ -19,15 +19,34 @@ class NotificationBroadcaster(
 ) {
     init { require(lookbackMinutes in 1..60); require(rememberedIds in 100..100_000) }
 
-    private val seen = LinkedHashMap<UUID, Unit>()
-    private var after: Position? = null
+    private val seen = LinkedHashMap<UUID, Position>()
+    private var forwardAfter: Position? = null
+    private var recheckAfter: Position? = null
+    private var evictedThrough: Position? = null
 
     /** Call from one runtime loop; the callback runs outside the read transaction. */
     suspend fun tick(maxEvents: Int = 5_000): Int {
         require(maxEvents in 1..20_000)
-        val cursor = after
-        val events = database.withReadOnlyJdbcTransaction { connection ->
-            val afterFilter = if (cursor == null) "" else "AND (created_at,id)>(?,?)"
+        val previousWatermark = forwardAfter
+        val forward = load(previousWatermark, through = null, maxEvents)
+        var published = publishNew(forward)
+        forward.lastOrNull()?.let { forwardAfter = it.position }
+
+        val spare = maxEvents - forward.size
+        if (previousWatermark != null && spare > 0) {
+            // Only recheck positions whose delivery can still be deduplicated.
+            val lowerBound = listOfNotNull(recheckAfter, evictedThrough).maxOrNull()
+            val recent = load(lowerBound, through = previousWatermark, spare)
+            published += publishNew(recent)
+            recheckAfter = if (recent.size == spare) recent.last().position else null
+        }
+        return published
+    }
+
+    private suspend fun load(after: Position?, through: Position?, limit: Int): List<VisibleEvent> =
+        database.withReadOnlyJdbcTransaction { connection ->
+            val afterFilter = if (after == null) "" else "AND (created_at,id)>(?,?)"
+            val throughFilter = if (through == null) "" else "AND (created_at,id)<=(?,?)"
             connection.prepareStatement(
                 """SELECT id,recipient_user_id,event_type,point_id,chat_id,proposal_id,
                           display_snapshot,created_at,read_at
@@ -35,16 +54,16 @@ class NotificationBroadcaster(
                    WHERE visible_in_app=true
                      AND created_at>=statement_timestamp()-(? * interval '1 minute')
                      $afterFilter
+                     $throughFilter
                    ORDER BY created_at,id LIMIT ?"""
             ).use { statement ->
                 statement.setInt(1, lookbackMinutes)
-                if (cursor == null) {
-                    statement.setInt(2, maxEvents)
-                } else {
-                    statement.setObject(2, cursor.createdAt.atOffset(ZoneOffset.UTC))
-                    statement.setObject(3, cursor.id)
-                    statement.setInt(4, maxEvents)
+                var index = 2
+                for (position in listOfNotNull(after, through)) {
+                    statement.setObject(index++, position.createdAt.atOffset(ZoneOffset.UTC))
+                    statement.setObject(index++, position.id)
                 }
+                statement.setInt(index, limit)
                 statement.executeQuery().use { rows -> buildList {
                     while (rows.next()) add(VisibleEvent(
                         rows.getObject("recipient_user_id", UUID::class.java),
@@ -53,10 +72,14 @@ class NotificationBroadcaster(
                 } }
             }
         }
+
+    private suspend fun publishNew(events: List<VisibleEvent>): Int {
         var count = 0
         for (event in events) {
             val notification = event.notification
-            if (notification.id in seen) continue
+            val position = event.position
+            val floor = evictedThrough
+            if (notification.id in seen || (floor != null && position <= floor)) continue
             try {
                 publish(event.recipientId, notification.id, notificationJson(notification), notification.createdAt)
             } catch (cancel: CancellationException) {
@@ -64,16 +87,23 @@ class NotificationBroadcaster(
             } catch (_: Exception) {
                 continue // Retry when the rolling window is scanned again.
             }
-            seen[notification.id] = Unit
+            seen[notification.id] = position
             count++
-            while (seen.size > rememberedIds) seen.remove(seen.keys.first())
+            if (seen.size > rememberedIds) {
+                val oldest = seen.entries.first()
+                if (floor == null || oldest.value > floor) evictedThrough = oldest.value
+                seen.remove(oldest.key)
+            }
         }
-        // Restart at the end to catch rows committed after we passed their insertion timestamp.
-        after = if (events.size == maxEvents) events.last().notification.let { Position(it.createdAt, it.id) } else null
         return count
     }
 
-    private data class Position(val createdAt: Instant, val id: UUID)
+    private data class Position(val createdAt: Instant, val id: UUID) : Comparable<Position> {
+        // PostgreSQL compares UUID bytes unsigned, unlike java.util.UUID.compareTo.
+        override fun compareTo(other: Position): Int = compareValuesBy(this, other, Position::createdAt, { it.id.toString() })
+    }
 
-    private data class VisibleEvent(val recipientId: UUID, val notification: NotificationView)
+    private data class VisibleEvent(val recipientId: UUID, val notification: NotificationView) {
+        val position = Position(notification.createdAt, notification.id)
+    }
 }

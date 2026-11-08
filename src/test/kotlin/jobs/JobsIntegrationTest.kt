@@ -178,6 +178,43 @@ class JobsIntegrationTest {
     }
 
     @Test
+    fun `broadcast cache overflow does not replay evicted pages or block newer events`(): Unit = runBlocking {
+        val dbUrl = checkedUrl() ?: return@runBlocking
+        val recipient = UUID.randomUUID()
+        withSeededUser(dbUrl, recipient) {
+            fun insertEvents(count: Int, minutesAgo: Int) = connection(dbUrl).use { connection ->
+                connection.prepareStatement(
+                    """INSERT INTO notification_events
+                       (id,recipient_user_id,channel,event_type,dedupe_key,display_snapshot,
+                        visible_in_app,push_requested,created_at)
+                       SELECT gen_random_uuid(),?,'PERSONAL','chat_message',gen_random_uuid()::text,'{}'::jsonb,
+                              true,false,statement_timestamp()-(? * interval '1 minute')
+                       FROM generate_series(1,?)"""
+                ).use { statement ->
+                    statement.setObject(1, recipient)
+                    statement.setInt(2, minutesAgo)
+                    statement.setInt(3, count)
+                    statement.executeUpdate()
+                }
+            }
+            insertEvents(103, 8)
+            runtime(dbUrl).use { database ->
+                val seen = mutableListOf<UUID>()
+                val broadcaster = NotificationBroadcaster(database, publish = { user, id, _, _ ->
+                    if (user == recipient) seen += id
+                }, rememberedIds = 100)
+                repeat(30) { broadcaster.tick(maxEvents = 7) }
+                assertEquals(103, seen.size)
+                assertEquals(103, seen.toSet().size)
+                insertEvents(1, 0)
+                broadcaster.tick(maxEvents = 7)
+                assertEquals(104, seen.size)
+                assertEquals(104, seen.toSet().size)
+            }
+        }
+    }
+
+    @Test
     fun `nearby history and broadcast use the same fallback and public target`(): Unit = runBlocking {
         val dbUrl = checkedUrl() ?: return@runBlocking
         val recipient = UUID.randomUUID()
