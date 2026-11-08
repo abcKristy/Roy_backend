@@ -71,6 +71,7 @@ fun Route.profileRoutes(
     val avatarUploads = Semaphore(2)
     put("/api/v1/me/avatar") {
         val identity = sessions.currentIdentity(call.request.headers[HttpHeaders.Authorization])
+        call.requireJsonResponse()
         val current = profile.captureAvatarState(identity)
         val result = avatarUploads.withPermit {
             profile.replaceAvatar(identity, current, call.receiveAvatarImage(avatarBodyTimeoutMillis))
@@ -84,6 +85,7 @@ fun Route.profileRoutes(
     }
     patch("/api/v1/me") {
         val identity = sessions.currentIdentity(call.request.headers[HttpHeaders.Authorization])
+        call.requireJsonResponse()
         val request = call.receiveStrictJson(UpdateProfileRequest.serializer())
         call.respond(profile.updateName(identity, request))
     }

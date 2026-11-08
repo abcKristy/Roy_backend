@@ -26,6 +26,7 @@ internal fun Route.deviceRoutes(service: DeviceService?, sessions: SessionAccess
         val availableService = service ?: throw ApiException(
             HttpStatusCode.ServiceUnavailable, "PUSH_REGISTRATION_FAILED", "Регистрация push временно недоступна",
         )
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(PushDeviceInput.serializer())
         val platform = when (input.platform to input.provider) {
             "android" to "rustore" -> "ANDROID_RUSTORE"

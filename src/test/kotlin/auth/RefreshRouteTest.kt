@@ -27,7 +27,9 @@ class RefreshRouteTest {
         val userId = UUID.randomUUID()
         val original = RefreshTokens.create(sessionId)
         val profile = UserSelf(userId.toString(), "Аня", null, "+79991234567", 24, null, now.toString())
+        var rotations = 0
         val service = RefreshService(RefreshRepository { _, presented, _, _ ->
+            rotations++
             if (presented == RefreshTokens.hash(original))
                 RefreshRotationResult.Rotated(profile, userId, 0, now.plusSeconds(3600))
             else RefreshRotationResult.Invalid
@@ -39,11 +41,22 @@ class RefreshRouteTest {
                 override fun close() = Unit
             }, refreshService = service)
         }
+        for (accept in listOf("application/xml", "application/json;q=0, */*;q=1")) {
+            val rejected = client.post("/api/v1/auth/refresh") {
+                header(HttpHeaders.Accept, accept)
+                contentType(ContentType.Application.Json)
+                setBody("""{"refreshToken":"$original"}""")
+            }
+            assertEquals(HttpStatusCode.NotAcceptable, rejected.status)
+            assertEquals("", rejected.bodyAsText())
+            assertEquals(0, rotations)
+        }
         val response = client.post("/api/v1/auth/refresh") {
             contentType(ContentType.Application.Json)
             setBody("""{"refreshToken":"$original"}""")
         }
         assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(1, rotations)
         assertEquals("no-store", response.headers[HttpHeaders.CacheControl])
         assertTrue(response.bodyAsText().contains("\"accessToken\":\"new-access\""))
         assertTrue(response.bodyAsText().contains("\"refreshToken\":"))

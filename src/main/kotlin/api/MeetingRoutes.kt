@@ -120,6 +120,7 @@ internal fun Route.meetingRoutes(
         val actor = meetingActor(sessions, call)
         val chatId = meetingId(call.parameters["chatId"])
         val key = meetingId(call.request.headers["Idempotency-Key"])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(ProposalInput.serializer())
         val startsAt = meetingInstant(input.startsAt)
         val endsAt = meetingInstant(input.endsAt)
@@ -140,6 +141,7 @@ internal fun Route.meetingRoutes(
     put("/api/v1/proposals/{proposalId}/vote") {
         val actor = meetingActor(sessions, call)
         val proposalId = meetingId(call.parameters["proposalId"])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(VoteInput.serializer())
         when (val result = proposals.vote(VoteCommand(actor, proposalId, input.going))) {
             is VoteResult.Updated -> {
@@ -158,6 +160,7 @@ internal fun Route.meetingRoutes(
         val actor = meetingActor(sessions, call)
         val proposalId = meetingId(call.parameters["proposalId"])
         val key = meetingId(call.request.headers["Idempotency-Key"])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(BookingInput.serializer())
         if (input.expectedRevision < 0) throw invalidMeetingField()
         when (val result = bookings.book(BookMeetingCommand(actor, proposalId, key,
@@ -185,6 +188,7 @@ internal fun Route.meetingRoutes(
         val actor = meetingActor(sessions, call)
         val proposalId = meetingId(call.parameters["proposalId"])
         val key = meetingId(call.request.headers["Idempotency-Key"])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(CloseProposalInput.serializer())
         if (input.expectedRevision < 0) throw invalidMeetingField()
         when (val result = bookings.close(CloseMeetingCommand(actor, proposalId, key, input.expectedRevision)) { _, value ->

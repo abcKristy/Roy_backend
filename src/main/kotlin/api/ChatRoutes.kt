@@ -76,6 +76,7 @@ internal fun Route.chatReadRoutes(read: ChatReadService, sessions: SessionAccess
     put("/api/v1/chats/{chatId}/read-cursor") {
         val actor = chatActor(sessions, call.request.headers[HttpHeaders.Authorization])
         val id = chatId(call.parameters["chatId"])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(ReadCursorInput.serializer())
         if (input.lastReadMessageSeq < 0) throw ApiException(
             HttpStatusCode.UnprocessableEntity, "INVALID_FIELD", "Некорректный курсор чтения")

@@ -64,6 +64,7 @@ internal fun Route.pointWriteRoutes(write: PointWriteService, sessions: SessionA
     post("/api/v1/points") {
         val actor = actorId(sessions, call.request.headers[HttpHeaders.Authorization])
         val key = idempotencyKey(call.request.headers["Idempotency-Key"])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(CreatePointInput.serializer())
         val source = when (input.addressSource) {
             "provider" -> PointAddressSource.GEOCODED
@@ -119,6 +120,7 @@ internal fun Route.pointWriteRoutes(write: PointWriteService, sessions: SessionA
         val actor = actorId(sessions, call.request.headers[HttpHeaders.Authorization])
         val key = idempotencyKey(call.request.headers["Idempotency-Key"])
         val pointId = parseId(call.parameters["pointId"])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(AddTopicInput.serializer())
         val result = write.addTopic(AddTopicCommand(actor, key, pointId, validateTopic(input.topic)),
             PointWriteSnapshot::addTopic)
@@ -135,6 +137,7 @@ internal fun Route.pointWriteRoutes(write: PointWriteService, sessions: SessionA
     }
     put("/api/v1/chats/{chatId}/membership") {
         val actor = actorId(sessions, call.request.headers[HttpHeaders.Authorization])
+        call.requireJsonResponse()
         when (val result = write.join(actor, parseId(call.parameters["chatId"]))) {
             is JoinPointChatResult.Joined -> {
                 call.publishMembership(realtime, result.membership.chatId, actor, "joined")

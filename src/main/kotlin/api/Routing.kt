@@ -123,6 +123,7 @@ fun Application.configureRouting(
         if (registrationService != null) {
             post("/api/v1/auth/register") {
                 call.response.header(HttpHeaders.CacheControl, "no-store")
+                call.requireJsonResponse()
                 val request = call.receiveStrictJson(RegisterRequest.serializer())
                 call.respond(HttpStatusCode.Created, registrationService.register(request))
             }
@@ -130,6 +131,7 @@ fun Application.configureRouting(
         if (loginService != null) {
             post("/api/v1/auth/login") {
                 call.response.header(HttpHeaders.CacheControl, "no-store")
+                call.requireJsonResponse()
                 val request = call.receiveStrictJson(LoginRequest.serializer())
                 call.respond(HttpStatusCode.OK, loginService.login(request))
             }
@@ -137,6 +139,7 @@ fun Application.configureRouting(
         if (refreshService != null) {
             post("/api/v1/auth/refresh") {
                 call.response.header(HttpHeaders.CacheControl, "no-store")
+                call.requireJsonResponse()
                 val request = call.receiveStrictJson(RefreshRequest.serializer())
                 call.respond(HttpStatusCode.OK, refreshService.refresh(request))
             }

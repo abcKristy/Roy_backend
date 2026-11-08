@@ -1,9 +1,12 @@
 package com.example.api
 
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.parseHeaderValue
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
@@ -18,6 +21,29 @@ internal val transportJson = Json {
     encodeDefaults = true
 }
 
+private class JsonResponseNotAcceptable : RuntimeException()
+
+/** Reject an incompatible response format before a handler commits a JSON-returning mutation. */
+internal fun ApplicationCall.requireJsonResponse() {
+    val ranges = request.headers.getAll(HttpHeaders.Accept)?.flatMap { parseHeaderValue(it) }.orEmpty()
+    if (ranges.isEmpty()) return
+    val match = ranges.mapNotNull { range ->
+        val mediaType = try {
+            ContentType.parse(range.value)
+        } catch (_: IllegalArgumentException) {
+            return@mapNotNull null
+        }
+        if (!ContentType.Application.Json.match(mediaType)) return@mapNotNull null
+        val specificity = when {
+            mediaType.contentType == "*" -> 0
+            mediaType.contentSubtype == "*" -> 1
+            else -> 2
+        }
+        specificity to range.quality
+    }.maxWithOrNull(compareBy<Pair<Int, Double>> { it.first }.thenBy { it.second })
+    if (match == null || match.second <= 0) throw JsonResponseNotAcceptable()
+}
+
 fun Application.configureTransport(errorMapper: ErrorMapper = ErrorMapper()) {
     val serverLog = environment.log
     install(RequestId)
@@ -25,6 +51,9 @@ fun Application.configureTransport(errorMapper: ErrorMapper = ErrorMapper()) {
         json(transportJson)
     }
     install(StatusPages) {
+        exception<JsonResponseNotAcceptable> { call, _ ->
+            call.respond(HttpStatusCode.NotAcceptable)
+        }
         exception<Throwable> { call, cause ->
             if (cause is CancellationException) throw cause
             val failure = errorMapper.map(cause)

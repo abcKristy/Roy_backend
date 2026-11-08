@@ -22,6 +22,7 @@ internal fun Route.reportRoutes(service: ModerationService, sessions: SessionAcc
     post("/api/v1/reports") {
         val actor = UUID.fromString(sessions.currentUser(call.request.headers[HttpHeaders.Authorization]).id)
         val key = reportUuid(call.request.headers["Idempotency-Key"], HttpStatusCode.BadRequest)
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(ReportInput.serializer())
         val target = reportUuid(input.targetUserId, HttpStatusCode.UnprocessableEntity)
         val reason = input.reasonText.trim()

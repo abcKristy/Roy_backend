@@ -36,6 +36,7 @@ internal fun Route.chatWriteRoutes(
         val actor = UUID.fromString(sessions.currentUser(call.request.headers[HttpHeaders.Authorization]).id)
         val chatId = requiredUuid(call.parameters["chatId"])
         val key = requiredUuid(call.request.headers["Idempotency-Key"])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(SendMessageInput.serializer())
         when (val result = write.send(SendMessageCommand(actor, chatId, key, input.text)) { _, message ->
             messageJson(message)

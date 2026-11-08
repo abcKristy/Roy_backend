@@ -23,6 +23,7 @@ private data class ReverseResponse(val address: String?, val source: String)
 internal fun Route.geocodingRoutes(geocoder: ReverseGeocoder, sessions: SessionAccessService) {
     post("/api/v1/geocoding/reverse") {
         sessions.currentUser(call.request.headers[HttpHeaders.Authorization])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(ReverseRequest.serializer())
         val position = PointPosition(input.position.lat, input.position.lon)
         if (!position.latitude.isFinite() || position.latitude !in -90.0..90.0 ||

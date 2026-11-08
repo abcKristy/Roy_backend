@@ -67,6 +67,7 @@ internal fun Route.notificationRoutes(service: NotificationService, sessions: Se
     }
     put("/api/v1/me/notification-settings") {
         val actor = notificationActor(sessions, call.request.headers[HttpHeaders.Authorization])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(NotificationSettingsInputSerializer)
         if (input.expectedRevision < 0) throw invalidNotificationField()
         when (val result = service.updateSettings(actor, NotificationSettingsChange(
@@ -97,6 +98,7 @@ internal fun Route.notificationRoutes(service: NotificationService, sessions: Se
         call.response.header(HttpHeaders.CacheControl, "no-store")
         val actor = notificationActor(sessions, call.request.headers[HttpHeaders.Authorization])
         val id = notificationId(call.parameters["notificationId"])
+        call.requireJsonResponse()
         val view = service.markRead(actor, id) ?: throw ApiException(
             HttpStatusCode.NotFound, "RESOURCE_GONE", "Уведомление не найдено")
         call.respond(notificationJson(view))
@@ -109,6 +111,7 @@ internal fun Route.notificationRoutes(service: NotificationService, sessions: Se
     put("/api/v1/me/notification-location") {
         call.response.header(HttpHeaders.CacheControl, "no-store")
         val actor = notificationActor(sessions, call.request.headers[HttpHeaders.Authorization])
+        call.requireJsonResponse()
         val input = call.receiveStrictJson(NotificationLocationInputSerializer)
         when (val result = service.setLocation(actor, input.position.lat, input.position.lon)) {
             is LocationWriteResult.Updated -> call.respond(locationJson(result.location))
