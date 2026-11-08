@@ -48,7 +48,8 @@ private data class TopicInput(val presetKey: String, val customLabel: String? = 
 @Serializable
 private data class CreatePointInput(
     val position: PositionInput, val topic: TopicInput, val address: String,
-    val addressSource: String, val confirmNearby: Boolean,
+    val addressSource: String,
+    @Serializable(with = StrictJsonBooleanSerializer::class) val confirmNearby: Boolean,
 )
 
 @Serializable

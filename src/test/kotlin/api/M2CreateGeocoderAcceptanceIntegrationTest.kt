@@ -85,11 +85,11 @@ class M2CreateGeocoderAcceptanceIntegrationTest {
                 setBody("""{"position":{"lat":$lat,"lon":$lon}}""")
             }
             suspend fun create(auth: String, key: UUID, lat: Double, lon: Double, address: String,
-                               source: String) = client.post("/api/v1/points") {
+                               source: String, confirmation: String = "true") = client.post("/api/v1/points") {
                 header(HttpHeaders.Authorization, auth)
                 header("Idempotency-Key", key.toString())
                 contentType(ContentType.Application.Json)
-                setBody("""{"position":{"lat":$lat,"lon":$lon},"topic":{"presetKey":"football"},"address":"$address","addressSource":"$source","confirmNearby":true}""")
+                setBody("""{"position":{"lat":$lat,"lon":$lon},"topic":{"presetKey":"football"},"address":"$address","addressSource":"$source","confirmNearby":$confirmation}""")
             }
 
             val found = reverse(providerToken, -41.0, -71.0)
@@ -98,6 +98,11 @@ class M2CreateGeocoderAcceptanceIntegrationTest {
             assertEquals("Provider address", foundBody["address"]!!.jsonPrimitive.content)
             assertEquals("provider", foundBody["source"]!!.jsonPrimitive.content)
             val providerKey = UUID.randomUUID()
+            val quotedConfirmation = create(providerToken, providerKey, -41.0, -71.0,
+                "Provider address", "provider", confirmation = "\"true\"")
+            assertEquals(HttpStatusCode.UnprocessableEntity, quotedConfirmation.status)
+            assertEquals("INVALID_FIELD", Json.parseToJsonElement(quotedConfirmation.bodyAsText())
+                .jsonObject["error"]!!.jsonObject["code"]!!.jsonPrimitive.content)
             val providerCreated = create(providerToken, providerKey, -41.0, -71.0,
                 foundBody["address"]!!.jsonPrimitive.content, foundBody["source"]!!.jsonPrimitive.content)
             assertEquals(HttpStatusCode.Created, providerCreated.status)
