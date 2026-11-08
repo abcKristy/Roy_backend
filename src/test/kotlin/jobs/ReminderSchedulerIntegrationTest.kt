@@ -96,6 +96,18 @@ class ReminderSchedulerIntegrationTest {
     }
 
     @Test
+    fun `late booking is counted as a miss before the reminder window closes`() = runBlocking<Unit> {
+        Fixture().use { fixture ->
+            val late = fixture.booking(secondsUntilStart = 3540, bookedLate = true)
+            val scheduler = fixture.scheduler()
+
+            assertEquals(ReminderTick(0, 0, 1), scheduler.tick())
+            assertEquals(1L, scheduler.missedWindowGauge())
+            assertEquals(emptyMap(), fixture.reminders(late))
+        }
+    }
+
+    @Test
     fun `reminder channel keeps in app history and fans out only to active opted in devices`() = runBlocking<Unit> {
         Fixture().use { fixture ->
             val booking = fixture.booking(secondsUntilStart = 3540)
@@ -147,7 +159,7 @@ class ReminderSchedulerIntegrationTest {
         private val users = listOf(owner, peer, former, outsider)
         private val points = mutableListOf<UUID>()
 
-        suspend fun booking(secondsUntilStart: Long): UUID = database.withJdbcTransaction { connection ->
+        suspend fun booking(secondsUntilStart: Long, bookedLate: Boolean = false): UUID = database.withJdbcTransaction { connection ->
             val point = UUID.randomUUID()
             val topic = UUID.randomUUID()
             val chat = UUID.randomUUID()
@@ -188,7 +200,7 @@ class ReminderSchedulerIntegrationTest {
             )
             connection.execute(
                 "INSERT INTO bookings(id,proposal_id,booked_by_user_id,created_at) VALUES (?,?,?,?)",
-                booking, proposal, owner, start.minusSeconds(3600).atOffset(ZoneOffset.UTC),
+                booking, proposal, owner, start.minusSeconds(if (bookedLate) 3599 else 3600).atOffset(ZoneOffset.UTC),
             )
             points += point
             booking

@@ -12,7 +12,6 @@ import com.example.persistence.RecipientLockMode
 import com.example.persistence.withRetryingJdbcTransaction
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import org.postgresql.util.PSQLState
 import java.sql.Connection
 import java.sql.SQLException
 import java.time.Clock
@@ -27,6 +26,7 @@ data class ReminderTick(val bookingsVisited: Int, val eventsCreated: Int, val mi
 private const val REMINDER_LEAD_SECONDS = 3600L
 private const val REMINDER_WINDOW_SECONDS = 120L
 private const val REMINDER_DEDUPE_PREFIX = "reminder_1h:"
+private const val LOCK_NOT_AVAILABLE = "55P03"
 
 internal fun isReminderEligible(active: Boolean, startsAt: Instant, bookedAt: Instant, now: Instant): Boolean {
     val dueAt = startsAt.minusSeconds(REMINDER_LEAD_SECONDS)
@@ -81,7 +81,7 @@ class ReminderScheduler(
             try {
                 produced += schedule(id)
             } catch (failure: SQLException) {
-                if (failure.sqlState != PSQLState.LOCK_NOT_AVAILABLE.state) throw failure
+                if (failure.sqlState != LOCK_NOT_AVAILABLE) throw failure
                 // A later lock timed out. Revisit this booking on the next tick if still due.
             }
         }
@@ -92,12 +92,13 @@ class ReminderScheduler(
                 """SELECT count(*) FROM bookings AS b JOIN meeting_proposals AS p ON p.id=b.proposal_id
                    WHERE b.status='ACTIVE' AND p.lifecycle='OPEN'
                      AND p.starts_at>? AND p.starts_at<=?
-                     AND b.created_at<=p.starts_at-interval '1 hour'
+                     AND (p.starts_at<=? OR b.created_at>p.starts_at-interval '1 hour')
                      AND NOT EXISTS (SELECT 1 FROM notification_events AS e
                        WHERE e.booking_id=b.id AND e.event_type='reminder_1h')"""
             ).use { statement ->
                 statement.setObject(1, now.atOffset(ZoneOffset.UTC))
-                statement.setObject(2, now.plusSeconds(REMINDER_LEAD_SECONDS - REMINDER_WINDOW_SECONDS).atOffset(ZoneOffset.UTC))
+                statement.setObject(2, now.plusSeconds(REMINDER_LEAD_SECONDS).atOffset(ZoneOffset.UTC))
+                statement.setObject(3, now.plusSeconds(REMINDER_LEAD_SECONDS - REMINDER_WINDOW_SECONDS).atOffset(ZoneOffset.UTC))
                 statement.executeQuery().use { rows -> rows.next(); rows.getLong(1) }
             }
         }

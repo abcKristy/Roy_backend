@@ -30,7 +30,14 @@ class JobRuntime(
     fun start(): JobRuntime {
         check(!started) { "JobRuntime can start only once" }
         started = true
-        loop("reminders", 30_000) { reminders.tick() }
+        var lastMissed = 0L
+        loop("reminders", 30_000) {
+            val missed = reminders.tick().missedWindowGauge
+            if (missed != lastMissed) {
+                log.info("Reminder missed window count={}", missed)
+                lastMissed = missed
+            }
+        }
         loop("proposal-expiry", 30_000) { onExpired(expiry.tick()) }
         loop("notification-broadcast", 2_000) { broadcaster.tick() }
         loop("retention", 3_600_000) { cleanup.runBatch() }
