@@ -161,7 +161,7 @@ class ModerationService(
             statement.setObject(1, target)
             statement.executeQuery().use { rows -> check(rows.next()); rows.getLong(1) }
         }
-        if (count < 16) return
+        if (count < 15) return
         connection.prepareStatement(
             """UPDATE users SET message_muted_until=?,report_mute_triggered_at=?,updated_at=?
                WHERE id=? AND deleted_at IS NULL AND report_mute_triggered_at IS NULL"""

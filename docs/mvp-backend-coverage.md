@@ -37,7 +37,7 @@
 - `POST /api/v1/chats/{chatId}/messages` — сохранение сообщения и seq, повтор, ограничения mute/flood/контента. `ChatWriteRoutesIntegrationTest`, `SendReplayIntegrationTest`, `ShortMessageFloodIntegrationTest`, `LongMessageFloodIntegrationTest`, `MuteSendGuardIntegrationTest`, `ProfanityFilterIntegrationTest`, `UrlFilterIntegrationTest`, `PhoneFilterIntegrationTest`.
 - `GET /api/v1/chats/{chatId}/messages/search` — scoped поиск и курсор. `HistorySearchIntegrationTest`.
 - `PUT /api/v1/chats/{chatId}/read-cursor` — монотонный курсор текущего участника. `ReadCursorIntegrationTest`.
-- `POST /api/v1/reports` — контекст, уникальная жалоба, mute на 16-й уникальной. `ReportContextIntegrationTest`, `ReportTransactionIntegrationTest`, `MuteThresholdIntegrationTest`.
+- `POST /api/v1/reports` — контекст, уникальная жалоба, однократный mute на 7 суток при 15-й уникальной жалобе. `ReportContextIntegrationTest`, `ReportTransactionIntegrationTest`, `MuteThresholdIntegrationTest`.
 
 ## Встречи и брони
 

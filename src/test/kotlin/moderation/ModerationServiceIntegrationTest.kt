@@ -60,12 +60,12 @@ class ModerationServiceIntegrationTest {
             appEnvironment = AppEnvironment.PRODUCTION)).start().use { runtime ->
             val service = ModerationService(runtime)
             val keys = List(17) { UUID.randomUUID() }
-            for (index in 0 until 16) {
+            for (index in 0 until 15) {
                 val reason = if (index == 0) "😀".repeat(1000) else "Reason $index"
                 assertIs<ReportResult.Created>(service.report(ReportCommand(
                     reporters[index], keys[index], chat, target, reason)))
             }
-            val muteAt16 = DriverManager.getConnection(url, user, password).use { connection ->
+            val muteAt15 = DriverManager.getConnection(url, user, password).use { connection ->
                 connection.prepareStatement(
                     "SELECT message_muted_until,report_mute_triggered_at FROM users WHERE id=?"
                 ).use { statement ->
@@ -81,12 +81,12 @@ class ModerationServiceIntegrationTest {
                 }
             }
             val repeated = assertIs<ReportResult.Replay>(service.report(ReportCommand(
-                reporters[15], keys[15], chat, target, "Reason 15")))
+                reporters[14], keys[14], chat, target, "Reason 14")))
             assertEquals(201, repeated.responseSnapshot["status"]?.toString()?.toInt())
             assertIs<ReportResult.DuplicateReport>(service.report(ReportCommand(
-                reporters[15], UUID.randomUUID(), chat, target, "Other reason")))
+                reporters[14], UUID.randomUUID(), chat, target, "Other reason")))
             assertIs<ReportResult.Created>(service.report(ReportCommand(
-                reporters[16], keys[16], chat, target, "Reason 16")))
+                reporters[15], keys[15], chat, target, "Reason 15")))
             DriverManager.getConnection(url, user, password).use { connection ->
                 connection.prepareStatement(
                     "SELECT message_muted_until,report_mute_triggered_at FROM users WHERE id=?"
@@ -94,8 +94,8 @@ class ModerationServiceIntegrationTest {
                     statement.setObject(1, target)
                     statement.executeQuery().use { rows ->
                         check(rows.next())
-                        assertEquals(muteAt16.first, rows.getObject(1, OffsetDateTime::class.java).toInstant())
-                        assertEquals(muteAt16.second, rows.getObject(2, OffsetDateTime::class.java).toInstant())
+                        assertEquals(muteAt15.first, rows.getObject(1, OffsetDateTime::class.java).toInstant())
+                        assertEquals(muteAt15.second, rows.getObject(2, OffsetDateTime::class.java).toInstant())
                     }
                 }
             }

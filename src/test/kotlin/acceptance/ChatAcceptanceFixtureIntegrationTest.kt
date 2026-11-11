@@ -12,13 +12,14 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.*
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.test.*
 
 class ChatAcceptanceFixtureIntegrationTest {
     @Test
-    fun `synthetic namespace reproduces access and sixteen reports and cleans only owned data`() = testApplication {
+    fun `synthetic namespace reproduces access and the mute threshold and cleans only owned data`() = testApplication {
         val url = com.example.testing.testDatabaseUrl()
         val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER required")
         val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD required")
@@ -52,6 +53,7 @@ class ChatAcceptanceFixtureIntegrationTest {
                             assertFalse(refused.bodyAsText().contains("Synthetic history"))
                         }
                     }
+                    var thresholdReportedAt: Instant? = null
                     for ((index, reporter) in fixture.reporters.withIndex()) {
                         val key = UUID.randomUUID().toString()
                         val body = buildJsonObject { put("contextChatId", fixture.chats[0].toString()); put("targetUserId", fixture.peer.toString()); put("reasonText", "Synthetic fixture reason") }.toString()
@@ -61,6 +63,7 @@ class ChatAcceptanceFixtureIntegrationTest {
                         }
                         val response = report(); assertEquals(HttpStatusCode.Created, response.status)
                         val canonical = Json.parseToJsonElement(response.bodyAsText())
+                        if (index == 14) thresholdReportedAt = Instant.parse(canonical.jsonObject.getValue("reportedAt").jsonPrimitive.content)
                         val replay = report(); assertEquals(HttpStatusCode.Created, replay.status)
                         assertEquals(canonical, Json.parseToJsonElement(replay.bodyAsText()))
                         assertEquals(index + 1, fixture.count("reports"))
@@ -69,8 +72,14 @@ class ChatAcceptanceFixtureIntegrationTest {
                                 assertTrue(r.next())
                                 val triggered = r.getObject(1, OffsetDateTime::class.java)?.toInstant()
                                 val until = r.getObject(2, OffsetDateTime::class.java)?.toInstant()
-                                if (index < 15) { assertNull(triggered); assertNull(until) }
-                                else { assertEquals(assertNotNull(triggered).plusSeconds(604800), until) }
+                                if (index < 14) {
+                                    assertNull(triggered)
+                                    assertNull(until)
+                                } else {
+                                    val expectedTrigger = assertNotNull(thresholdReportedAt)
+                                    assertEquals(expectedTrigger, triggered)
+                                    assertEquals(expectedTrigger.plusSeconds(7 * 24 * 3600L), until)
+                                }
                             }
                         } }
                     }

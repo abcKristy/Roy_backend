@@ -86,23 +86,23 @@ class MuteThresholdIntegrationTest {
             }
             fun serverTime()=DriverManager.getConnection(url,user,password).use{c ->c.createStatement().use{it.executeQuery("SELECT clock_timestamp()").use{r->assertTrue(r.next());r.getObject(1,OffsetDateTime::class.java).toInstant()}}}
             val initial=state()
-            for(actor in reporters.take(15)){
+            for(actor in reporters.take(14)){
                 assertEquals(HttpStatusCode.Created,post(body(),actor=actor).status)
                 assertEquals(initial,state())
             }
-            assertEquals(15 to 0,counts());assertNull(state().until);assertNull(state().triggered)
+            assertEquals(14 to 0,counts());assertNull(state().until);assertNull(state().triggered)
             // A deleted original context must not reset the lifetime threshold.
             db.withJdbcTransaction{c ->
                 c.prepareStatement("DELETE FROM chats WHERE id=?").use{it.setObject(1,chat);assertEquals(1,it.executeUpdate())}
                 for(actor in listOf(member)+reporters) c.prepareStatement("INSERT INTO chat_memberships(chat_id,user_id,joined_at) VALUES (?,?,clock_timestamp())").use{it.setObject(1,foreign);it.setObject(2,actor);it.executeUpdate()}
             }
-            assertEquals(15 to 15,counts());assertEquals(initial,state())
+            assertEquals(14 to 14,counts());assertEquals(initial,state())
             startApplication()
             val keys=List(2){UUID.randomUUID().toString()}
             val ready=List(2){CompletableDeferred<Unit>()};val start=CompletableDeferred<Unit>()
             val before=serverTime()
             val results=withTimeout(15000){coroutineScope{
-                val jobs=keys.mapIndexed{index,key -> async(Dispatchers.Default){ready[index].complete(Unit);start.await();post(body(context=foreign),key,reporters[15+index])}}
+                val jobs=keys.mapIndexed{index,key -> async(Dispatchers.Default){ready[index].complete(Unit);start.await();post(body(context=foreign),key,reporters[14+index])}}
                 ready.forEach{it.await()};start.complete(Unit);jobs.awaitAll()
             }}
             val after=serverTime()
@@ -114,24 +114,24 @@ class MuteThresholdIntegrationTest {
             assertEquals(times.minOrNull(),triggered)
             assertEquals(triggered.plusSeconds(7*24*3600L),muted.until)
             assertEquals(triggered,muted.updated)
-            assertEquals(17 to 15,counts())
+            assertEquals(16 to 14,counts())
             // Replay both successful operations and a fresh duplicate without changing any state.
             val committed=snapshot()
             for(index in keys.indices){
-                val replay=post(body(context=foreign),keys[index],reporters[15+index]);assertEquals(HttpStatusCode.Created,replay.status)
+                val replay=post(body(context=foreign),keys[index],reporters[14+index]);assertEquals(HttpStatusCode.Created,replay.status)
                 assertEquals(bodies[index],Json.parseToJsonElement(replay.bodyAsText()).jsonObject);assertEquals(committed,snapshot())
             }
-            val duplicate=post(body(context=foreign),actor=reporters[15]);assertEquals(HttpStatusCode.Conflict,duplicate.status)
+            val duplicate=post(body(context=foreign),actor=reporters[14]);assertEquals(HttpStatusCode.Conflict,duplicate.status)
             assertEquals("DUPLICATE_REPORT",Json.parseToJsonElement(duplicate.bodyAsText()).jsonObject.getValue("error").jsonObject.getValue("code").jsonPrimitive.content)
             assertEquals(committed,snapshot());assertEquals(muted,state())
-            assertEquals(HttpStatusCode.Created,post(body(context=foreign),actor=reporters[17]).status)
-            assertEquals(18 to 15,counts());assertEquals(muted,state())
+            assertEquals(HttpStatusCode.Created,post(body(context=foreign),actor=reporters[16]).status)
+            assertEquals(17 to 14,counts());assertEquals(muted,state())
             // Fixture advances past the persisted deadline while retaining the one-time marker.
             val expired=serverTime().minusSeconds(1)
             db.withJdbcTransaction{c ->c.prepareStatement("UPDATE users SET message_muted_until=? WHERE id=?").use{it.setObject(1,expired.atOffset(java.time.ZoneOffset.UTC));it.setObject(2,member);assertEquals(1,it.executeUpdate())}}
             val expiredState=state();assertEquals(triggered,expiredState.triggered);assertEquals(expired,expiredState.until)
-            assertEquals(HttpStatusCode.Created,post(body(context=foreign),actor=reporters[18]).status)
-            assertEquals(19 to 15,counts());assertEquals(expiredState,state())
+            assertEquals(HttpStatusCode.Created,post(body(context=foreign),actor=reporters[17]).status)
+            assertEquals(18 to 14,counts());assertEquals(expiredState,state())
         }
     }
 }

@@ -74,7 +74,7 @@ class ReportTransactionIntegrationTest {
                 }
             }
             db.withJdbcTransaction{c ->
-                for(prior in people.drop(8)) c.prepareStatement("INSERT INTO reports(id,reporter_user_id,target_user_id,context_chat_id,reason_text,created_at) VALUES (?,?,?,?,'Prior atomic fixture',clock_timestamp())").use{
+                for(prior in people.drop(8).take(14)) c.prepareStatement("INSERT INTO reports(id,reporter_user_id,target_user_id,context_chat_id,reason_text,created_at) VALUES (?,?,?,?,'Prior atomic fixture',clock_timestamp())").use{
                     it.setObject(1,UUID.randomUUID());it.setObject(2,prior);it.setObject(3,member);it.setObject(4,chat);assertEquals(1,it.executeUpdate())
                 }
             }
@@ -90,7 +90,7 @@ class ReportTransactionIntegrationTest {
                 assertEquals(HttpStatusCode.InternalServerError,failed.status)
                 assertEquals(baseline,snapshot())
                 DriverManager.getConnection(url,user,password).use{c ->
-                    c.prepareStatement("SELECT count(*) FROM reports WHERE target_user_id=?").use{it.setObject(1,member);it.executeQuery().use{r->assertTrue(r.next());assertEquals(15,r.getInt(1))}}
+                    c.prepareStatement("SELECT count(*) FROM reports WHERE target_user_id=?").use{it.setObject(1,member);it.executeQuery().use{r->assertTrue(r.next());assertEquals(14,r.getInt(1))}}
                     c.prepareStatement("SELECT message_muted_until,report_mute_triggered_at FROM users WHERE id=?").use{it.setObject(1,member);it.executeQuery().use{r->assertTrue(r.next());assertNull(r.getObject(1));assertNull(r.getObject(2))}}
                 }
             }finally{
@@ -114,7 +114,7 @@ class ReportTransactionIntegrationTest {
                     it.executeQuery().use{r ->
                         assertTrue(r.next());assertEquals(reporter,r.getObject(1,UUID::class.java));assertEquals(member,r.getObject(2,UUID::class.java));assertEquals(chat,r.getObject(3,UUID::class.java));assertEquals("Atomic report",r.getString(4))
                         assertEquals(at,r.getObject(5,OffsetDateTime::class.java).toInstant());assertEquals(at.plusSeconds(7*24*3600L),r.getObject(6,OffsetDateTime::class.java).toInstant());assertEquals(at,r.getObject(7,OffsetDateTime::class.java).toInstant());assertEquals(id,r.getObject(8,UUID::class.java))
-                        val outcome=Json.parseToJsonElement(r.getString(9)).jsonObject;assertEquals(201,outcome.getValue("status").jsonPrimitive.int);assertEquals(result,outcome["body"]);assertEquals(16,r.getInt(10));assertFalse(r.next())
+                        val outcome=Json.parseToJsonElement(r.getString(9)).jsonObject;assertEquals(201,outcome.getValue("status").jsonPrimitive.int);assertEquals(result,outcome["body"]);assertEquals(15,r.getInt(10));assertFalse(r.next())
                     }
                 }
             }
