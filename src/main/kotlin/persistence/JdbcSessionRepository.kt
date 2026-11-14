@@ -63,7 +63,7 @@ class JdbcSessionRepository(private val database: DatabaseRuntime) : SessionRepo
         if (!userExists) return@withJdbcTransaction RefreshRotationResult.Invalid
 
         val current = connection.prepareStatement(
-            """SELECT s.id, s.user_id, s.expires_at, s.revoked_at, s.auth_version AS session_auth_version,
+            """SELECT s.user_id, s.expires_at, s.revoked_at, s.auth_version AS session_auth_version,
                       s.refresh_token_hash, s.previous_refresh_token_hash,
                       u.id, u.display_name, u.phone_e164, u.age_years, u.avatar_object_key,
                       u.message_muted_until, u.created_at, u.auth_version AS user_auth_version

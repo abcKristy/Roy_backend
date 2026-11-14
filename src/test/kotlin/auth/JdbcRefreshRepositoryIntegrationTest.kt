@@ -22,6 +22,45 @@ import kotlin.test.assertNull
 /** Runs only against a disposable database explicitly named roy_m1t2_*. */
 class JdbcRefreshRepositoryIntegrationTest {
     @Test
+    fun `refresh returns the same account profile as authenticated access`() = runBlocking {
+        val runtime = openDisposableDatabase() ?: return@runBlocking
+        val now = Instant.parse("2026-11-01T12:00:00Z")
+        val expiry = now.plusSeconds(3600)
+        val userId = UUID.randomUUID()
+        val sessionId = UUID.randomUUID()
+        val refreshToken = RefreshTokens.create(sessionId)
+        try {
+            JdbcRegistrationRepository(runtime).create(NewRegistration(
+                userId, sessionId, uniquePhone(), "test-hash", "Аня", 24,
+                "test-only", now, expiry, RefreshTokens.hash(refreshToken),
+            ))
+            runtime.withJdbcTransaction { connection ->
+                connection.prepareStatement("UPDATE users SET avatar_object_key = ? WHERE id = ?").use { statement ->
+                    statement.setString(1, "test-avatar")
+                    statement.setObject(2, userId)
+                    statement.executeUpdate()
+                }
+            }
+            val repository = JdbcSessionRepository(runtime)
+            val signingSecret = "test-only-secret-at-least-thirty-two-bytes-long"
+            val issuer = JwtTokenIssuer(signingSecret)
+            val clock = Clock.fixed(now, ZoneOffset.UTC)
+            val access = SessionAccessService(signingSecret, repository, clock)
+            val initialAccessToken = issuer.issue(userId, sessionId, 0, now, expiry)
+            val initialUser = access.currentUser("Bearer $initialAccessToken")
+
+            val refreshed = RefreshService(repository, issuer, clock).refresh(RefreshRequest(refreshToken))
+
+            assertEquals(userId.toString(), refreshed.user.id)
+            assertEquals("/api/v1/users/$userId/avatar", refreshed.user.avatarUrl)
+            assertEquals(initialUser, refreshed.user)
+            assertEquals(initialUser, access.currentUser("Bearer ${refreshed.accessToken}"))
+        } finally {
+            runtime.close()
+        }
+    }
+
+    @Test
     fun `rotation preserves fixed expiry and replay revokes only its session`() = runBlocking {
         val runtime = openDisposableDatabase() ?: return@runBlocking
         val now = Instant.parse("2026-11-01T12:00:00Z")
