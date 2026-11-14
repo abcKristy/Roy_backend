@@ -42,6 +42,8 @@ Register, login and successful refresh return the same fields. The token markers
 {"accessToken":"SYNTHETIC_ACCESS_TOKEN_NOT_VALID","expiresAt":"2026-11-02T12:15:00Z","refreshToken":"SYNTHETIC_REFRESH_TOKEN_NOT_VALID","refreshExpiresAt":"2026-12-02T12:00:00Z","user":{"id":"00000000-0000-4000-8000-000000000001","displayName":"Example User","avatarUrl":null,"phone":"+12025550123","ageYears":18,"messageMutedUntil":null,"createdAt":"2026-11-02T12:00:00Z"}}
 ```
 
+`Session.user.id` is the account ID and matches `/me.id` after login, registration and refresh. The access JWT's `jti` identifies the individual session.
+
 Persist the token pair, both expiry fields and user as one session snapshot. The access JWT is short lived (default 15 minutes); the opaque refresh token rotates and has a fixed session expiry (default 30 days). Both tokens are secrets: do not log, display or include them in error reports. A new login creates a separate session.
 
 ## Refresh and client state
