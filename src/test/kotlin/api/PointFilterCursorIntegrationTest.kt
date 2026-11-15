@@ -7,6 +7,7 @@ import com.example.points.PointReadRepository
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.encodeURLParameter
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
@@ -14,7 +15,9 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.nio.charset.StandardCharsets
+import java.time.OffsetDateTime
 import java.util.Base64
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -73,6 +76,73 @@ class PointFilterCursorIntegrationTest {
             assertEquals(HttpStatusCode.BadRequest, bad.status)
             assertEquals("INVALID_CURSOR", Json.parseToJsonElement(bad.bodyAsText()).jsonObject
                 .getValue("error").jsonObject.getValue("code").jsonPrimitive.content)
+
+            // Paginate a custom label whose Kotlin and database lowercasing can differ.
+            val older = UUID.randomUUID()
+            val newer = UUID.randomUUID()
+            val exactLabel = "\u0130"
+            val canonicalLabel = runtime.withJdbcTransaction { connection ->
+                connection.prepareStatement(
+                    """INSERT INTO points (id,location,address,address_source,created_at,updated_at)
+                       VALUES (?,ST_SetSRID(ST_MakePoint(-155.64,22.14),4326),'Synthetic point','MANUAL',?,?)"""
+                ).use { statement ->
+                    val timestamp = OffsetDateTime.parse("2026-11-02T12:00:00Z")
+                    for ((id, time) in listOf(older to timestamp, newer to timestamp.plusMinutes(1))) {
+                        statement.setObject(1, id)
+                        statement.setObject(2, time)
+                        statement.setObject(3, time)
+                        statement.addBatch()
+                    }
+                    statement.executeBatch()
+                }
+                connection.prepareStatement(
+                    """WITH topic AS (
+                         INSERT INTO point_topics (id,point_id,preset_key,custom_label,created_at)
+                         VALUES (gen_random_uuid(),?,'other',?,now()) RETURNING id
+                       ) INSERT INTO chats (id,point_topic_id,created_at) SELECT gen_random_uuid(),id,now() FROM topic"""
+                ).use { statement ->
+                    for (id in listOf(older, newer)) {
+                        statement.setObject(1, id)
+                        statement.setString(2, exactLabel)
+                        statement.addBatch()
+                    }
+                    statement.executeBatch()
+                }
+                connection.prepareStatement("SELECT lower(btrim(?::text))").use { statement ->
+                    statement.setString(1, exactLabel)
+                    statement.executeQuery().use { rows ->
+                        check(rows.next())
+                        rows.getString(1)
+                    }
+                }
+            }
+            try {
+                val params = "west=-156&south=22&east=-155&north=23&limit=1&topicKey=other"
+                val exact = client.get("/api/v1/points?$params&customTopicLabel=${exactLabel.encodeURLParameter()}")
+                assertEquals(HttpStatusCode.OK, exact.status)
+                val exactBody = Json.parseToJsonElement(exact.bodyAsText()).jsonObject
+                assertEquals(listOf(newer.toString()),
+                    exactBody.getValue("items").jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.content })
+                val unicodeCursor = exactBody.getValue("nextCursor").jsonPrimitive.content
+                val equivalent = client.get(
+                    "/api/v1/points?$params&customTopicLabel=${canonicalLabel.encodeURLParameter()}&cursor=$unicodeCursor"
+                )
+                assertEquals(HttpStatusCode.OK, equivalent.status)
+                val equivalentBody = Json.parseToJsonElement(equivalent.bodyAsText()).jsonObject
+                assertEquals(listOf(older.toString()),
+                    equivalentBody.getValue("items").jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.content })
+                assertEquals(JsonNull, equivalentBody.getValue("nextCursor"))
+                val changed = client.get("/api/v1/points?$params&customTopicLabel=changed&cursor=$unicodeCursor")
+                assertEquals(HttpStatusCode.BadRequest, changed.status)
+            } finally {
+                runtime.withJdbcTransaction { connection ->
+                    connection.prepareStatement("DELETE FROM points WHERE id IN (?,?)").use { statement ->
+                        statement.setObject(1, older)
+                        statement.setObject(2, newer)
+                        statement.executeUpdate()
+                    }
+                }
+            }
         }
     }
 }

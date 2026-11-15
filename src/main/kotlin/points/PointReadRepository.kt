@@ -72,9 +72,9 @@ data class PointMapFilter(
         }
     }
 
-    internal fun fingerprint(): String {
+    internal fun fingerprint(canonicalCustomLabel: String?): String {
         val values = listOf(
-            west, south, east, north, topicKey ?: "", customTopicLabel?.trim()?.lowercase() ?: "",
+            west, south, east, north, topicKey ?: "", canonicalCustomLabel ?: "",
             peopleMin, peopleMax, limit,
         ).map { it.toString() }
         val bytes = values.joinToString("") { "${it.length}:$it" }.toByteArray(StandardCharsets.UTF_8)
@@ -96,7 +96,8 @@ class PointReadRepository(private val database: DatabaseRuntime, cursorSecret: S
 
     suspend fun page(filter: PointMapFilter, cursor: String? = null): PointPageRead =
         database.withReadOnlyJdbcTransaction { connection ->
-            val after = cursor?.let { cursorCodec.decode(it, filter) }
+            val canonicalLabel = filter.customTopicLabel?.let { canonicalCustomLabel(connection, it) }
+            val after = cursor?.let { cursorCodec.decode(it, filter.fingerprint(canonicalLabel)) }
             val heads = connection.prepareStatement(
                 """SELECT p.id, ST_Y(p.location), ST_X(p.location), p.address, p.address_source,
                           p.created_at, p.updated_at
@@ -124,9 +125,8 @@ class PointReadRepository(private val database: DatabaseRuntime, cursorSecret: S
                 statement.setObject(7, after?.second)
                 statement.setString(8, filter.topicKey)
                 statement.setString(9, filter.topicKey)
-                val custom = filter.customTopicLabel?.trim()?.lowercase()
-                statement.setString(10, custom)
-                statement.setString(11, custom)
+                statement.setString(10, canonicalLabel)
+                statement.setString(11, canonicalLabel)
                 statement.setInt(12, filter.peopleMin)
                 statement.setInt(13, filter.peopleMax)
                 statement.setInt(14, filter.limit + 1)
@@ -144,8 +144,20 @@ class PointReadRepository(private val database: DatabaseRuntime, cursorSecret: S
             val people = readPeopleCounts(connection, ids)
             PointPageRead(
                 visible.map { head -> head.toPoint(topics[head.id].orEmpty(), people[head.id] ?: 0) },
-                if (heads.size > filter.limit) visible.lastOrNull()?.let { cursorCodec.encode(filter, it.createdAt, it.id) } else null,
+                if (heads.size > filter.limit) visible.lastOrNull()?.let {
+                    cursorCodec.encode(filter.fingerprint(canonicalLabel), it.createdAt, it.id)
+                } else null,
             )
+        }
+
+    // Match the collation and expression used for topic uniqueness and filtering.
+    private fun canonicalCustomLabel(connection: Connection, label: String): String =
+        connection.prepareStatement("SELECT lower(btrim(?::text))").use { statement ->
+            statement.setString(1, label.trim())
+            statement.executeQuery().use { rows ->
+                check(rows.next())
+                rows.getString(1)
+            }
         }
 
     suspend fun detail(id: UUID): PointRead? = database.withReadOnlyJdbcTransaction { connection ->
@@ -259,13 +271,13 @@ private class PointCursorCodec(secret: String) {
 
     init { require(secret.toByteArray(StandardCharsets.UTF_8).size >= 32) { "Cursor secret must have at least 32 UTF-8 bytes" } }
 
-    fun encode(filter: PointMapFilter, createdAt: Instant, id: UUID): String {
-        val payload = "1|points|${filter.fingerprint()}|$createdAt|$id"
+    fun encode(fingerprint: String, createdAt: Instant, id: UUID): String {
+        val payload = "1|points|$fingerprint|$createdAt|$id"
         val bytes = payload.toByteArray(StandardCharsets.UTF_8)
         return encoder.encodeToString(bytes) + "." + encoder.encodeToString(sign(bytes))
     }
 
-    fun decode(cursor: String, filter: PointMapFilter): Pair<Instant, UUID> {
+    fun decode(cursor: String, fingerprint: String): Pair<Instant, UUID> {
         require(cursor.length <= 1024)
         val parts = cursor.split('.')
         require(parts.size == 2)
@@ -273,7 +285,7 @@ private class PointCursorCodec(secret: String) {
         val signature = try { decoder.decode(parts[1]) } catch (_: IllegalArgumentException) { throw IllegalArgumentException("Invalid cursor") }
         require(MessageDigest.isEqual(sign(bytes), signature)) { "Invalid cursor signature" }
         val text = bytes.toString(StandardCharsets.UTF_8)
-        val prefix = "1|points|${filter.fingerprint()}|"
+        val prefix = "1|points|$fingerprint|"
         require(text.startsWith(prefix)) { "Cursor filter mismatch" }
         val tail = text.removePrefix(prefix).split('|')
         require(tail.size == 2)
