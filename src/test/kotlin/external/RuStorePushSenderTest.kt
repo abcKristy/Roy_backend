@@ -5,33 +5,59 @@ import com.example.jobs.PushPayload
 import com.example.jobs.PushSendResult
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.http.HttpTimeoutException
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class RuStorePushSenderTest {
     private val payload = PushPayload(UUID.randomUUID(), "nearby_meeting", UUID.randomUUID(),
         UUID.randomUUID(), UUID.randomUUID())
 
     @Test
-    fun `RuStore posts bearer service credentials and only public nearby targets`() = runBlocking {
+    fun `RuStore posts nearby data-only with bearer service credentials and public targets`() = runBlocking {
         val sender = RuStorePushSender("my-project_1", "synthetic-key", PushProviderHttp { uri, headers, body ->
             assertEquals("https://vkpns.rustore.ru/v1/projects/my-project_1/messages:send", uri.toString())
             assertEquals("Bearer synthetic-key", headers["Authorization"])
             val message = Json.parseToJsonElement(body).jsonObject.getValue("message").jsonObject
+            assertEquals(setOf("token", "data", "android"), message.keys)
             assertEquals("synthetic-token", message.getValue("token").jsonPrimitive.content)
-            assertTrue(message.getValue("notification").jsonObject.getValue("title").jsonPrimitive.content.isNotBlank())
+            val android = message.getValue("android").jsonObject
+            assertEquals(JsonObject(mapOf("ttl" to JsonPrimitive("3600s"))), android)
             val data = message.getValue("data").jsonObject
-            assertEquals(setOf("v", "notificationId", "kind", "pointId"), data.keys)
-            assertEquals(kotlinx.serialization.json.JsonPrimitive("1"), data.getValue("v"))
-            assertEquals(payload.pointId.toString(), data.getValue("pointId").jsonPrimitive.content)
+            assertEquals(JsonObject(mapOf(
+                "v" to JsonPrimitive("1"),
+                "notificationId" to JsonPrimitive(payload.notificationId.toString()),
+                "kind" to JsonPrimitive("nearby_meeting"),
+                "pointId" to JsonPrimitive(payload.pointId.toString()),
+            )), data)
             PushProviderResponse(200, "{}")
         })
         assertEquals(PushSendResult.Delivered, sender.send("ANDROID_RUSTORE", "synthetic-token", payload))
+    }
+
+    @Test
+    fun `RuStore reminder data preserves the typed tap target and short TTL`() = runBlocking {
+        val reminder = payload.copy(kind = "reminder_1h")
+        val sender = RuStorePushSender("project", "synthetic-key", PushProviderHttp { _, _, body ->
+            val message = Json.parseToJsonElement(body).jsonObject.getValue("message").jsonObject
+            assertEquals(setOf("token", "data", "android"), message.keys)
+            assertEquals(JsonObject(mapOf("ttl" to JsonPrimitive("120s"))), message.getValue("android").jsonObject)
+            assertEquals(JsonObject(mapOf(
+                "v" to JsonPrimitive("1"),
+                "notificationId" to JsonPrimitive(reminder.notificationId.toString()),
+                "kind" to JsonPrimitive("reminder_1h"),
+                "pointId" to JsonPrimitive(reminder.pointId.toString()),
+                "chatId" to JsonPrimitive(reminder.chatId.toString()),
+                "proposalId" to JsonPrimitive(reminder.proposalId.toString()),
+            )), message.getValue("data").jsonObject)
+            PushProviderResponse(200, "{}")
+        })
+        assertEquals(PushSendResult.Delivered, sender.send("ANDROID_RUSTORE", "synthetic-token", reminder))
     }
 
     @Test
