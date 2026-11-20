@@ -2,6 +2,7 @@
 param([Parameter(Mandatory)][string]$OutputRoot, [ValidateSet('all','chat','telemetry')][string]$Mode='all')
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'local-docker.ps1')
+. (Join-Path $PSScriptRoot 'distribution.ps1')
 Assert-LocalDocker
 if (Test-Path -LiteralPath $OutputRoot) { throw 'Output root must be fresh' }
 New-Item -ItemType Directory -Path $OutputRoot | Out-Null
@@ -10,13 +11,14 @@ foreach($key in @('JAVA_TOOL_OPTIONS','_JAVA_OPTIONS','JDK_JAVA_OPTIONS','JAVA_O
     [Environment]::SetEnvironmentVariable($key,$null,'Process')
 }
 $java = Join-Path $env:JAVA_HOME 'bin/java.exe'
+$distribution = Build-B6Distribution
 $monitorClasses = Join-Path (Get-Location).Path 'build/load-monitor'
 New-Item -ItemType Directory -Path $monitorClasses -Force | Out-Null
 & (Join-Path $env:JAVA_HOME 'bin/javac.exe') --add-modules jdk.attach -d $monitorClasses 'tools/load/PoolSampler.java' *> "$OutputRoot/monitor-compile.log"
 if($LASTEXITCODE -ne 0){throw 'Local pool sampler compilation failed'}
-$jar = 'build/install/roy-backend/lib/roy-backend-1.0.0-SNAPSHOT.jar'
-$hash = (Get-FileHash $jar).Hash
-$source = git rev-parse HEAD
+$jar = (Get-B6ApplicationJar).FullName
+$hash = $distribution.JarSha256
+$source = $distribution.Source
 Get-ChildItem Env: | Where-Object Name -Match '^(AVATAR_STORAGE_|APNS_|RUSTORE_|DADATA_|AUTH_PRIVACY_POLICY_|PUSH_TOKEN_ENCRYPTION_KEY_BASE64$|PUBLIC_BASE_URL$)' |
     ForEach-Object { Remove-Item -LiteralPath ('Env:' + $_.Name) }
 $env:POSTGRES_USER = 'roy_load'
@@ -40,7 +42,7 @@ $id = docker run --pull=never -d --rm --name $name --label roy.purpose=server-lo
 if ($LASTEXITCODE -ne 0 -or $id -notmatch '^[0-9a-f]{64}$') { throw 'Disposable container failed' }
 $server = $null
 function Assert-Candidate {
-    if ((Get-FileHash $jar).Hash -ne $hash -or (git rev-parse HEAD) -ne $source) { throw 'Candidate changed' }
+    Assert-B6DistributionUnchanged $distribution
 }
 function Start-Backend([string]$Database,[string]$Label) {
     $env:LOAD_DB_NAME = $Database
@@ -63,6 +65,12 @@ function Run-Load([string]$Mode) {
     $code = $LASTEXITCODE
     [ordered]@{mode=$Mode;exitCode=$code} | ConvertTo-Json -Compress | Add-Content "$OutputRoot/exit-codes.jsonl"
     Assert-Candidate
+    if ($code -ne 0) { throw "Load run $Mode failed; evidence retained" }
+    $summary = Get-Content -LiteralPath "$OutputRoot/$Mode/summary.json" -Raw | ConvertFrom-Json
+    $expected = if ($Mode -eq 'diagnostic') { 'DIAGNOSTIC_ONLY' } else { 'PASS' }
+    if ($summary.metricAcceptance -ne $expected -or $summary.evidenceCompleteness -ne 'COMPLETE') {
+        throw "Load run $Mode did not meet its evidence gate; evidence retained"
+    }
 }
 function Test-Telemetry([string]$Label) {
     & python tools/load/run.py --mode telemetry --output "$OutputRoot/telemetry-$Label" --base-url $env:PUBLIC_BASE_URL --server-pid $server.Id --jar $jar *> "$OutputRoot/telemetry-$Label.log"

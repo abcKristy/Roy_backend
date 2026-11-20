@@ -430,6 +430,7 @@ class Recorder:
         save(self.out/'sql-deltas.json',{'phases':self.sql_deltas,'attribution':'Includes background and observer queries; not exact SQL-per-REST counts'})
         save(self.out/'summary.json',summary)
         print(json.dumps(summary, ensure_ascii=False), flush=True)
+        return summary
 
 
 async def schedule(seconds, rate, callback):
@@ -770,7 +771,13 @@ def main():
     except Exception as e:
         rec.finish({'acceptance':'FAIL','fatalClass':type(e).__name__})
         raise
-    else: rec.finish(result)
+    else:
+        summary = rec.finish(result)
+        expected = {'capacity':'PASS', 'bbox':'PASS', 'chat':'PASS',
+                    'diagnostic':'DIAGNOSTIC_ONLY', 'telemetry':'PREFLIGHT_ONLY'}[args.mode]
+        return 0 if (summary['metricAcceptance'] == expected and
+                     summary['evidenceCompleteness'] == 'COMPLETE') else 1
 
 
-if __name__=='__main__': main()
+if __name__=='__main__':
+    raise SystemExit(main())
