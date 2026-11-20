@@ -5,11 +5,21 @@ import com.example.config.AppEnvironment
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.postgresql.PGConnection
 import java.sql.Connection
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 class HikariDatabaseBootstrap(private val config: ServerConfig) : DatabaseBootstrap {
     override fun start(): DatabaseRuntime {
@@ -35,6 +45,7 @@ class HikariDatabaseBootstrap(private val config: ServerConfig) : DatabaseBootst
             poolName = "roy-db"
             isRegisterMbeans = config.databasePoolJmxEnabled
             addDataSourceProperty("socketTimeout", ((config.databaseStatementTimeoutMs + 999) / 1_000 + 2).toString())
+            addDataSourceProperty("cancelSignalTimeout", "2")
         })
 
         try {
@@ -67,36 +78,69 @@ private class PooledDatabaseRuntime(
     private val database: Database,
     private val config: ServerConfig,
 ) : DatabaseRuntime {
-    override suspend fun <T> withJdbcTransaction(block: (Connection) -> T): T = withContext(Dispatchers.IO) {
-        pool.connection.use { connection ->
-            connection.autoCommit = false
-            try {
-                setTimeouts(connection)
-                val result = block(connection)
-                connection.commit()
-                result
-            } catch (failure: Throwable) {
-                rollbackPreservingFailure(connection, failure)
-                throw failure
-            }
-        }
-    }
+    // Keep cancellation runnable even when ordinary IO threads are blocked borrowing pool connections.
+    private val cancellationDispatcher = Dispatchers.IO.limitedParallelism(config.databaseMaxPoolSize)
 
-    override suspend fun <T> withReadOnlyJdbcTransaction(block: (Connection) -> T): T = withContext(Dispatchers.IO) {
+    override suspend fun <T> withJdbcTransaction(block: (Connection) -> T): T =
+        jdbcTransaction(readOnly = false, block)
+
+    override suspend fun <T> withReadOnlyJdbcTransaction(block: (Connection) -> T): T =
+        jdbcTransaction(readOnly = true, block)
+
+    private suspend fun <T> jdbcTransaction(readOnly: Boolean, block: (Connection) -> T): T = withContext(Dispatchers.IO) {
+        ensureActive()
+        // Borrowing remains bounded by connectionTimeout; never start SQL for an already cancelled caller.
         pool.connection.use { connection ->
-            connection.isReadOnly = true
-            connection.transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ
-            connection.autoCommit = false
-            try {
-                setTimeouts(connection)
-                val result = block(connection)
-                connection.commit()
-                result
-            } catch (failure: Throwable) {
-                rollbackPreservingFailure(connection, failure)
-                throw failure
+            coroutineScope {
+                ensureActive()
+                val completed = AtomicBoolean(false)
+                val abortFailure = AtomicReference<Exception?>()
+                val cancellation = launch(cancellationDispatcher, start = CoroutineStart.UNDISPATCHED) {
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        if (!completed.get()) {
+                            var failure: Exception? = null
+                            try {
+                                connection.unwrap(PGConnection::class.java).cancelQuery()
+                            } catch (cancelFailure: Exception) {
+                                failure = cancelFailure
+                            }
+                            try {
+                                connection.abort { command -> command.run() }
+                            } catch (closeFailure: Exception) {
+                                if (failure == null) failure = closeFailure else failure.addSuppressed(closeFailure)
+                            }
+                            abortFailure.set(failure)
+                        }
+                    }
+                }
+                var primaryFailure: Throwable? = null
+                try {
+                    if (readOnly) {
+                        connection.isReadOnly = true
+                        connection.transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ
+                    }
+                    connection.autoCommit = false
+                    setTimeouts(connection)
+                    val result = block(connection)
+                    ensureActive()
+                    connection.commit()
+                    result
+                } catch (failure: Throwable) {
+                    primaryFailure = failure
+                    rollbackPreservingFailure(connection, failure)
+                    throw failure
+                } finally {
+                    completed.set(true)
+                    // Finish every cancellation action while this checkout is still owned by this transaction.
+                    withContext(NonCancellable) { cancellation.cancelAndJoin() }
+                    abortFailure.get()?.let { failure ->
+                        if (primaryFailure != null) primaryFailure.addSuppressed(failure) else throw failure
+                    }
+                }
             }
-            // Hikari resets read-only and isolation on close, where use preserves the primary exception.
+            // Hikari resets read-only and isolation on close; an aborted physical connection is discarded.
         }
     }
 

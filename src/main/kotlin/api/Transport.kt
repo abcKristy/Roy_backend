@@ -9,6 +9,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
+import io.ktor.server.http.HttpRequestLifecycle
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
@@ -48,6 +49,9 @@ internal fun ApplicationCall.requireJsonResponse() {
 
 fun Application.configureTransport(errorMapper: ErrorMapper = ErrorMapper()) {
     val serverLog = environment.log
+    install(HttpRequestLifecycle) {
+        cancelCallOnClose = true
+    }
     install(RequestId)
     install(ContentNegotiation) {
         json(transportJson)
