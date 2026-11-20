@@ -10,6 +10,14 @@ import kotlin.test.assertTrue
 
 class ServerConfigTest {
     @Test
+    fun `pool reserves the two connections required by startup schema validation`() {
+        assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(required + ("DATABASE_MAX_POOL_SIZE" to "1"))
+        }
+        assertEquals(2, ServerConfig.fromEnvironment(required + ("DATABASE_MAX_POOL_SIZE" to "2")).databaseMaxPoolSize)
+    }
+
+    @Test
     fun `pool monitoring is disabled by default and explicitly enabled only locally`() {
         assertFalse(ServerConfig.fromEnvironment(required).databasePoolJmxEnabled)
         assertFalse(ServerConfig.fromEnvironment(required + ("APP_ENV" to "local")).databasePoolJmxEnabled)

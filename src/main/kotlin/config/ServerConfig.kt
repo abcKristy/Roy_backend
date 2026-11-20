@@ -59,7 +59,7 @@ class ServerConfig(
             "Push provider configuration requires PUSH_TOKEN_ENCRYPTION_KEY_BASE64"
         }
         require((migrationUser == null) == (migrationPassword == null)) { "Migration credentials must be provided together" }
-        require(databaseMaxPoolSize in 1..100) { "DATABASE_MAX_POOL_SIZE must be between 1 and 100" }
+        require(databaseMaxPoolSize in 2..100) { "DATABASE_MAX_POOL_SIZE must be between 2 and 100" }
         require(databaseConnectionTimeoutMs in 500..60_000) { "DATABASE_CONNECTION_TIMEOUT_MS must be between 500 and 60000" }
         require(databaseStatementTimeoutMs in 100..60_000) { "DATABASE_STATEMENT_TIMEOUT_MS must be between 100 and 60000" }
         require(databaseLockTimeoutMs in 1 until databaseStatementTimeoutMs) { "DATABASE_LOCK_TIMEOUT_MS must be below statement timeout" }
