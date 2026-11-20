@@ -82,6 +82,32 @@ def cgroup_numeric(raw):
     return result
 
 
+def cgroup_v1_numeric(raw):
+    scalars=[]; rss=None
+    for line in raw.splitlines():
+        fields=line.split()
+        if not fields: continue
+        if len(fields)==1 and fields[0].isdigit(): scalars.append(int(fields[0]))
+        elif len(fields)==2 and fields[1].isdigit():
+            if fields[0]=='rss': rss=int(fields[1])
+        else: raise ValueError('Unexpected cgroup v1 counter line')
+    if len(scalars)!=4 or rss is None: raise ValueError('Required cgroup v1 counters missing')
+    return {'cpuUsageUsec':scalars[0]/1000,'cpuUserUsec':scalars[1]/1000,'cpuSystemUsec':scalars[2]/1000,
+            'memoryCurrentBytes':scalars[3],'memoryRssBytes':rss}
+
+
+def cgroup_v1_io(raw,kind):
+    result={'ioRead'+kind:0,'ioWrite'+kind:0}
+    for line in raw.splitlines():
+        fields=line.split()
+        if not fields: continue
+        if len(fields)==2 and fields[0]=='Total' and fields[1].isdigit(): continue
+        if len(fields)!=3 or not re.fullmatch(r'\d+:\d+',fields[0]) or not fields[2].isdigit():
+            raise ValueError('Unexpected cgroup v1 IO line')
+        if fields[1] in ('Read','Write'): result['io'+fields[1]+kind]+=int(fields[2])
+    return result
+
+
 class Recorder:
     def __init__(self, args):
         self.args = args
@@ -224,7 +250,24 @@ class Recorder:
             context=os.environ.get('DOCKER_CONTEXT') or subprocess.check_output(['docker','context','show'],text=True).strip()
             endpoint=subprocess.check_output(['docker','context','inspect','--format','{{.Endpoints.docker.Host}}','--',context],text=True).strip()
             if not re.fullmatch(local,endpoint): raise ValueError('Docker context is not local')
-            self.start_cgroup_monitor(container)
+            version=subprocess.check_output(['docker','info','--format','{{.CgroupVersion}}'],text=True,timeout=5).strip()
+            if version not in ('1','2'): raise ValueError('Unsupported cgroup version')
+            io_files={}
+            if version=='1':
+                for kind,stem in [('Bytes','io_service_bytes'),('Ops','io_serviced')]:
+                    for name in ('blkio.throttle.'+stem,'blkio.'+stem,'blkio.'+stem+'_recursive'):
+                        path='/sys/fs/cgroup/blkio/'+name
+                        probe=subprocess.run(['docker','exec',container,'test','-r',path],stdout=subprocess.DEVNULL,
+                                             stderr=subprocess.DEVNULL,timeout=3)
+                        if probe.returncode==0:
+                            io_files[kind]=path; break
+                        if probe.returncode!=1: raise RuntimeError('Cgroup optional-counter probe failed')
+            save(self.out/'cgroup-source.json',{'version':version,'cadenceSeconds':1,
+                'cpuUnit':'cpuacct native nanoseconds converted to microseconds' if version=='1' else 'cpu.stat microseconds',
+                'memoryResidentField':'memoryRssBytes from memory.stat rss' if version=='1' else 'memoryAnonBytes from memory.stat anon',
+                'ioAvailability':('AVAILABLE' if io_files else 'NO_KERNEL_COUNTER') if version=='1' else 'AVAILABLE',
+                'ioCounterFiles':io_files,'noKernelCounterMeaning':'Missing kernel counters are omitted, never fabricated as zero'})
+            self.start_cgroup_monitor(container,version,io_files)
         except Exception as error: self.resource_errors.append('docker:'+type(error).__name__)
 
     def start_heap_monitor(self):
@@ -267,10 +310,12 @@ class Recorder:
             self.monitor_threads.append(thread); thread.start()
         except Exception as error: self.resource_errors.append('heap:'+type(error).__name__)
 
-    def start_cgroup_monitor(self,container):
+    def start_cgroup_monitor(self,container,version,io_files):
         def collect():
-            command=['docker','exec',container,'cat','/sys/fs/cgroup/cpu.stat','/sys/fs/cgroup/memory.current',
-                     '/sys/fs/cgroup/memory.stat','/sys/fs/cgroup/io.stat']
+            files=['/sys/fs/cgroup/cpu.stat','/sys/fs/cgroup/memory.current','/sys/fs/cgroup/memory.stat','/sys/fs/cgroup/io.stat'] if version=='2' else [
+                '/sys/fs/cgroup/cpuacct/cpuacct.usage','/sys/fs/cgroup/cpuacct/cpuacct.usage_user',
+                '/sys/fs/cgroup/cpuacct/cpuacct.usage_sys','/sys/fs/cgroup/memory/memory.usage_in_bytes','/sys/fs/cgroup/memory/memory.stat']
+            command=['docker','exec',container,'cat',*files]
             previous=None; planned=time.perf_counter_ns()
             try:
                 with (self.out/'docker.jsonl').open('w',encoding='utf-8') as output:
@@ -279,10 +324,15 @@ class Recorder:
                         # Only fixed numeric cgroup files in the independently verified owned container.
                         raw=subprocess.check_output(command,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',timeout=3,
                             creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
+                        gauges=cgroup_numeric(raw) if version=='2' else cgroup_v1_numeric(raw)
+                        for kind,path in io_files.items():
+                            io_raw=subprocess.check_output(['docker','exec',container,'cat',path],stderr=subprocess.DEVNULL,
+                                text=True,encoding='utf-8',timeout=3,creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
+                            gauges.update(cgroup_v1_io(io_raw,kind))
                         stamp=time.perf_counter_ns()
                         if self.stop.is_set(): break
                         row={'monoNs':stamp,'pollDurationMs':(stamp-dispatch)/1e6,'pollLagMs':max(0,(dispatch-planned)/1e6),
-                             **cgroup_numeric(raw)}
+                             **gauges}
                         if previous:
                             delta=row['cpuUsageUsec']-previous['cpuUsageUsec']
                             if delta<0 or stamp<=previous['monoNs']: raise ValueError('Cgroup CPU counter reset')

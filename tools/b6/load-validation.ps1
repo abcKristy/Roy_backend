@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$OutputRoot, [ValidateSet('all','chat')][string]$Mode='all')
+param([Parameter(Mandatory)][string]$OutputRoot, [ValidateSet('all','chat','telemetry')][string]$Mode='all')
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'local-docker.ps1')
 Assert-LocalDocker
@@ -150,7 +150,7 @@ try {
     }
     Start-Backend 'roy_load_chat' 'chat-server'
     Test-Telemetry 'chat'
-    Run-Load 'chat'
+    if($Mode -ne 'telemetry'){Run-Load 'chat'}
 } finally {
     if($null -ne $server -and -not $server.HasExited){Stop-Process -InputObject $server}
     docker stop -t 2 $id | Out-Null

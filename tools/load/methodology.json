@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "scope": "disposable loopback only; same-host generator, backend and database",
   "reference": "docs/b6/measurement.md",
   "clock": "time.perf_counter_ns in one generator process",
@@ -10,7 +10,8 @@
   "diagnostic": {"bbox_rate": 150, "seconds": 60},
   "generator": {"capacity_rate": 150, "capacity_seconds": 30, "lag_limit_ms": 100, "lag_rule": "all dispatch lag <=100ms; no request drops; max in-flight=5000 aborts rather than silently throttles", "revision_reason": "Before server measurements, calibrate at highest actual requested rate (150 diagnostic, 100 target). Both exploratory 300RPS failures are retained; 300 was surplus capacity, not a server requirement."},
   "errors": "Every scheduled attempt remains in raw data; HTTP errors, invalid JSON/content, transport errors, timeout and missing WS separate. No retry replacement.",
-  "resources": "Four independently timestamped streams: resources (server/generator CPU/RSS and DB activity/locks), pool (local-attach Hikari active/idle/total/pending), heap (validated jstat numeric gauges), docker (owned-container cgroup v2 cpu.stat/memory.current/memory.stat/io.stat via fixed docker exec cat every 1s). All timestamps use generator monotonic clock; cgroup CPU%=100*delta(usage_usec)/delta(time_usec). Cgroup memory.current and anon are bytes; heap capacities/utilization are jstat KiB and GC times seconds.",
+  "resources": "Four independently timestamped streams: resources (server/generator CPU/RSS and DB activity/locks), pool (local-attach Hikari active/idle/total/pending), heap (validated jstat numeric gauges), docker (owned-container cgroup via fixed docker exec cat every 1s). Cgroup version is read from verified local Docker. v2 uses cpu.stat/memory.current/memory.stat/io.stat; v1 uses cpuacct.usage/_user/_sys and memory.usage_in_bytes/memory.stat. Native v1 CPU nanoseconds are converted to microseconds. Cgroup CPU%=100*delta(usage_usec)/delta(time_usec). Memory current and v2 anon/v1 rss are bytes with distinct field names. Heap capacities/utilization are jstat KiB and GC times seconds.",
+  "optional_io": "Probe known v1 blkio counter files read-only; if kernel exposes none, record NO_KERNEL_COUNTER and omit IO gauges rather than fabricate zero. CPU/RAM/heap/pool remain mandatory. Per-run cgroup-source.json declares actual version, field semantics and IO availability.",
   "coverage": "For each measurement phase, all four streams must have >=2 samples, first and last edge gaps <=2s, all inter-sample gaps <=2s. Header text alone is not a heap sample. Capture errors or absent SQL evidence make evidence PARTIAL independently of metric PASS. A ten-second live telemetry preflight uses the same rule before workload warmup.",
   "sql_statistics": "Current database pg_stat_statements queryid/calls/rows snapshots before and after each phase; no SQL text or parameters. Deltas include background jobs and observer queries and are not exact SQL-per-REST attribution.",
   "pool_limitation": "Four instantaneous gauges are not a per-request pool-wait duration histogram. JMX must be explicitly enabled only in the local diagnostic server configuration."
