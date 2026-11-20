@@ -10,6 +10,29 @@ import kotlin.test.assertTrue
 
 class ServerConfigTest {
     @Test
+    fun `pool monitoring is disabled by default and explicitly enabled only locally`() {
+        assertFalse(ServerConfig.fromEnvironment(required).databasePoolJmxEnabled)
+        assertFalse(ServerConfig.fromEnvironment(required + ("APP_ENV" to "local")).databasePoolJmxEnabled)
+        assertTrue(ServerConfig.fromEnvironment(required + mapOf(
+            "APP_ENV" to "local", "DATABASE_POOL_JMX_ENABLED" to "true",
+        )).databasePoolJmxEnabled)
+        assertFalse(ServerConfig.fromEnvironment(required + ("DATABASE_POOL_JMX_ENABLED" to "false")).databasePoolJmxEnabled)
+    }
+
+    @Test
+    fun `local pool monitoring rejects production and malformed configuration`() {
+        assertFailsWith<IllegalArgumentException> {
+            ServerConfig.fromEnvironment(required + ("DATABASE_POOL_JMX_ENABLED" to "true"))
+        }
+        for (value in listOf("TRUE", "1", "", "private-invalid-value")) {
+            val failure = assertFailsWith<IllegalArgumentException> {
+                ServerConfig.fromEnvironment(required + mapOf("APP_ENV" to "local", "DATABASE_POOL_JMX_ENABLED" to value))
+            }
+            assertFalse(failure.stackTraceToString().contains("private-invalid-value"))
+        }
+    }
+
+    @Test
     fun `push providers are optional complete production settings`() {
         val rustore = mapOf(
             "RUSTORE_PROJECT_ID" to "123",

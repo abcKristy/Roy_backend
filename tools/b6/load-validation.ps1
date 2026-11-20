@@ -6,7 +6,14 @@ Assert-LocalDocker
 if (Test-Path -LiteralPath $OutputRoot) { throw 'Output root must be fresh' }
 New-Item -ItemType Directory -Path $OutputRoot | Out-Null
 if (-not $env:JAVA_HOME) { throw 'JAVA_HOME must point to JDK 17' }
+foreach($key in @('JAVA_TOOL_OPTIONS','_JAVA_OPTIONS','JDK_JAVA_OPTIONS','JAVA_OPTS','GRADLE_OPTS')) {
+    [Environment]::SetEnvironmentVariable($key,$null,'Process')
+}
 $java = Join-Path $env:JAVA_HOME 'bin/java.exe'
+$monitorClasses = Join-Path (Get-Location).Path 'build/load-monitor'
+New-Item -ItemType Directory -Path $monitorClasses -Force | Out-Null
+& (Join-Path $env:JAVA_HOME 'bin/javac.exe') --add-modules jdk.attach -d $monitorClasses 'tools/load/PoolSampler.java' *> "$OutputRoot/monitor-compile.log"
+if($LASTEXITCODE -ne 0){throw 'Local pool sampler compilation failed'}
 $jar = 'build/install/roy-backend/lib/roy-backend-1.0.0-SNAPSHOT.jar'
 $hash = (Get-FileHash $jar).Hash
 $source = git rev-parse HEAD
@@ -27,11 +34,11 @@ $env:DATABASE_MAX_POOL_SIZE = '5'
 $env:DATABASE_CONNECTION_TIMEOUT_MS = '5000'
 $env:DATABASE_STATEMENT_TIMEOUT_MS = '5000'
 $env:DATABASE_LOCK_TIMEOUT_MS = '1000'
+$env:DATABASE_POOL_JMX_ENABLED = 'true'
 $name = 'roy-load-' + [Guid]::NewGuid().ToString('N').Substring(0,12)
-$id = docker run --pull=never -d --rm --name $name --label roy.purpose=server-load-validation -p '127.0.0.1::5432' -e POSTGRES_USER -e POSTGRES_PASSWORD postgis/postgis:18-3.6
+$id = docker run --pull=never -d --rm --name $name --label roy.purpose=server-load-validation -p '127.0.0.1::5432' -e POSTGRES_USER -e POSTGRES_PASSWORD postgis/postgis:18-3.6 postgres -c shared_preload_libraries=pg_stat_statements
 if ($LASTEXITCODE -ne 0 -or $id -notmatch '^[0-9a-f]{64}$') { throw 'Disposable container failed' }
 $server = $null
-$stats = $null
 function Assert-Candidate {
     if ((Get-FileHash $jar).Hash -ne $hash -or (git rev-parse HEAD) -ne $source) { throw 'Candidate changed' }
 }
@@ -41,7 +48,7 @@ function Start-Backend([string]$Database,[string]$Label) {
     $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0)
     $listener.Start(); $env:SERVER_PORT = $listener.LocalEndpoint.Port.ToString(); $listener.Stop()
     $env:PUBLIC_BASE_URL = "http://127.0.0.1:$($env:SERVER_PORT)"
-    $script:server = Start-Process $java -ArgumentList '-Xmx1536m','-cp','build/install/roy-backend/lib/*','io.ktor.server.netty.EngineMain' -PassThru -WindowStyle Hidden -RedirectStandardOutput "$OutputRoot/$Label.stdout.log" -RedirectStandardError "$OutputRoot/$Label.stderr.log"
+    $script:server = Start-Process $java -ArgumentList '-Xmx1536m','-Dcom.sun.management.jmxremote.local.only=true','-Djava.rmi.server.hostname=127.0.0.1','-cp','build/install/roy-backend/lib/*','io.ktor.server.netty.EngineMain' -PassThru -WindowStyle Hidden -RedirectStandardOutput "$OutputRoot/$Label.stdout.log" -RedirectStandardError "$OutputRoot/$Label.stderr.log"
     $ready = $false
     for ($i=0;$i -lt 60;$i++) {
         try { if ((Invoke-RestMethod "$($env:PUBLIC_BASE_URL)/health" -TimeoutSec 2 -NoProxy).status -eq 'ok') {$ready=$true;break} } catch {}
@@ -52,16 +59,20 @@ function Start-Backend([string]$Database,[string]$Label) {
 }
 function Run-Load([string]$Mode) {
     Assert-Candidate
-    $script:stats = Start-Process docker -ArgumentList 'stats','--format','"{{json .}}"',$id -PassThru -WindowStyle Hidden -RedirectStandardOutput "$OutputRoot/$Mode.docker-stats.jsonl" -RedirectStandardError "$OutputRoot/$Mode.docker-stats.stderr.log"
-    try {
-        & python tools/load/run.py --mode $Mode --output "$OutputRoot/$Mode" --base-url $env:PUBLIC_BASE_URL --server-pid $server.Id --jar $jar *> "$OutputRoot/$Mode.log"
-        $code = $LASTEXITCODE
-        [ordered]@{mode=$Mode;exitCode=$code} | ConvertTo-Json -Compress | Add-Content "$OutputRoot/exit-codes.jsonl"
-    } finally { if($null -ne $stats -and -not $stats.HasExited){Stop-Process -InputObject $stats};$script:stats=$null }
+    & python tools/load/run.py --mode $Mode --output "$OutputRoot/$Mode" --base-url $env:PUBLIC_BASE_URL --server-pid $server.Id --jar $jar *> "$OutputRoot/$Mode.log"
+    $code = $LASTEXITCODE
+    [ordered]@{mode=$Mode;exitCode=$code} | ConvertTo-Json -Compress | Add-Content "$OutputRoot/exit-codes.jsonl"
     Assert-Candidate
+}
+function Test-Telemetry([string]$Label) {
+    & python tools/load/run.py --mode telemetry --output "$OutputRoot/telemetry-$Label" --base-url $env:PUBLIC_BASE_URL --server-pid $server.Id --jar $jar *> "$OutputRoot/telemetry-$Label.log"
+    if($LASTEXITCODE -ne 0){throw 'Telemetry preflight failed before load'}
+    $check = Get-Content "$OutputRoot/telemetry-$Label/summary.json" -Raw | ConvertFrom-Json
+    if($check.evidenceCompleteness -ne 'COMPLETE' -or $check.resourceErrors.Count -gt 0){throw 'Telemetry coverage is incomplete before load'}
 }
 try {
     if ((docker inspect --format '{{.Name}}' $id) -ne "/$name" -or (docker inspect --format '{{index .Config.Labels "roy.purpose"}}' $id) -ne 'server-load-validation') {throw 'Container identity mismatch'}
+    $env:LOAD_CONTAINER_ID = $id
     $ready = $false
     for($i=0;$i -lt 60;$i++){docker exec $id pg_isready -U $env:POSTGRES_USER -d postgres *> $null;if($LASTEXITCODE -eq 0){$ready=$true;break};Start-Sleep -Seconds 1}
     if(-not $ready){throw 'PostGIS not ready'}
@@ -76,11 +87,15 @@ try {
         $env:DATABASE_URL = "jdbc:postgresql://$binding/$db"
         & $java -cp 'build/install/roy-backend/lib/*' com.example.persistence.MigrationMainKt *> "$OutputRoot/$db.migrate.log"
         if($LASTEXITCODE -ne 0){throw 'Migration failed'}
+        docker exec $id psql -X -v ON_ERROR_STOP=1 -U $env:POSTGRES_USER -d $db -c 'CREATE EXTENSION pg_stat_statements' *> "$OutputRoot/$db.monitor-extension.log"
+        if($LASTEXITCODE -ne 0){throw 'Local statement statistics extension unavailable'}
     }
     $identityDatabase = @($databases)[0]
     $identity = docker exec $id psql -X -At -U $env:POSTGRES_USER -d $identityDatabase -c "SELECT current_database(),current_user,current_setting('server_version'),postgis_lib_version(),(SELECT max(installed_rank) FROM flyway_schema_history)"
     if($LASTEXITCODE -ne 0){throw 'Identity query failed'}
-    [ordered]@{source=$source;jarSha256=$hash;mode=$Mode;containerId=$id;containerName=$name;binding=$binding;databaseIdentity=$identity;runtime='JDK17';jvmMaxHeap='1536m';poolMax=5;connectionTimeoutMs=5000;statementTimeoutMs=5000;lockTimeoutMs=1000;providers='disabled';targetAcceptance=$false} | ConvertTo-Json | Set-Content "$OutputRoot/environment.json"
+    $statsVersion = docker exec $id psql -X -At -U $env:POSTGRES_USER -d $identityDatabase -c "SELECT extversion FROM pg_extension WHERE extname='pg_stat_statements'"
+    if($LASTEXITCODE -ne 0 -or -not $statsVersion){throw 'Cannot confirm statement statistics version'}
+    [ordered]@{source=$source;jarSha256=$hash;mode=$Mode;containerId=$id;containerName=$name;binding=$binding;databaseIdentity=$identity;runtime='JDK17';jvmMaxHeap='1536m';poolMax=5;poolJmxEnabled=$true;jmxAccess='local Attach only, no remote port';pgStatStatementsVersion=$statsVersion;connectionTimeoutMs=5000;statementTimeoutMs=5000;lockTimeoutMs=1000;providers='disabled';targetAcceptance=$false} | ConvertTo-Json | Set-Content "$OutputRoot/environment.json"
     if($Mode -eq 'all') {
     Get-Content src/test/resources/step9-local-fixture.sql -Raw | docker exec -i $id psql -X -v ON_ERROR_STOP=1 -U $env:POSTGRES_USER -d roy_m1t2_step9load *> "$OutputRoot/fixture.log"
     if($LASTEXITCODE -ne 0){throw 'Fixture failed'}
@@ -89,6 +104,7 @@ try {
     $capacity = Get-Content "$OutputRoot/capacity/summary.json" -Raw | ConvertFrom-Json
     if ($capacity.acceptance -ne 'PASS' -and $capacity.metricAcceptance -ne 'PASS') {throw 'Generator did not sustain the predeclared schedule'}
     Start-Backend 'roy_m1t2_step9load' 'bbox-server'
+    Test-Telemetry 'bbox'
     Run-Load 'bbox'
     # An allowlisted JFC excludes environment, properties and process commands.
     $profile = Join-Path $PSScriptRoot 'load-profile.jfc'
@@ -133,9 +149,9 @@ try {
     [ordered]@{scope='limited disposable synthetic DB rehearsal; equal counts do not prove full data integrity';backupRestoreCommands='PASS';sourceCounts=$before;restoredCounts=$after;dumpSha256=($dumpHash -split ' ')[0];transactionalDdlRollback='PASS';previousApplicationRollback='NOT_RUN';targetRestoreRollback='NOT_RUN'} | ConvertTo-Json | Set-Content "$OutputRoot/rehearsal.json"
     }
     Start-Backend 'roy_load_chat' 'chat-server'
+    Test-Telemetry 'chat'
     Run-Load 'chat'
 } finally {
-    if($null -ne $stats -and -not $stats.HasExited){Stop-Process -InputObject $stats}
     if($null -ne $server -and -not $server.HasExited){Stop-Process -InputObject $server}
     docker stop -t 2 $id | Out-Null
 }

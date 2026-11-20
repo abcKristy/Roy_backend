@@ -33,6 +33,7 @@ class HikariDatabaseBootstrap(private val config: ServerConfig) : DatabaseBootst
             idleTimeout = 600_000
             maxLifetime = 1_800_000
             poolName = "roy-db"
+            isRegisterMbeans = config.databasePoolJmxEnabled
             addDataSourceProperty("socketTimeout", ((config.databaseStatementTimeoutMs + 999) / 1_000 + 2).toString())
         })
 

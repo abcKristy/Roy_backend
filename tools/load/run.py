@@ -17,6 +17,7 @@ import math
 import os
 from pathlib import Path
 import platform
+import re
 import subprocess
 import sys
 import threading
@@ -58,6 +59,29 @@ def percentile(values, q):
     return values[math.ceil(q * len(values))-1] if values else None
 
 
+def cgroup_numeric(raw):
+    result={'ioReadBytes':0,'ioWriteBytes':0,'ioReadOps':0,'ioWriteOps':0}
+    current=[]
+    keys={'usage_usec':'cpuUsageUsec','user_usec':'cpuUserUsec','system_usec':'cpuSystemUsec','anon':'memoryAnonBytes'}
+    io_keys={'rbytes':'ioReadBytes','wbytes':'ioWriteBytes','rios':'ioReadOps','wios':'ioWriteOps'}
+    for line in raw.splitlines():
+        fields=line.split()
+        if not fields: continue
+        if len(fields)==1 and fields[0].isdigit(): current.append(int(fields[0]))
+        elif re.fullmatch(r'\d+:\d+',fields[0]):
+            for item in fields[1:]:
+                key,value=item.split('=',1)
+                if not value.isdigit(): raise ValueError('Invalid cgroup IO counter')
+                if key in io_keys: result[io_keys[key]]+=int(value)
+        elif len(fields)==2 and fields[1].isdigit():
+            if fields[0] in keys: result[keys[fields[0]]]=int(fields[1])
+        else: raise ValueError('Unexpected cgroup counter line')
+    if len(current)!=1 or not all(value in result for value in keys.values()):
+        raise ValueError('Required cgroup counters missing')
+    result['memoryCurrentBytes']=current[0]
+    return result
+
+
 class Recorder:
     def __init__(self, args):
         self.args = args
@@ -71,13 +95,19 @@ class Recorder:
         self.lock = threading.Lock()
         self.stop = threading.Event()
         self.resource_thread = None
-        self.jstat = None
-        self.jstat_file = None
         self.resource_errors = []
+        self.monitor_processes=[]
+        self.monitor_threads=[]
+        self.monitor_ready={key:threading.Event() for key in ('resources','pool','docker','heap')}
+        self.samples={key:[] for key in ('resources','pool','docker','heap')}
+        self.phase_windows=[]
+        self.sql_snapshots={}
+        self.sql_deltas=[]
         passport = {'runId': self.run_id, 'utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
                     'methodology': METHOD, 'methodologySha256': sha(Path(__file__).with_name('methodology.json')),
                     'generatorSha256': sha(__file__), 'python': platform.python_version(),
                     'capacityEndpointSha256':sha(Path(__file__).with_name('echo.py')),
+                    'poolSamplerSha256':sha(Path(__file__).with_name('PoolSampler.java')),
                     'chatSetupPolicy':{'deadlineSeconds':360,'registrationRetries':'Only HTTP 429; obey maximum valid error.retryAfterSeconds and Retry-After, fallback 1s; no transport retries',
                                        'measurementRetries':False,'evidence':'setup-registration.jsonl and setup-summary.json'},
                     'httpx': httpx.__version__, 'websocket_client': websocket.__version__,
@@ -94,7 +124,7 @@ class Recorder:
                     'sharedHostContention': 'Concurrent Android build/emulator may run; other user processes are not stopped',
                     'ramBytes': psutil.virtual_memory().total, 'mode': args.mode,
                     'serverPid': args.server_pid, 'baseUrl': args.base_url,
-                    'poolTelemetry': 'NOT_AVAILABLE; pg activity is not Hikari metrics',
+                    'poolTelemetry': 'Local Attach/JMX, four Hikari gauges; completeness determined from actual stream coverage',
                     'artifactSha256': sha(args.jar) if args.jar else None,
                     'fixtureSqlSha256': sha(ROOT/'src/test/resources/step9-local-fixture.sql')}
         save(self.out/'passport.json', passport)
@@ -119,6 +149,7 @@ class Recorder:
                 server.cpu_percent()
             with db() as conn, (self.out/'resources.jsonl').open('w', encoding='utf-8') as f:
                 conn.autocommit = True
+                with conn.cursor() as c: c.execute("SET statement_timeout='3000ms'")
                 while not self.stop.is_set():
                     r = {'monoNs': time.perf_counter_ns(), 'generatorCpuPercent': generator.cpu_percent(),
                          'generatorRssBytes': generator.memory_info().rss, 'systemCpuPercent':psutil.cpu_percent(),
@@ -131,23 +162,196 @@ class Recorder:
                         c.execute("SELECT mode,granted,count(*) FROM pg_locks WHERE database=(SELECT oid FROM pg_database WHERE datname=current_database()) GROUP BY 1,2")
                         r['dbLocks'] = c.fetchall()
                     f.write(json.dumps(r)+'\n'); f.flush()
+                    self.samples['resources'].append(r['monoNs'])
+                    self.monitor_ready['resources'].set()
                     self.stop.wait(1)
         def guarded_collect():
             try: collect()
             except Exception as error: self.resource_errors.append(type(error).__name__)
         self.resource_thread = threading.Thread(target=guarded_collect, daemon=True)
         self.resource_thread.start()
+        self.start_heap_monitor()
+        self.start_stream_monitors()
+        deadline=time.monotonic()+10
+        for key,event in self.monitor_ready.items():
+            if not event.wait(max(0,deadline-time.monotonic())):
+                self.resource_errors.append(key+'MonitorStartupTimeout')
+
+    def start_stream_monitors(self):
+        def start(kind,command,convert):
+            try:
+                process=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,
+                    encoding='utf-8',creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
+                self.monitor_processes.append(process)
+                def read():
+                    try:
+                        with (self.out/(kind+'.jsonl')).open('w',encoding='utf-8') as output:
+                            for line in process.stdout:
+                                stamp=time.perf_counter_ns()
+                                if self.stop.is_set(): break
+                                line=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',line).strip()
+                                if not line: continue
+                                raw=json.loads(line)
+                                if 'errorClass' in raw:
+                                    error=raw['errorClass']
+                                    self.resource_errors.append(kind+':'+(error if isinstance(error,str) and re.fullmatch(r'[A-Za-z0-9_]+',error) else 'InvalidErrorClass'))
+                                    break
+                                row={'monoNs':stamp,**convert(raw)}
+                                output.write(json.dumps(row)+'\n'); output.flush()
+                                self.samples[kind].append(stamp)
+                                self.monitor_ready[kind].set()
+                        if not self.stop.is_set(): self.resource_errors.append(kind+'MonitorEnded')
+                    except Exception as error: self.resource_errors.append(kind+':'+type(error).__name__)
+                    finally: process.stdout.close()
+                thread=threading.Thread(target=read,daemon=True)
+                self.monitor_threads.append(thread); thread.start()
+            except Exception as error: self.resource_errors.append(kind+':'+type(error).__name__)
+        def pool_values(raw):
+            keys=('active','idle','total','pending')
+            if set(raw)!=set(keys) or any(type(raw[k]) is not int or raw[k]<0 for k in keys):
+                raise ValueError('Invalid pool gauges')
+            return {k:raw[k] for k in keys}
         if self.args.server_pid and os.environ.get('JAVA_HOME'):
-            executable = Path(os.environ['JAVA_HOME'])/'bin'/'jstat.exe'
-            self.jstat_file = (self.out/'heap-gc.txt').open('w')
-            self.jstat = subprocess.Popen([str(executable), '-gc', str(self.args.server_pid), '1000'], stdout=self.jstat_file, stderr=subprocess.STDOUT)
+            start('pool',[str(Path(os.environ['JAVA_HOME'])/'bin/java.exe'),'--add-modules','jdk.attach',
+                          '-cp',str(ROOT/'build/load-monitor'),'PoolSampler',str(self.args.server_pid)],pool_values)
+        else: self.resource_errors.append('PoolMonitorConfigurationMissing')
+        try:
+            container=os.environ.get('LOAD_CONTAINER_ID','')
+            if not re.fullmatch(r'[0-9a-f]{64}',container): raise ValueError('Full owned container ID required')
+            local=r'^(?:npipe:/{4}\./pipe/[^/]+|unix:///(?!/).+)$'
+            host=os.environ.get('DOCKER_HOST')
+            if host and not re.fullmatch(local,host): raise ValueError('Docker host is not local')
+            context=os.environ.get('DOCKER_CONTEXT') or subprocess.check_output(['docker','context','show'],text=True).strip()
+            endpoint=subprocess.check_output(['docker','context','inspect','--format','{{.Endpoints.docker.Host}}','--',context],text=True).strip()
+            if not re.fullmatch(local,endpoint): raise ValueError('Docker context is not local')
+            self.start_cgroup_monitor(container)
+        except Exception as error: self.resource_errors.append('docker:'+type(error).__name__)
+
+    def start_heap_monitor(self):
+        try:
+            if not self.args.server_pid or not os.environ.get('JAVA_HOME'):
+                raise ValueError('Heap monitor configuration missing')
+            process=subprocess.Popen([str(Path(os.environ['JAVA_HOME'])/'bin/jstat.exe'),'-gc',str(self.args.server_pid),'1000'],
+                stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
+            self.monitor_processes.append(process)
+            def collect():
+                known={'S0C','S1C','S0U','S1U','EC','EU','OC','OU','MC','MU','CCSC','CCSU','YGC','YGCT','FGC','FGCT','CGC','CGCT','GCT'}
+                header=None
+                try:
+                    with (self.out/'heap.jsonl').open('w',encoding='utf-8') as output:
+                        for line in process.stdout:
+                            stamp=time.perf_counter_ns()
+                            if self.stop.is_set(): break
+                            fields=line.split()
+                            if not fields: continue
+                            if header is None:
+                                if not {'EC','EU','OC','OU','YGC','YGCT','FGC','FGCT','GCT'}.issubset(fields) or not set(fields).issubset(known) or len(set(fields))!=len(fields):
+                                    raise ValueError('Unexpected jstat header')
+                                header=fields
+                                continue
+                            if len(fields)!=len(header): raise ValueError('Unexpected jstat numeric row')
+                            gauges={}
+                            for key,value in zip(header,fields):
+                                # Some collectors do not expose concurrent-collection gauges.
+                                if value=='-' and key in ('CGC','CGCT'): continue
+                                number=float(value.replace(',','.'))
+                                if not math.isfinite(number) or number<0: raise ValueError('Invalid jstat gauge')
+                                gauges[key]=number
+                            output.write(json.dumps({'monoNs':stamp,'gauges':gauges})+'\n'); output.flush()
+                            self.samples['heap'].append(stamp); self.monitor_ready['heap'].set()
+                    if not self.stop.is_set(): self.resource_errors.append('HeapMonitorEnded')
+                except Exception as error: self.resource_errors.append('heap:'+type(error).__name__)
+                finally: process.stdout.close()
+            thread=threading.Thread(target=collect,daemon=True)
+            self.monitor_threads.append(thread); thread.start()
+        except Exception as error: self.resource_errors.append('heap:'+type(error).__name__)
+
+    def start_cgroup_monitor(self,container):
+        def collect():
+            command=['docker','exec',container,'cat','/sys/fs/cgroup/cpu.stat','/sys/fs/cgroup/memory.current',
+                     '/sys/fs/cgroup/memory.stat','/sys/fs/cgroup/io.stat']
+            previous=None; planned=time.perf_counter_ns()
+            try:
+                with (self.out/'docker.jsonl').open('w',encoding='utf-8') as output:
+                    while not self.stop.is_set():
+                        dispatch=time.perf_counter_ns()
+                        # Only fixed numeric cgroup files in the independently verified owned container.
+                        raw=subprocess.check_output(command,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',timeout=3,
+                            creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
+                        stamp=time.perf_counter_ns()
+                        if self.stop.is_set(): break
+                        row={'monoNs':stamp,'pollDurationMs':(stamp-dispatch)/1e6,'pollLagMs':max(0,(dispatch-planned)/1e6),
+                             **cgroup_numeric(raw)}
+                        if previous:
+                            delta=row['cpuUsageUsec']-previous['cpuUsageUsec']
+                            if delta<0 or stamp<=previous['monoNs']: raise ValueError('Cgroup CPU counter reset')
+                            row['cpuPercent']=delta*100_000/(stamp-previous['monoNs'])
+                        output.write(json.dumps(row)+'\n'); output.flush()
+                        self.samples['docker'].append(stamp); self.monitor_ready['docker'].set()
+                        previous=row; planned+=1_000_000_000
+                        self.stop.wait(max(0,(planned-time.perf_counter_ns())/1e9))
+            except Exception as error:
+                if not self.stop.is_set(): self.resource_errors.append('docker:'+type(error).__name__)
+        thread=threading.Thread(target=collect,daemon=True)
+        self.monitor_threads.append(thread); thread.start()
+
+    def sql_snapshot(self,phase,edge):
+        stamp=time.perf_counter_ns()
+        try:
+            with db() as conn,conn.cursor() as c:
+                c.execute("SET statement_timeout='3000ms'")
+                c.execute("SELECT queryid,sum(calls)::bigint,sum(rows)::bigint FROM pg_stat_statements WHERE dbid=(SELECT oid FROM pg_database WHERE datname=current_database()) GROUP BY queryid ORDER BY queryid")
+                snapshot=[{'queryid':r[0],'calls':r[1],'rows':r[2]} for r in c.fetchall()]
+            self.sql_snapshots[(phase,edge)]=snapshot
+            save(self.out/f'sql-{phase}-{edge}.json',{'monoNs':stamp,'phase':phase,'edge':edge,'statistics':snapshot,
+                'scope':'Current database; includes observer and background queries; no exact SQL-per-REST attribution'})
+            if edge=='end' and (phase,'start') in self.sql_snapshots:
+                before={r['queryid']:r for r in self.sql_snapshots[(phase,'start')]}
+                if set(before)-{r['queryid'] for r in snapshot}:
+                    self.resource_errors.append('SqlStatisticsRowsEvictedOrReset')
+                delta=[]
+                for r in snapshot:
+                    old=before.get(r['queryid'],{'calls':0,'rows':0})
+                    delta.append({'queryid':r['queryid'],'calls':r['calls']-old['calls'],'rows':r['rows']-old['rows']})
+                if any(r['calls']<0 or r['rows']<0 for r in delta): self.resource_errors.append('SqlStatisticsCounterReset')
+                self.sql_deltas.append({'phase':phase,'deltas':delta})
+        except Exception as error:
+            self.resource_errors.append('sql:'+type(error).__name__)
+            save(self.out/f'sql-{phase}-{edge}.json',{'monoNs':stamp,'phase':phase,'edge':edge,'errorClass':type(error).__name__})
+
+    def end_phase(self,name,start,seconds):
+        self.phase_windows.append({'phase':name,'startNs':start,'endNs':start+round(seconds*1e9),'drainEndNs':time.perf_counter_ns()})
+        self.sql_snapshot(name,'end')
+
+    def coverage(self):
+        result=[]
+        for phase in self.phase_windows:
+            for stream,samples in self.samples.items():
+                selected=[s for s in samples if phase['startNs']<=s<=phase['endNs']]
+                gaps=[(b-a)/1e9 for a,b in zip(selected,selected[1:])]
+                start_gap=(selected[0]-phase['startNs'])/1e9 if selected else None
+                end_gap=(phase['endNs']-selected[-1])/1e9 if selected else None
+                result.append({'phase':phase['phase'],'stream':stream,'samples':len(selected),'startGapSeconds':start_gap,
+                    'endGapSeconds':end_gap,'maxGapSeconds':max(gaps,default=None),
+                    'complete':len(selected)>=2 and start_gap<=2 and end_gap<=2 and max(gaps,default=math.inf)<=2})
+        return result
 
     def finish(self, extra=None):
         self.stop.set()
+        for process in self.monitor_processes:
+            if process.poll() is None:
+                process.terminate()
+                try: process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill(); process.wait(timeout=5)
+                    self.resource_errors.append('MonitorForcedKill')
+        for thread in self.monitor_threads:
+            thread.join(5)
+            if thread.is_alive(): self.resource_errors.append('MonitorReaderStillAlive')
         if self.resource_thread:
             self.resource_thread.join(7)
-        if self.jstat:
-            self.jstat.terminate(); self.jstat.wait(timeout=5); self.jstat_file.close()
+            if self.resource_thread.is_alive(): self.resource_errors.append('ResourceReaderStillAlive')
         self.file.flush(); self.file.close()
         groups = collections.defaultdict(list)
         for r in self.rows:
@@ -164,8 +368,16 @@ class Recorder:
                 'max':max(values) if values else None, 'maxLagMs':max((r.get('lagMs',0) for r in rows),default=0)})
         summary.update(extra or {})
         summary['metricAcceptance']=summary.get('acceptance','NOT_RUN')
-        summary['evidenceCompleteness']='COMPLETE' if self.args.mode=='capacity' else 'PARTIAL'
-        summary['evidenceLimitations']=[] if self.args.mode=='capacity' else ['Hikari active/idle/pending NOT_AVAILABLE; cannot close complete resource/profile acceptance']
+        coverage=self.coverage()
+        required_phase='diagnostic' if self.args.mode=='diagnostic' else 'measurement'
+        selected=[row for row in coverage if row['phase']==required_phase]
+        complete=self.args.mode=='capacity' or (len(selected)==4 and all(r['complete'] for r in selected)
+            and not self.resource_errors and (required_phase,'start') in self.sql_snapshots and (required_phase,'end') in self.sql_snapshots)
+        summary['resourceCoverage']=coverage
+        summary['evidenceCompleteness']='COMPLETE' if complete else 'PARTIAL'
+        summary['evidenceLimitations']=[] if complete else ['Required resource/SQL/heap evidence missing, interrupted, or gaps exceed 2s; see resourceCoverage and resourceErrors']
+        save(self.out/'phase-windows.json',self.phase_windows)
+        save(self.out/'sql-deltas.json',{'phases':self.sql_deltas,'attribution':'Includes background and observer queries; not exact SQL-per-REST counts'})
         save(self.out/'summary.json',summary)
         print(json.dumps(summary, ensure_ascii=False), flush=True)
 
@@ -227,6 +439,7 @@ async def bbox(args, rec):
         save(rec.out/'expected-responses.json',expected)
         rec.resources()
         async def phase(name, seconds, rate):
+            rec.sql_snapshot(name,'start')
             async def one(i,planned,inflight):
                 dispatch=time.perf_counter_ns(); status='ERROR'; error=''; httpstatus=0
                 try:
@@ -237,7 +450,9 @@ async def bbox(args, rec):
                     else: status='OK'
                 except Exception as e: error=type(e).__name__
                 rec.row(metricId='bbox',phase=name,sampleId=i,plannedNs=planned,dispatchNs=dispatch,endNs=time.perf_counter_ns(),status=status,errorClass=error,inFlight=inflight,httpStatus=httpstatus)
-            return await schedule(seconds,rate,one)
+            start=await schedule(seconds,rate,one)
+            rec.end_phase(name,start,seconds)
+            return start
         if args.mode=='diagnostic':
             await phase('diagnostic',60,150)
             return {'acceptance':'DIAGNOSTIC_ONLY'}
@@ -372,6 +587,7 @@ async def chat(args,rec):
             'elapsedSeconds':(time.perf_counter_ns()-setup_started)/1e9,'measurementRetries':False})
         rec.resources(); sends=[]
         async def phase(name,seconds):
+            rec.sql_snapshot(name,'start')
             async def one(i,planned,inflight):
                 actor=i%50; dispatch=time.perf_counter_ns(); status='ERROR'; error=''; message={}; code=0
                 try:
@@ -387,7 +603,8 @@ async def chat(args,rec):
                 row=dict(metricId='restAck',phase=name,sampleId=i,plannedNs=planned,dispatchNs=dispatch,endNs=end,status=status,errorClass=error,
                          messageId=message.get('id',''),messageSeq=message.get('messageSeq',''),httpStatus=code,inFlight=inflight)
                 rec.row(**row); sends.append((actor,row))
-            await schedule(seconds,2,one)
+            start=await schedule(seconds,2,one)
+            rec.end_phase(name,start,seconds)
         try:
             await phase('warmup',120); await phase('measurement',600); await asyncio.sleep(5)
             done.set()
@@ -479,9 +696,18 @@ async def capacity(args,rec):
             'elapsedSeconds':elapsed,'achievedWallRps':sum(r['status']=='OK' for r in rec.rows)/elapsed}
 
 
+async def telemetry(args,rec):
+    rec.resources()
+    rec.sql_snapshot('measurement','start')
+    started=time.perf_counter_ns()
+    await asyncio.sleep(10)
+    rec.end_phase('measurement',started,10)
+    return {'acceptance':'PREFLIGHT_ONLY','scope':'Ten-second resource collection; no HTTP load or latency acceptance'}
+
+
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument('--mode',choices=['capacity','bbox','chat','diagnostic'],required=True)
+    p.add_argument('--mode',choices=['capacity','bbox','chat','diagnostic','telemetry'],required=True)
     p.add_argument('--output',required=True); p.add_argument('--base-url',default='http://127.0.0.1:8080')
     p.add_argument('--server-pid',type=int); p.add_argument('--jar')
     args=p.parse_args()
@@ -490,7 +716,7 @@ def main():
         p.error('Only plain loopback HTTP origin is allowed')
     rec=Recorder(args)
     try:
-        result=asyncio.run(capacity(args,rec) if args.mode=='capacity' else chat(args,rec) if args.mode=='chat' else bbox(args,rec))
+        result=asyncio.run(capacity(args,rec) if args.mode=='capacity' else telemetry(args,rec) if args.mode=='telemetry' else chat(args,rec) if args.mode=='chat' else bbox(args,rec))
     except Exception as e:
         rec.finish({'acceptance':'FAIL','fatalClass':type(e).__name__})
         raise

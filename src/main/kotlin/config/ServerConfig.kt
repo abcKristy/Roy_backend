@@ -43,8 +43,12 @@ class ServerConfig(
     val ruStorePush: RuStorePushConfig? = null,
     val apnsPush: ApnsPushConfig? = null,
     val privacyPolicyPublication: PrivacyPolicyPublicationConfig? = null,
+    val databasePoolJmxEnabled: Boolean = false,
 ) {
     init {
+        require(!databasePoolJmxEnabled || appEnvironment == AppEnvironment.LOCAL) {
+            "DATABASE_POOL_JMX_ENABLED requires APP_ENV=local"
+        }
         require(avatarObjectStorage == null || appEnvironment == AppEnvironment.PRODUCTION) {
             "Object Storage configuration requires APP_ENV=production"
         }
@@ -116,6 +120,11 @@ class ServerConfig(
                 "true" -> true
                 "false" -> false
                 else -> throw IllegalArgumentException("AUTH_DRAFT_POLICY_ENABLED must be true or false")
+            }
+            val databasePoolJmxEnabled = when (environment["DATABASE_POOL_JMX_ENABLED"] ?: "false") {
+                "true" -> true
+                "false" -> false
+                else -> throw IllegalArgumentException("DATABASE_POOL_JMX_ENABLED must be true or false")
             }
             if (draftPrivacyEnabled) require(environment["APP_ENV"] == "local") {
                 "APP_ENV=local must be set explicitly for draft privacy policy"
@@ -199,6 +208,7 @@ class ServerConfig(
                 ruStorePush = ruStorePush,
                 apnsPush = apnsPush,
                 privacyPolicyPublication = privacyPolicyPublication,
+                databasePoolJmxEnabled = databasePoolJmxEnabled,
             )
         }
     }
