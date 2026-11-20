@@ -28,6 +28,59 @@ import kotlin.test.assertTrue
 
 class DatabaseBootstrapIntegrationTest {
     @Test
+    fun `configured timeouts are enforced in write and read transactions and reset at transaction end`() = runBlocking {
+        val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
+        require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_[a-z0-9]+$").matches(url))
+        val user = System.getenv("DATABASE_USER") ?: error("DATABASE_USER is required")
+        val password = System.getenv("DATABASE_PASSWORD") ?: error("DATABASE_PASSWORD is required")
+        fun settings(connection: java.sql.Connection): Pair<String, String> =
+            connection.createStatement().use { statement ->
+                statement.executeQuery("SELECT current_setting('statement_timeout'), current_setting('lock_timeout')").use { rows ->
+                    check(rows.next()); rows.getString(1) to rows.getString(2)
+                }
+            }
+        HikariDatabaseBootstrap(ServerConfig(url, user, password, "test-only-secret",
+            appEnvironment = AppEnvironment.LOCAL, databaseMaxPoolSize = 2,
+            databaseStatementTimeoutMs = 500, databaseLockTimeoutMs = 100)).start().use { runtime ->
+            DriverManager.getConnection(url, user, password).use { observer ->
+                val defaults = settings(observer)
+                val lockKey = UUID.randomUUID().mostSignificantBits
+                observer.prepareStatement("SELECT pg_advisory_lock(?)").use {
+                    it.setLong(1, lockKey); it.execute()
+                }
+                // Closing the observer releases its session lock even if an assertion fails.
+                for (readOnly in listOf(false, true)) {
+                    suspend fun transaction(block: (java.sql.Connection) -> Unit) {
+                        if (readOnly) runtime.withReadOnlyJdbcTransaction(block)
+                        else runtime.withJdbcTransaction(block)
+                    }
+                    for (rollback in listOf(false, true)) {
+                        transaction { connection ->
+                            assertEquals("500ms" to "100ms", settings(connection))
+                            if (rollback) connection.rollback() else connection.commit()
+                            // Inspect this exact checkout after transaction end, before returning it to the pool.
+                            assertEquals(defaults, settings(connection))
+                        }
+                    }
+                    suspend fun expectSqlState(expected: String, block: (java.sql.Connection) -> Unit) {
+                        val failure = try { transaction(block); null } catch (failure: SQLException) { failure }
+                        assertEquals(expected, assertNotNull(failure).sqlState)
+                    }
+                    expectSqlState("57014") { connection ->
+                        connection.createStatement().use { it.execute("SELECT pg_sleep(2)") }
+                    }
+                    expectSqlState("55P03") { connection ->
+                        connection.prepareStatement("SELECT pg_advisory_xact_lock(?)").use {
+                            it.setLong(1, lockKey); it.execute()
+                        }
+                    }
+                    transaction { connection -> assertEquals("500ms" to "100ms", settings(connection)) }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `HTTP disconnect cancels active SQL without affecting another keep alive connection`() = runBlocking<Unit> {
         val url = com.example.testing.testDatabaseUrl("TEST_DATABASE_URL")
         require(Regex("^jdbc:postgresql://[^/]+/roy_m1t2_[a-z0-9]+$").matches(url))

@@ -153,9 +153,12 @@ private class PooledDatabaseRuntime(
     }
 
     private fun setTimeouts(connection: Connection) {
-        connection.createStatement().use { statement ->
-            statement.execute("SET LOCAL statement_timeout = ${config.databaseStatementTimeoutMs}")
-            statement.execute("SET LOCAL lock_timeout = ${config.databaseLockTimeoutMs}")
+        connection.prepareStatement(
+            "SELECT set_config('statement_timeout', ?, true), set_config('lock_timeout', ?, true)"
+        ).use { statement ->
+            statement.setString(1, "${config.databaseStatementTimeoutMs}ms")
+            statement.setString(2, "${config.databaseLockTimeoutMs}ms")
+            statement.execute()
         }
     }
 
