@@ -10,6 +10,7 @@ import asyncio
 import base64
 import collections
 import csv
+from email.utils import parsedate_to_datetime
 import hashlib
 import json
 import math
@@ -77,6 +78,8 @@ class Recorder:
                     'methodology': METHOD, 'methodologySha256': sha(Path(__file__).with_name('methodology.json')),
                     'generatorSha256': sha(__file__), 'python': platform.python_version(),
                     'capacityEndpointSha256':sha(Path(__file__).with_name('echo.py')),
+                    'chatSetupPolicy':{'deadlineSeconds':360,'registrationRetries':'Only HTTP 429; obey maximum valid error.retryAfterSeconds and Retry-After, fallback 1s; no transport retries',
+                                       'measurementRetries':False,'evidence':'setup-registration.jsonl and setup-summary.json'},
                     'httpx': httpx.__version__, 'websocket_client': websocket.__version__,
                     'psutil': psutil.__version__, 'os': platform.platform(),
                     'cpuLogical': psutil.cpu_count(), 'cpuPhysical': psutil.cpu_count(logical=False),
@@ -258,25 +261,74 @@ async def bbox(args, rec):
 
 
 async def chat(args,rec):
+    setup_started=time.perf_counter_ns()
+    setup_deadline=time.monotonic()+360
     with db() as conn,conn.cursor() as c:
         c.execute('SELECT count(*) FROM users'); assert c.fetchone()[0]==0,'Chat database must be empty'
     tokens=[]; actors=[]; sockets=[]; readers=[]; events=[]; event_lock=threading.Lock(); disconnected=[]; done=threading.Event()
     event_file=(rec.out/'ws-received.jsonl').open('w',encoding='utf-8')
     async with httpx.AsyncClient(base_url=args.base_url,timeout=5,trust_env=False,limits=httpx.Limits(max_connections=100)) as client:
-        async def request(method,path,token=None,body=None,key=False):
+        async def request(method,path,token=None,body=None,key=False,setup=False):
             headers={}
             if token: headers['Authorization']='Bearer '+token
             if key: headers['Idempotency-Key']=str(uuid.uuid4())
-            r=await client.request(method,path,headers=headers,json=body)
+            timeout=min(5,setup_deadline-time.monotonic()) if setup else 5
+            if timeout<=0: raise RuntimeError('Six-minute chat setup deadline exceeded')
+            r=await asyncio.wait_for(client.request(method,path,headers=headers,json=body),timeout)
             r.raise_for_status(); return r.json()
-        for i in range(50):
-            r=await request('POST','/api/v1/auth/register',body={'phone':f'+1202555{i:04d}','password':'Synthetic load password 42!',
-                'displayName':f'Load participant {i}','ageYears':25,'acceptedPrivacyPolicyVersion':'draft-2026-11-01.2'})
-            tokens.append(r['accessToken']); actors.append(r['user']['id'])
+        setup_attempts=0; setup_limited=0; setup_wait=0.0
+        with (rec.out/'setup-registration.jsonl').open('w',encoding='utf-8') as setup_log:
+            for i in range(50):
+                attempt=0
+                while True:
+                    remaining=setup_deadline-time.monotonic()
+                    if remaining<=0: raise RuntimeError('Six-minute chat setup deadline exceeded')
+                    attempt+=1; setup_attempts+=1; dispatch=time.perf_counter_ns()
+                    try:
+                        response=await asyncio.wait_for(client.post('/api/v1/auth/register',json={
+                            'phone':f'+1202555{i:04d}','password':'Synthetic load password 42!',
+                            'displayName':f'Load participant {i}','ageYears':25,
+                            'acceptedPrivacyPolicyVersion':'draft-2026-11-01.2'}),min(5,remaining))
+                    except Exception as error:
+                        setup_log.write(json.dumps({'participantLabel':i,'attempt':attempt,'dispatchNs':dispatch,
+                            'endNs':time.perf_counter_ns(),'httpStatus':0,'errorClass':type(error).__name__,'waitSeconds':0})+'\n')
+                        setup_log.flush()
+                        raise
+                    wait=0.0
+                    if response.status_code==429:
+                        setup_limited+=1
+                        hints=[]
+                        try:
+                            value=response.json().get('error',{}).get('retryAfterSeconds')
+                            if isinstance(value,(int,float)) and not isinstance(value,bool) and math.isfinite(value) and value>0:
+                                hints.append(float(value))
+                        except (ValueError,AttributeError): pass
+                        header=response.headers.get('Retry-After')
+                        if header:
+                            try:
+                                value=float(header)
+                            except ValueError:
+                                try: value=parsedate_to_datetime(header).timestamp()-time.time()
+                                except (ValueError,TypeError,OverflowError): value=0
+                            if math.isfinite(value) and value>0: hints.append(value)
+                        wait=max(hints,default=1.0)
+                    setup_log.write(json.dumps({'participantLabel':i,'attempt':attempt,'dispatchNs':dispatch,
+                        'endNs':time.perf_counter_ns(),'httpStatus':response.status_code,'waitSeconds':wait})+'\n')
+                    setup_log.flush()
+                    if response.status_code==429:
+                        if wait>=setup_deadline-time.monotonic(): raise RuntimeError('Rate-limit wait exceeds chat setup deadline')
+                        setup_wait+=wait
+                        await asyncio.sleep(wait)
+                        continue
+                    response.raise_for_status()
+                    if response.status_code!=201: raise RuntimeError('Registration did not return 201')
+                    r=response.json()
+                    tokens.append(r['accessToken']); actors.append(r['user']['id'])
+                    break
         created=await request('POST','/api/v1/points',tokens[0],{'position':{'lat':55.75,'lon':37.62},'topic':{'presetKey':'football'},
-                    'address':'Synthetic load point','addressSource':'manual','confirmNearby':False},True)
+                    'address':'Synthetic load point','addressSource':'manual','confirmNearby':False},key=True,setup=True)
         chat_id=created['chat']['id']
-        for token in tokens[1:]: await request('PUT',f'/api/v1/chats/{chat_id}/membership',token)
+        for token in tokens[1:]: await request('PUT',f'/api/v1/chats/{chat_id}/membership',token,setup=True)
         # Setup plus 12-minute load and reconciliation must not cross access expiry.
         for token in tokens:
             segment=token.split('.')[1]
@@ -305,13 +357,19 @@ async def chat(args,rec):
                     if not done.is_set(): disconnected.append({'recipient':i,'error':type(e).__name__,'monoNs':time.perf_counter_ns()})
                     return
         for i,token in enumerate(tokens):
-            sock=websocket.create_connection(args.base_url.replace('http://','ws://')+'/api/v1/ws',header=['Authorization: Bearer '+token],timeout=5,http_proxy_host=None)
+            remaining=setup_deadline-time.monotonic()
+            if remaining<=0: raise RuntimeError('Six-minute chat setup deadline exceeded')
+            sock=websocket.create_connection(args.base_url.replace('http://','ws://')+'/api/v1/ws',header=['Authorization: Bearer '+token],timeout=min(5,remaining),http_proxy_host=None)
             assert json.loads(sock.recv())['type']=='hello'
             sock.send(json.dumps({'v':1,'type':'subscribe','requestId':str(uuid.uuid4()),'chatIds':[chat_id]}))
             subscribed=json.loads(sock.recv()); assert subscribed.get('acceptedChatIds')==[chat_id]
             sockets.append(sock); sock.settimeout(1)
             thread=threading.Thread(target=reader,args=(i,sock),daemon=True)
             readers.append(thread); thread.start()
+            if time.monotonic()>=setup_deadline: raise RuntimeError('Six-minute chat setup deadline exceeded')
+        save(rec.out/'setup-summary.json',{'registrationAttempts':setup_attempts,'rateLimitedAttempts':setup_limited,
+            'registeredParticipants':len(tokens),'subscribedParticipants':len(sockets),'rateLimitWaitSeconds':setup_wait,
+            'elapsedSeconds':(time.perf_counter_ns()-setup_started)/1e9,'measurementRetries':False})
         rec.resources(); sends=[]
         async def phase(name,seconds):
             async def one(i,planned,inflight):

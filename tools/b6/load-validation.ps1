@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$OutputRoot)
+param([Parameter(Mandatory)][string]$OutputRoot, [ValidateSet('all','chat')][string]$Mode='all')
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'local-docker.ps1')
 Assert-LocalDocker
@@ -69,16 +69,19 @@ try {
     if($binding -notmatch '^127\.0\.0\.1:(\d+)$'){throw 'Database not loopback'}
     $env:LOAD_DB_PORT = $Matches[1]
     $env:TEST_DATABASE_DISPOSABLE = 'true'
-    foreach($db in @('roy_m1t2_step9load','roy_load_chat')) {
+    $databases = if($Mode -eq 'all'){@('roy_m1t2_step9load','roy_load_chat')}else{@('roy_load_chat')}
+    foreach($db in $databases) {
         docker exec $id createdb -U $env:POSTGRES_USER $db
         if($LASTEXITCODE -ne 0){throw 'Cannot create database'}
         $env:DATABASE_URL = "jdbc:postgresql://$binding/$db"
         & $java -cp 'build/install/roy-backend/lib/*' com.example.persistence.MigrationMainKt *> "$OutputRoot/$db.migrate.log"
         if($LASTEXITCODE -ne 0){throw 'Migration failed'}
     }
-    $identity = docker exec $id psql -X -At -U $env:POSTGRES_USER -d roy_m1t2_step9load -c "SELECT current_database(),current_user,current_setting('server_version'),postgis_lib_version(),(SELECT max(installed_rank) FROM flyway_schema_history)"
+    $identityDatabase = @($databases)[0]
+    $identity = docker exec $id psql -X -At -U $env:POSTGRES_USER -d $identityDatabase -c "SELECT current_database(),current_user,current_setting('server_version'),postgis_lib_version(),(SELECT max(installed_rank) FROM flyway_schema_history)"
     if($LASTEXITCODE -ne 0){throw 'Identity query failed'}
-    [ordered]@{source=$source;jarSha256=$hash;containerId=$id;containerName=$name;binding=$binding;databaseIdentity=$identity;runtime='JDK17';jvmMaxHeap='1536m';poolMax=5;connectionTimeoutMs=5000;statementTimeoutMs=5000;lockTimeoutMs=1000;providers='disabled';targetAcceptance=$false} | ConvertTo-Json | Set-Content "$OutputRoot/environment.json"
+    [ordered]@{source=$source;jarSha256=$hash;mode=$Mode;containerId=$id;containerName=$name;binding=$binding;databaseIdentity=$identity;runtime='JDK17';jvmMaxHeap='1536m';poolMax=5;connectionTimeoutMs=5000;statementTimeoutMs=5000;lockTimeoutMs=1000;providers='disabled';targetAcceptance=$false} | ConvertTo-Json | Set-Content "$OutputRoot/environment.json"
+    if($Mode -eq 'all') {
     Get-Content src/test/resources/step9-local-fixture.sql -Raw | docker exec -i $id psql -X -v ON_ERROR_STOP=1 -U $env:POSTGRES_USER -d roy_m1t2_step9load *> "$OutputRoot/fixture.log"
     if($LASTEXITCODE -ne 0){throw 'Fixture failed'}
     & python tools/load/run.py --mode capacity --output "$OutputRoot/capacity" --jar $jar *> "$OutputRoot/capacity.log"
@@ -128,6 +131,7 @@ try {
     if($LASTEXITCODE -ne 0){throw 'Backup hash failed'}
     if(($dumpHash -split ' ')[0] -notmatch '^[0-9a-f]{64}$'){throw 'Invalid backup SHA256'}
     [ordered]@{scope='limited disposable synthetic DB rehearsal; equal counts do not prove full data integrity';backupRestoreCommands='PASS';sourceCounts=$before;restoredCounts=$after;dumpSha256=($dumpHash -split ' ')[0];transactionalDdlRollback='PASS';previousApplicationRollback='NOT_RUN';targetRestoreRollback='NOT_RUN'} | ConvertTo-Json | Set-Content "$OutputRoot/rehearsal.json"
+    }
     Start-Backend 'roy_load_chat' 'chat-server'
     Run-Load 'chat'
 } finally {
