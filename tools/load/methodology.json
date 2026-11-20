@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "scope": "disposable loopback only; same-host generator, backend and database",
+  "reference": "docs/b6/measurement.md",
+  "clock": "time.perf_counter_ns in one generator process",
+  "percentiles": "sorted[ceil(q*N)-1]; null for N=0; successful observations only, errors separately",
+  "deadline_seconds": 5,
+  "bbox": {"warmup_seconds": 300, "measurement_seconds": 600, "rate": 100, "cycle": 20, "minute_cohorts": 10, "p95_limit_ms": 500, "minimum_valid_success_per_minute": 6000},
+  "chat": {"warmup_seconds": 120, "measurement_seconds": 600, "rate": 2, "participants": 50, "recipients_per_send": 49, "p95_limit_ms": 400, "boundary": "REST dispatch to recipient WS frame received; sender echo separate"},
+  "diagnostic": {"bbox_rate": 150, "seconds": 60},
+  "generator": {"capacity_rate": 150, "capacity_seconds": 30, "lag_limit_ms": 100, "lag_rule": "all dispatch lag <=100ms; no request drops; max in-flight=5000 aborts rather than silently throttles", "revision_reason": "Before server measurements, calibrate at highest actual requested rate (150 diagnostic, 100 target). Both exploratory 300RPS failures are retained; 300 was surplus capacity, not a server requirement."},
+  "errors": "Every scheduled attempt remains in raw data; HTTP errors, invalid JSON/content, transport errors, timeout and missing WS separate. No retry replacement.",
+  "resources": "1s server/generator CPU/RSS, DB pg_stat_activity and locks; jstat heap/GC; docker stats separately",
+  "pool_limitation": "Hikari active/idle/pending NOT_AVAILABLE; DB activity is explicitly a proxy, not pool telemetry"
+}
