@@ -33,7 +33,9 @@ class HistoryPaginationIntegrationTest {
         val chat = UUID.randomUUID()
         val message = UUID.randomUUID()
         val privateText = "Private history marker ${UUID.randomUUID()}"
-        val identities = listOf(member, outsider, left).associateWith { SessionIdentity(it, UUID.randomUUID(), 0) }
+        val now = Instant.now()
+        val expiresAt = Instant.ofEpochSecond(now.epochSecond + 3600)
+        val identities = listOf(member, outsider, left).associateWith { SessionIdentity(it, UUID.randomUUID(), 0, expiresAt) }
         val active = identities.values.toMutableSet()
         DriverManager.getConnection(url, user, password).use { c ->
             c.autoCommit = false
@@ -79,10 +81,9 @@ class HistoryPaginationIntegrationTest {
                 override suspend fun revoke(identity: SessionIdentity, now: Instant) = active.remove(identity)
             })
             application { configureTransport(); routing { chatReadRoutes(ChatReadService(db, secret), sessions) } }
-            val now = Instant.now()
             fun bearer(id: UUID): String {
                 val identity = identities.getValue(id)
-                return "Bearer " + JwtTokenIssuer(secret).issue(id, identity.sessionId, 0, now.minusSeconds(1), now.plusSeconds(3600))
+                return "Bearer " + JwtTokenIssuer(secret).issue(id, identity.sessionId, 0, now.minusSeconds(1), expiresAt)
             }
             suspend fun page(query: String): JsonObject {
                 val response = client.get("/api/v1/chats/$chat/messages?$query") { header(HttpHeaders.Authorization, bearer(member)) }
