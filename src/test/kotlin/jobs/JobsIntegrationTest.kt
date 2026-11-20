@@ -568,6 +568,7 @@ class JobsIntegrationTest {
                 PushTokenDecoder { _, _, _ -> "token" }, maxAttempts = 1)
             assertEquals(0, restarted.processBatch())
             assertEquals(1, restarted.snapshot().reclaimed)
+            assertEquals(1, restarted.snapshot().failed)
             assertEquals("FAILED" to 1, pushState(dbUrl, fixture.job))
         }
     }

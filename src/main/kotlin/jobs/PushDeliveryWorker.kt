@@ -82,7 +82,7 @@ class PushDeliveryWorker(
     suspend fun reclaimExpired(limit: Int = 100): Int {
         require(limit in 1..1000)
         if (enabledPlatforms.isEmpty()) return 0
-        val count = database.withJdbcTransaction { connection ->
+        val counts = database.withJdbcTransaction { connection ->
             connection.prepareStatement(
                 """WITH expired AS (
                        SELECT j.id FROM push_delivery_jobs AS j
@@ -90,22 +90,29 @@ class PushDeliveryWorker(
                        WHERE j.status='PROCESSING' AND j.lease_until<=clock_timestamp()
                          AND d.platform=ANY(?)
                        ORDER BY j.lease_until,j.id FOR UPDATE OF j SKIP LOCKED LIMIT ?
-                   ) UPDATE push_delivery_jobs AS j
+                   ), transitioned AS (
+                   UPDATE push_delivery_jobs AS j
                    SET status=CASE WHEN j.attempts>=? THEN 'FAILED' ELSE 'PENDING' END,
                        claim_token=NULL,lease_until=NULL,
                        completed_at=CASE WHEN j.attempts>=? THEN clock_timestamp() ELSE NULL END,
                        last_error='TIMEOUT',next_attempt_at=clock_timestamp()
-                   FROM expired WHERE j.id=expired.id"""
+                   FROM expired WHERE j.id=expired.id
+                   RETURNING j.status
+                   ) SELECT count(*),count(*) FILTER (WHERE status='FAILED') FROM transitioned"""
             ).use { statement ->
                 statement.setArray(1, connection.createArrayOf("text", enabledPlatforms.toTypedArray()))
                 statement.setInt(2, limit)
                 statement.setInt(3, maxAttempts)
                 statement.setInt(4, maxAttempts)
-                statement.executeUpdate()
+                statement.executeQuery().use { rows ->
+                    check(rows.next())
+                    rows.getLong(1) to rows.getLong(2)
+                }
             }
         }
-        reclaimed.addAndGet(count.toLong())
-        return count
+        reclaimed.addAndGet(counts.first)
+        failed.addAndGet(counts.second)
+        return counts.first.toInt()
     }
 
     /** Explicit operator retry; terminal FAILED jobs are never retried automatically. */
