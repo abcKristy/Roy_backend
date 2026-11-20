@@ -7,6 +7,7 @@ import com.example.jobs.PushPayload
 import com.example.jobs.PushSendResult
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import java.security.KeyPairGenerator
 import java.security.interfaces.ECPublicKey
@@ -48,12 +49,33 @@ class ApnsPushSenderTest {
                 Algorithm.ECDSA256(keys.public as ECPublicKey, null).verify(decoded)
                 tokens += jwt
                 val data = Json.parseToJsonElement(body).jsonObject
-                assertEquals(setOf("aps", "v", "notificationId", "kind", "pointId"), data.keys)
+                assertEquals(setOf("aps", "v", "notificationId", "kind", "pointId", "recipientBinding"), data.keys)
                 assertEquals(kotlinx.serialization.json.JsonPrimitive(1), data.getValue("v"))
+                assertEquals(kotlinx.serialization.json.JsonPrimitive(payload.recipientBinding), data.getValue("recipientBinding"))
                 PushProviderResponse(200, "")
             }, Clock.fixed(signedAt, ZoneOffset.UTC))
         repeat(2) { assertEquals(PushSendResult.Delivered, sender.send("IOS_APNS", "0123abcd", payload)) }
         assertEquals(1, tokens.distinct().size)
+    }
+
+    @Test
+    fun `APNs reminder keeps recipient binding and private navigation targets`() = runBlocking {
+        val keys = KeyPairGenerator.getInstance("EC").apply {
+            initialize(ECGenParameterSpec("secp256r1"))
+        }.generateKeyPair()
+        val reminder = payload.copy(kind = "reminder_1h")
+        val sender = ApnsPushSender("TEAM000001", "KEY0000001", pem(keys.private.encoded), "example.roy",
+            ApnsEnvironment.SANDBOX, PushProviderHttp { _, _, body ->
+                val data = Json.parseToJsonElement(body).jsonObject
+                assertEquals(setOf("aps", "v", "notificationId", "recipientBinding", "kind", "pointId", "chatId", "proposalId"), data.keys)
+                assertEquals(JsonPrimitive(reminder.recipientBinding), data.getValue("recipientBinding"))
+                assertEquals(JsonPrimitive(reminder.notificationId.toString()), data.getValue("notificationId"))
+                assertEquals(JsonPrimitive(reminder.pointId.toString()), data.getValue("pointId"))
+                assertEquals(JsonPrimitive(reminder.chatId.toString()), data.getValue("chatId"))
+                assertEquals(JsonPrimitive(reminder.proposalId.toString()), data.getValue("proposalId"))
+                PushProviderResponse(200, "")
+            }, Clock.systemUTC())
+        assertEquals(PushSendResult.Delivered, sender.send("IOS_APNS", "0123abcd", reminder))
     }
 
     @Test

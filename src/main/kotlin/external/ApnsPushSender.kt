@@ -65,6 +65,7 @@ class ApnsPushSender internal constructor(
         )
         val body = buildJsonObject {
             put("aps", buildJsonObject { put("alert", payload.providerAlert()) })
+            put("recipientBinding", payload.recipientBinding)
             payload.providerData(JsonPrimitive(1)).forEach { (key, value) -> put(key, value) }
         }
         return http.sendPush(URI.create("https://${environment.host}/3/device/$token"), headers, body) {
