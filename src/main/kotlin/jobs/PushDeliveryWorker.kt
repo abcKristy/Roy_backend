@@ -5,7 +5,9 @@ import com.example.persistence.withRetryingJdbcTransaction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import java.security.MessageDigest
 import java.sql.Connection
+import java.util.HexFormat
 import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
 import java.util.concurrent.atomic.AtomicLong
@@ -14,6 +16,7 @@ internal const val PUSH_JOB_TTL_SECONDS = 24 * 60 * 60
 
 data class PushPayload(
     val notificationId: UUID,
+    val recipientBinding: String,
     val kind: String,
     val pointId: UUID?,
     val chatId: UUID?,
@@ -135,8 +138,13 @@ class PushDeliveryWorker(
         val platform: String, val ciphertext: String, val kind: String,
         val pointId: UUID?, val chatId: UUID?, val proposalId: UUID?, val bookingId: UUID?,
     ) {
-        fun payload() = if (kind == "nearby_meeting") PushPayload(eventId, kind, pointId, null, null)
-            else PushPayload(eventId, kind, pointId, chatId, proposalId)
+        fun payload(): PushPayload {
+            val binding = MessageDigest.getInstance("SHA-256")
+                .digest("$installationId:$recipientId".toByteArray(Charsets.UTF_8))
+            val includePrivateTarget = kind != "nearby_meeting"
+            return PushPayload(eventId, HexFormat.of().formatHex(binding), kind, pointId,
+                chatId.takeIf { includePrivateTarget }, proposalId.takeIf { includePrivateTarget })
+        }
     }
 
     private suspend fun claim(): Claim? = database.withJdbcTransaction { connection ->

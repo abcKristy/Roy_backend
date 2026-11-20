@@ -31,8 +31,9 @@ class RuStorePushSender internal constructor(
         val body = buildJsonObject {
             put("message", buildJsonObject {
                 put("token", token)
-                // Roy builds the Android notification so its tap carries the scoped target.
-                put("data", payload.providerData(JsonPrimitive("1")))
+                // Android verifies the recipient before displaying a push on a shared installation.
+                put("data", JsonObject(payload.providerData(JsonPrimitive("1")) +
+                    ("recipientBinding" to JsonPrimitive(payload.recipientBinding))))
                 put("android", buildJsonObject { put("ttl", if (payload.kind == "reminder_1h") "120s" else "3600s") })
             })
         }

@@ -12,8 +12,10 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.security.MessageDigest
 import java.sql.Connection
 import java.sql.DriverManager
+import java.util.HexFormat
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -54,6 +56,9 @@ class JobsIntegrationTest {
                 PushSender { _, token, payload ->
                     assertEquals("decoded-token", token)
                     assertEquals(event, payload.notificationId)
+                    val expectedBinding = MessageDigest.getInstance("SHA-256")
+                        .digest("$installation:$account".toByteArray(Charsets.UTF_8))
+                    assertEquals(HexFormat.of().formatHex(expectedBinding), payload.recipientBinding)
                     sends++
                     PushSendResult.Delivered
                 }, PushTokenDecoder { _, _, _ -> "decoded-token" })

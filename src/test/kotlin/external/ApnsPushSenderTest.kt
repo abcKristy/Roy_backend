@@ -21,7 +21,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class ApnsPushSenderTest {
-    private val payload = PushPayload(UUID.randomUUID(), "nearby_meeting", UUID.randomUUID(),
+    private val payload = PushPayload(UUID.randomUUID(), "0123456789abcdef".repeat(4), "nearby_meeting", UUID.randomUUID(),
         UUID.randomUUID(), UUID.randomUUID())
 
     @Test

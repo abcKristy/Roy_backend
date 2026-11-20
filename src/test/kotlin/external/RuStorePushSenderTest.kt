@@ -15,7 +15,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class RuStorePushSenderTest {
-    private val payload = PushPayload(UUID.randomUUID(), "nearby_meeting", UUID.randomUUID(),
+    private val payload = PushPayload(UUID.randomUUID(), "0123456789abcdef".repeat(4), "nearby_meeting", UUID.randomUUID(),
         UUID.randomUUID(), UUID.randomUUID())
 
     @Test
@@ -32,6 +32,7 @@ class RuStorePushSenderTest {
             assertEquals(JsonObject(mapOf(
                 "v" to JsonPrimitive("1"),
                 "notificationId" to JsonPrimitive(payload.notificationId.toString()),
+                "recipientBinding" to JsonPrimitive(payload.recipientBinding),
                 "kind" to JsonPrimitive("nearby_meeting"),
                 "pointId" to JsonPrimitive(payload.pointId.toString()),
             )), data)
@@ -50,6 +51,7 @@ class RuStorePushSenderTest {
             assertEquals(JsonObject(mapOf(
                 "v" to JsonPrimitive("1"),
                 "notificationId" to JsonPrimitive(reminder.notificationId.toString()),
+                "recipientBinding" to JsonPrimitive(reminder.recipientBinding),
                 "kind" to JsonPrimitive("reminder_1h"),
                 "pointId" to JsonPrimitive(reminder.pointId.toString()),
                 "chatId" to JsonPrimitive(reminder.chatId.toString()),
